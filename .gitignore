@@ -1,0 +1,48 @@
+# Laravel
+/backend/vendor/
+/backend/node_modules/
+/backend/.env
+/backend/.env.backup
+/backend/storage/*.key
+/backend/bootstrap/cache/
+/backend/storage/framework/cache/
+/backend/storage/framework/sessions/
+/backend/storage/framework/views/
+/backend/storage/logs/
+/backend/.idea/
+/backend/*.iml
+
+# React Frontend
+/frontend/node_modules/
+/frontend/src/node_modules/
+/frontend/.env
+/frontend/.env.local
+/frontend/dist/
+/frontend/build/
+/frontend/.eslintcache
+
+# Flutter Mobile - managed separately
+/mobile/
+
+# Database import folder - exclude entirely
+/database/import/
+/database/*.db
+/database/*.sqlite
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.bak

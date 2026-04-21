@@ -1,0 +1,49 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "project": {
+    "name": "FullStack App",
+    "stack": ["Laravel API", "React Web", "Flutter Mobile"]
+  },
+  "subagents": {
+    "*": true
+  },
+  "agents": {
+    "lead": {
+      "role": "Plan feature and define API",
+      "input": ["feature"],
+      "output": ["api_spec"],
+      "mode": "subagent"
+    },
+    "backend": {
+      "role": "Build Laravel API",
+      "input": ["api_spec"],
+      "output": ["endpoints"],
+      "mode": "subagent"
+    },
+    "web": {
+      "role": "Build React UI",
+      "input": ["api_spec"],
+      "output": ["pages"],
+      "mode": "subagent"
+    },
+    "mobile": {
+      "role": "Build Flutter app",
+      "input": ["api_spec"],
+      "output": ["screens"],
+      "mode": "subagent"
+    },
+    "qa": {
+      "role": "Test everything",
+      "input": ["endpoints", "pages", "screens"],
+      "output": ["issues"],
+      "mode": "subagent"
+    }
+  },
+  "workflow": [
+    "lead",
+    "backend",
+    "web",
+    "mobile",
+    "qa"
+  ]
+}
