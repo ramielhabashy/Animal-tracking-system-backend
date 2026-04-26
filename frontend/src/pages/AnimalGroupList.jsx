@@ -1,3 +1,4 @@
+import React from 'react';
 import { useState, useEffect } from 'react';
 import { MaterialSymbol } from 'react-material-symbols';
 import { apiFetch } from '../utils/api';
@@ -480,3 +481,4 @@ function AnimalAssignmentModal({ group, availableAnimals, onAssign, onClose }) {
     </div>
   );
 }
+

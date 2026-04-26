@@ -1,3 +1,4 @@
+import React from 'react';
 import { MaterialSymbol } from 'react-material-symbols';
 import { NavLink } from 'react-router-dom';
 import { useI18n } from '../../i18n';
@@ -23,6 +24,7 @@ export default function Sidebar() {
     { icon: 'task', label: t('nav.tasks'), to: '/tasks' },
     ...(isAdminOrOwner ? [{ icon: 'assessment', label: t('nav.reports'), to: '/reports' }] : []),
     ...(isAdmin ? [{ icon: 'settings', label: t('common.settings'), to: '/profile' }] : []),
+    ...(isAdmin ? [{ icon: 'admin_panel_settings', label: t('nav.roles'), to: '/settings/roles' }] : []),
   ];
 
   const isRtl = dir === 'rtl';

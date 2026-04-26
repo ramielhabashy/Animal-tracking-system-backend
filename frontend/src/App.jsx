@@ -1,91 +1,143 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider } from './context/AuthContext';
+import React, { Suspense, lazy } from 'react';
+import { createBrowserRouter, RouterProvider, Navigate, Outlet } from 'react-router-dom';
 import { I18nProvider } from './i18n';
-import { PlatformProvider } from './context/PlatformContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { ProtectedRoute } from './components/ProtectedRoute';
 import Layout from './components/Layout/Layout';
-import Dashboard from './pages/Dashboard';
-import AnimalList from './pages/AnimalList';
-import AnimalDetails from './pages/AnimalDetails';
-import AnimalEdit from './pages/AnimalEdit';
-import DeviceList from './pages/DeviceList';
-import DeviceForm from './pages/DeviceForm';
-import DeviceEdit from './pages/DeviceEdit';
-import UserList from './pages/UserList';
-import UserEdit from './pages/UserEdit';
-import UserCreate from './pages/UserCreate';
-import Login from './pages/Login';
-import MapView from './pages/MapView';
-import AuctionList from './pages/AuctionList';
-import AuctionCreate from './pages/AuctionCreate';
-import AuctionEdit from './pages/AuctionEdit';
-import AuctionDetails from './pages/AuctionDetails';
-import AlertsPage from './pages/AlertsPage';
-import GeofenceList from './pages/GeofenceList';
-import AnimalGroupList from './pages/AnimalGroupList';
-import SubscriptionPage from './pages/SubscriptionPage';
-import SubscriptionsPage from './pages/SubscriptionsPage';
-import TeamPage from './pages/TeamPage';
-import ReportsPage from './pages/ReportsPage';
-import TasksPage from './pages/TasksPage';
-import TaskLogsArchive from './pages/TaskLogsArchive';
-import PaymentManagement from './pages/PaymentManagement';
-import MyPayments from './pages/MyPayments';
-import ProfilePage from './pages/ProfilePage';
-import MedicalRecordsPage from './pages/MedicalRecordsPage';
-import VaccinationSchedulePage from './pages/VaccinationSchedulePage';
-import SettingsPage from './pages/SettingsPage';
+import { PlatformProvider } from './context/PlatformContext';
+import { AuthProvider } from './context/AuthContext';
+import { useAuth } from './hooks/useAuth';
+import NotFound from './pages/NotFound';
+
+function ProtectedLayout() {
+  const { isAuthenticated, loading } = useAuth();
+  
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin w-8 h-8 border-4 border-[#002819] border-t-transparent rounded-full" />
+      </div>
+    );
+  }
+  
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+  
+  return <Outlet />;
+}
+
+function SuspenseFallback() {
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="animate-spin w-8 h-8 border-4 border-[#002819] border-t-transparent rounded-full" />
+    </div>
+  );
+}
+
+const Login = lazy(() => import('./pages/Login'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const AnimalList = lazy(() => import('./pages/AnimalList'));
+const AnimalDetails = lazy(() => import('./pages/AnimalDetails'));
+const AnimalEdit = lazy(() => import('./pages/AnimalEdit'));
+const DeviceList = lazy(() => import('./pages/DeviceList'));
+const DeviceForm = lazy(() => import('./pages/DeviceForm'));
+const DeviceEdit = lazy(() => import('./pages/DeviceEdit'));
+const UserList = lazy(() => import('./pages/UserList'));
+const UserEdit = lazy(() => import('./pages/UserEdit'));
+const UserCreate = lazy(() => import('./pages/UserCreate'));
+const MapView = lazy(() => import('./pages/MapView'));
+const AuctionList = lazy(() => import('./pages/AuctionList'));
+const AuctionCreate = lazy(() => import('./pages/AuctionCreate'));
+const AuctionEdit = lazy(() => import('./pages/AuctionEdit'));
+const AuctionDetails = lazy(() => import('./pages/AuctionDetails'));
+const AlertsPage = lazy(() => import('./pages/AlertsPage'));
+const GeofenceList = lazy(() => import('./pages/GeofenceList'));
+const AnimalGroupList = lazy(() => import('./pages/AnimalGroupList'));
+const SubscriptionPage = lazy(() => import('./pages/SubscriptionPage'));
+const SubscriptionsPage = lazy(() => import('./pages/SubscriptionsPage'));
+const TeamPage = lazy(() => import('./pages/TeamPage'));
+const ReportsPage = lazy(() => import('./pages/ReportsPage'));
+const TasksPage = lazy(() => import('./pages/TasksPage'));
+const TaskLogsArchive = lazy(() => import('./pages/TaskLogsArchive'));
+const PaymentManagement = lazy(() => import('./pages/PaymentManagement'));
+const MyPayments = lazy(() => import('./pages/MyPayments'));
+const ProfilePage = lazy(() => import('./pages/ProfilePage'));
+const MedicalRecordsPage = lazy(() => import('./pages/MedicalRecordsPage'));
+const VaccinationSchedulePage = lazy(() => import('./pages/VaccinationSchedulePage'));
+const SettingsPage = lazy(() => import('./pages/SettingsPage'));
+const LanguageSettingsPage = lazy(() => import('./pages/LanguageSettingsPage'));
+const RolesPage = lazy(() => import('./pages/RolesPage'));
+
+const router = createBrowserRouter([
+  {
+    path: '/login',
+    element: <Suspense fallback={<SuspenseFallback />}><Login /></Suspense>,
+  },
+  {
+    element: <ProtectedLayout />,
+    children: [
+      {
+        element: <Layout />,
+        children: [
+          { index: true, element: <Navigate to="/dashboard" replace /> },
+          { path: 'dashboard', element: <Suspense fallback={<SuspenseFallback />}><Dashboard /></Suspense> },
+          { path: 'animals', element: <Suspense fallback={<SuspenseFallback />}><AnimalList /></Suspense> },
+          { path: 'animals/new', element: <Suspense fallback={<SuspenseFallback />}><AnimalEdit /></Suspense> },
+          { path: 'animals/:id', element: <Suspense fallback={<SuspenseFallback />}><AnimalDetails /></Suspense> },
+          { path: 'animals/:id/edit', element: <Suspense fallback={<SuspenseFallback />}><AnimalEdit /></Suspense> },
+          { path: 'devices', element: <Suspense fallback={<SuspenseFallback />}><DeviceList /></Suspense> },
+          { path: 'devices/new', element: <Suspense fallback={<SuspenseFallback />}><DeviceForm /></Suspense> },
+          { path: 'devices/:id/edit', element: <Suspense fallback={<SuspenseFallback />}><DeviceEdit /></Suspense> },
+          { path: 'users', element: <Suspense fallback={<SuspenseFallback />}><UserList /></Suspense> },
+          { path: 'users/new', element: <Suspense fallback={<SuspenseFallback />}><UserCreate /></Suspense> },
+          { path: 'users/add', element: <Navigate to="/users/new" replace /> },
+          { path: 'users/:id/edit', element: <Suspense fallback={<SuspenseFallback />}><UserEdit /></Suspense> },
+          { path: 'map', element: <Suspense fallback={<SuspenseFallback />}><MapView /></Suspense> },
+          { path: 'auctions', element: <Suspense fallback={<SuspenseFallback />}><AuctionList /></Suspense> },
+          { path: 'auctions/new', element: <Suspense fallback={<SuspenseFallback />}><AuctionCreate /></Suspense> },
+          { path: 'auctions/:id', element: <Suspense fallback={<SuspenseFallback />}><AuctionDetails /></Suspense> },
+          { path: 'auctions/:id/edit', element: <Suspense fallback={<SuspenseFallback />}><AuctionEdit /></Suspense> },
+          { path: 'alerts', element: <Suspense fallback={<SuspenseFallback />}><AlertsPage /></Suspense> },
+          { path: 'geofences', element: <Suspense fallback={<SuspenseFallback />}><GeofenceList /></Suspense> },
+          { path: 'animal-groups', element: <Suspense fallback={<SuspenseFallback />}><AnimalGroupList /></Suspense> },
+          { path: 'subscription', element: <Suspense fallback={<SuspenseFallback />}><SubscriptionsPage /></Suspense> },
+          { path: 'subscription/tiers', element: <Suspense fallback={<SuspenseFallback />}><SubscriptionsPage /></Suspense> },
+          { path: 'subscription/select', element: <Suspense fallback={<SuspenseFallback />}><SubscriptionPage /></Suspense> },
+          { path: 'profile', element: <Suspense fallback={<SuspenseFallback />}><ProfilePage /></Suspense> },
+          { path: 'settings', element: <Suspense fallback={<SuspenseFallback />}><SettingsPage /></Suspense> },
+          { path: 'settings/languages', element: <Suspense fallback={<SuspenseFallback />}><LanguageSettingsPage /></Suspense> },
+          { path: 'settings/roles', element: <Suspense fallback={<SuspenseFallback />}><RolesPage /></Suspense> },
+          { path: 'medical-records', element: <Suspense fallback={<SuspenseFallback />}><MedicalRecordsPage /></Suspense> },
+          { path: 'vaccination-schedule', element: <Suspense fallback={<SuspenseFallback />}><VaccinationSchedulePage /></Suspense> },
+          { path: 'team', element: <Suspense fallback={<SuspenseFallback />}><TeamPage /></Suspense> },
+          { path: 'reports', element: <Suspense fallback={<SuspenseFallback />}><ReportsPage /></Suspense> },
+          { path: 'tasks', element: <Suspense fallback={<SuspenseFallback />}><TasksPage /></Suspense> },
+          { path: 'task-logs-archive', element: <Suspense fallback={<SuspenseFallback />}><TaskLogsArchive /></Suspense> },
+          { path: 'payments', element: <Suspense fallback={<SuspenseFallback />}><PaymentManagement /></Suspense> },
+          { path: 'my-payments', element: <Suspense fallback={<SuspenseFallback />}><MyPayments /></Suspense> },
+        ],
+      },
+    ],
+  },
+  {
+    path: '*',
+    element: <NotFound />,
+  },
+], {
+  future: {
+    v7_startTransition: true,
+  },
+});
 
 function App() {
   return (
     <ErrorBoundary>
       <I18nProvider>
-        <AuthProvider>
-          <PlatformProvider>
-            <BrowserRouter>
-              <Routes>
-                <Route path="/login" element={<Login />} />
-                <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-                  <Route index element={<Navigate to="/dashboard" replace />} />
-                  <Route path="dashboard" element={<Dashboard />} />
-                  <Route path="animals" element={<AnimalList />} />
-                  <Route path="animals/new" element={<AnimalEdit />} />
-                  <Route path="animals/:id" element={<AnimalDetails />} />
-                  <Route path="animals/:id/edit" element={<AnimalEdit />} />
-                  <Route path="devices" element={<DeviceList />} />
-                  <Route path="devices/new" element={<DeviceForm />} />
-                  <Route path="devices/:id/edit" element={<DeviceEdit />} />
-                  <Route path="users" element={<UserList />} />
-                  <Route path="users/new" element={<UserCreate />} />
-                  <Route path="users/add" element={<Navigate to="/users/new" replace />} />
-                  <Route path="users/:id/edit" element={<UserEdit />} />
-                  <Route path="map" element={<MapView />} />
-                  <Route path="auctions" element={<AuctionList />} />
-                  <Route path="auctions/new" element={<AuctionCreate />} />
-                  <Route path="auctions/:id" element={<AuctionDetails />} />
-                  <Route path="auctions/:id/edit" element={<AuctionEdit />} />
-                  <Route path="alerts" element={<AlertsPage />} />
-                  <Route path="geofences" element={<GeofenceList />} />
-                  <Route path="animal-groups" element={<AnimalGroupList />} />
-                  <Route path="subscription" element={<SubscriptionsPage />} />
-                  <Route path="subscription/tiers" element={<SubscriptionsPage />} />
-                  <Route path="subscription/select" element={<SubscriptionPage />} />
-                  <Route path="profile" element={<ProfilePage />} />
-                  <Route path="settings" element={<SettingsPage />} />
-                  <Route path="medical-records" element={<MedicalRecordsPage />} />
-                  <Route path="vaccination-schedule" element={<VaccinationSchedulePage />} />
-                  <Route path="team" element={<TeamPage />} />
-                  <Route path="reports" element={<ReportsPage />} />
-                  <Route path="tasks" element={<TasksPage />} />
-                  <Route path="task-logs-archive" element={<TaskLogsArchive />} />
-                  <Route path="payments" element={<PaymentManagement />} />
-                  <Route path="my-payments" element={<MyPayments />} />
-                </Route>
-              </Routes>
-            </BrowserRouter>
-          </PlatformProvider>
-        </AuthProvider>
+        <PlatformProvider>
+          <AuthProvider>
+            <RouterProvider router={router} />
+          </AuthProvider>
+        </PlatformProvider>
       </I18nProvider>
     </ErrorBoundary>
   );

@@ -1,13 +1,16 @@
+import React from 'react';
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { MaterialSymbol } from 'react-material-symbols';
 import { apiFetch } from '../utils/api';
 import { useI18n } from '../i18n';
+import { useRole } from '../hooks/useRole';
 
 export default function AnimalEdit() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { t, dir } = useI18n();
+  const { isShepherd } = useRole();
   const isRtl = dir === 'rtl';
   const isNewAnimal = !id || id === 'new';
   const fileInputRef = useRef(null);
@@ -333,15 +336,15 @@ export default function AnimalEdit() {
                     className="w-full bg-[#f4f4ef] border-none rounded-xl px-4 py-3 text-emerald-900 font-semibold focus:ring-2 focus:ring-[#06402b]/10" 
                   />
                 </div>
-                <div className="space-y-1.5">
+<div className="space-y-1.5">
                   <label className="text-[11px] font-bold text-stone-500 uppercase tracking-widest px-1">Species</label>
-                  <select name="species" value={formData.species} onChange={handleChange} className="w-full bg-[#f4f4ef] border-none rounded-xl px-4 py-3 text-emerald-900 font-semibold focus:ring-2 focus:ring-[#06402b]/10">
+                  <select name="species" value={formData.species} onChange={handleChange} disabled={isShepherd} className={`w-full bg-[#f4f4ef] border-none rounded-xl px-4 py-3 text-emerald-900 font-semibold focus:ring-2 focus:ring-[#06402b]/10 ${isShepherd ? 'opacity-50 cursor-not-allowed' : ''}`}>
                     {getSpeciesOptions().map(species => (
                       <option key={species} value={species}>{species}</option>
                     ))}
                     <option value="Other">Other</option>
                   </select>
-                  {formData.species === 'Other' && (
+                  {formData.species === 'Other' && !isShepherd && (
                     <input 
                       name="custom_species" 
                       value={formData.custom_species} 
@@ -357,14 +360,15 @@ export default function AnimalEdit() {
                     name="breed" 
                     value={formData.breed} 
                     onChange={handleChange} 
-                    className="w-full bg-[#f4f4ef] border-none rounded-xl px-4 py-3 text-emerald-900 font-semibold focus:ring-2 focus:ring-[#06402b]/10"
+                    disabled={isShepherd}
+                    className={`w-full bg-[#f4f4ef] border-none rounded-xl px-4 py-3 text-emerald-900 font-semibold focus:ring-2 focus:ring-[#06402b]/10 ${isShepherd ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                     <option value="">{t('common.select')} {t('animals.breed')}</option>
                     {getBreedOptions().map(breed => (
                       <option key={breed} value={breed}>{breed}</option>
                     ))}
                   </select>
-                  {formData.breed === 'Other' && (
+                  {formData.breed === 'Other' && !isShepherd && (
                     <input 
                       name="custom_breed" 
                       value={formData.custom_breed} 
@@ -676,3 +680,4 @@ export default function AnimalEdit() {
     </form>
   );
 }
+

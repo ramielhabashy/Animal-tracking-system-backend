@@ -20,7 +20,7 @@ class CheckSubscriptionLimits
 
         $user = User::with('subscriptionTier')->find($userId);
 
-        if (!$user || $user->isAdmin()) {
+        if (!$user || $user->hasRole('Admin')) {
             return $next($request);
         }
 

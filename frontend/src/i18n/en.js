@@ -89,6 +89,7 @@ export default {
     medicalRecords: 'Medical Records',
     vaccinationSchedule: 'Vaccination Schedule',
     profile: 'Profile',
+    roles: 'Roles',
   },
   dashboard: {
     title: 'Dashboard',

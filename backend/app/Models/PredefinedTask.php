@@ -10,6 +10,8 @@ class PredefinedTask extends Model
 {
     use HasFactory;
 
+    public $translatable = ['title', 'description'];
+
     protected $fillable = [
         'owner_id',
         'title',

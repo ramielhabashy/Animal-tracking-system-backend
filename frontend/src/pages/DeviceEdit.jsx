@@ -1,13 +1,17 @@
+import React from 'react';
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { MaterialSymbol } from 'react-material-symbols';
 import { apiFetch } from '../utils/api';
 import { useI18n } from '../i18n';
+import { useRole } from '../hooks/useRole';
 
 export default function DeviceEdit() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { t } = useI18n();
+  const { isOwner, isAdmin } = useRole();
+  const canEditAdvanced = isOwner || isAdmin;
   const [loading, setLoading] = useState(true);
   const [device, setDevice] = useState(null);
   const [animals, setAnimals] = useState([]);
@@ -235,16 +239,22 @@ export default function DeviceEdit() {
             </div>
 
             <div className="space-y-6">
-              <div className="flex items-center justify-between p-4 bg-white/50 rounded-2xl border border-white">
+<div className="flex items-center justify-between p-4 bg-white/50 rounded-2xl border border-white">
                 <div>
                   <p className="font-bold text-[#002819]">Advanced Tracking Mode</p>
                   <p className="text-sm text-[#404943]">Enable high-frequency GPS polling for behavioral analysis.</p>
                 </div>
-                <label className="relative inline-flex items-center cursor-pointer">
+                {!canEditAdvanced && (
+                  <div className="text-xs font-bold text-amber-600 bg-amber-50 px-3 py-1 rounded-full">
+                    Owner Only
+                  </div>
+                )}
+                <label className={`relative inline-flex items-center cursor-pointer ${!canEditAdvanced ? 'opacity-50 cursor-not-allowed' : ''}`}>
                   <input
                     type="checkbox"
                     checked={formData.advanced_tracking}
                     onChange={(e) => setFormData({ ...formData, advanced_tracking: e.target.checked })}
+                    disabled={!canEditAdvanced}
                     className="sr-only peer"
                   />
                   <div className="w-14 h-7 bg-[#e3e3de] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-6 after:transition-all peer-checked:bg-[#002819]" />
@@ -361,3 +371,4 @@ export default function DeviceEdit() {
     </div>
   );
 }
+

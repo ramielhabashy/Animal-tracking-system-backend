@@ -1,3 +1,4 @@
+import React from 'react';
 import { useState, useEffect, useMemo } from 'react';
 import { MaterialSymbol } from 'react-material-symbols';
 import { apiFetch } from '../utils/api';
@@ -975,3 +976,4 @@ export default function MedicalRecordsPage() {
     </div>
   );
 }
+

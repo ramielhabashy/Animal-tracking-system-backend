@@ -1,11 +1,11 @@
+import React from 'react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MaterialSymbol } from 'react-material-symbols';
-import { useAuth } from '../context/AuthContext';
+import { useAuth as useAuthContext } from '../context/AuthContext';
 import { useI18n } from '../i18n';
 import { usePlatform } from '../context/PlatformContext';
-import { apiFetch } from '../utils/api';
-import { setAuthUser, setAuthToken, setUserId, setUserRole, setPendingSubscription } from '../utils/storage';
+import { setAuthToken, setAuthUser, setUserRole, setPendingSubscription } from '../utils/cookies';
 
 export default function Login() {
   const { t, dir } = useI18n();
@@ -22,10 +22,10 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const navigate = useNavigate();
-  const { login } = useAuth();
+const navigate = useNavigate();
+  const { login } = useAuthContext();
 
-  const handleSubmit = async (e) => {
+const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
@@ -39,8 +39,13 @@ export default function Login() {
       }
     } else {
       try {
-        const response = await apiFetch('/api/register', {
+        const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8050';
+        const response = await fetch(`${API_BASE}/api/auth/register`, {
           method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
           body: JSON.stringify({
             name,
             email,
@@ -52,10 +57,10 @@ export default function Login() {
 
         if (response.ok) {
           const data = await response.json();
-          setAuthUser(data.user);
+          const userRole = data.user?.role || 'Shepherd';
           setAuthToken(data.token);
-          setUserRole(data.user.role);
-          setUserId(data.user.id);
+          setAuthUser({ ...data.user, role: userRole });
+          setUserRole(userRole);
           setPendingSubscription(true);
           navigate('/subscription/select');
         } else {
@@ -294,3 +299,4 @@ export default function Login() {
     </div>
   );
 }
+

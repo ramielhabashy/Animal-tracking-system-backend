@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class SubscriptionTier extends Model
 {
+    public $translatable = ['name', 'description'];
+
     protected $fillable = [
         'name',
         'slug',

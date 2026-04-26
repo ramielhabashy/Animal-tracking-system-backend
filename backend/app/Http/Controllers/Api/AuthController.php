@@ -40,7 +40,8 @@ class AuthController extends Controller
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
-                'role' => $user->role,
+                'role' => $user->getPrimaryRoleName(),
+                'roles' => $user->getRoleNames()->toArray(),
                 'phone' => $user->phone,
                 'language' => $user->language,
                 'subscription_tier_id' => $user->subscription_tier_id,
@@ -67,11 +68,13 @@ class AuthController extends Controller
             'email' => $request->email,
             'password' => bcrypt($request->password),
             'phone' => $request->phone,
-            'role' => 'Owner',
             'is_active' => true,
             'language' => $request->language ?? 'en',
             'subscription_tier_id' => $freeTier?->id,
         ]);
+
+        // Assign default Owner role via Spatie
+        $user->assignRole('Owner');
 
         $token = $user->createToken('auth-token')->plainTextToken;
 
@@ -80,7 +83,8 @@ class AuthController extends Controller
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
-                'role' => $user->role,
+                'role' => $user->getPrimaryRoleName(),
+                'roles' => $user->getRoleNames()->toArray(),
                 'phone' => $user->phone,
                 'language' => $user->language,
                 'subscription_tier_id' => $user->subscription_tier_id,
@@ -91,7 +95,14 @@ class AuthController extends Controller
 
     public function logout(Request $request): JsonResponse
     {
-        $request->user()->currentAccessToken()->delete();
+        try {
+            $user = $request->user();
+            if ($user) {
+                $user->currentAccessToken()->delete();
+            }
+        } catch (\Exception $e) {
+            // Ignore token deletion errors
+        }
 
         return response()->json(['message' => 'Logged out successfully']);
     }
@@ -100,12 +111,15 @@ class AuthController extends Controller
     {
         $user = $request->user();
         $user->load('subscriptionTier');
-
+        
+        $roleNames = $user->getRoleNames()->toArray();
+        
         return response()->json([
             'id' => $user->id,
             'name' => $user->name,
             'email' => $user->email,
-            'role' => $user->role,
+            'role' => $roleNames[0] ?? 'Owner',
+            'roles' => $roleNames,
             'phone' => $user->phone,
             'location' => $user->location,
             'language' => $user->language,

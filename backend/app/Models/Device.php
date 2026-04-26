@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class Device extends Model
 {
+    public $translatable = ['name'];
+
     protected $fillable = [
         'device_id',
         'name',

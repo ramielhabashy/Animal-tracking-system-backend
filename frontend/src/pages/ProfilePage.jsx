@@ -1,9 +1,10 @@
+import React from 'react';
 import { useState, useEffect } from 'react';
 import { MaterialSymbol } from 'react-material-symbols';
 import { apiFetch } from '../utils/api';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 import { useI18n } from '../i18n';
-import { setAuthUser } from '../utils/storage';
+import { setAuthUser } from '../utils/cookies';
 
 export default function ProfilePage() {
   const { user } = useAuth();
@@ -93,7 +94,7 @@ export default function ProfilePage() {
         }),
       });
 
-      if (res.ok) {
+if (res.ok) {
         setMsg({ ok: true, text: 'Profile updated successfully!' });
         const updatedUser = { ...user, name: profile.name, email: profile.email };
         setAuthUser(updatedUser);
@@ -409,3 +410,4 @@ export default function ProfilePage() {
     </div>
   );
 }
+

@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "afe7015951ea889b1920e9845402fb7a",
+    "content-hash": "8e61048fd326d39871ae76977839516a",
     "packages": [
         {
             "name": "brick/math",
@@ -3498,29 +3498,28 @@
         },
         {
             "name": "spatie/laravel-translatable",
-            "version": "6.13.0",
+            "version": "6.7.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/spatie/laravel-translatable.git",
-                "reference": "f2c5b8805a2dd22799c9aa8ce66cd98ce3170dcb"
+                "reference": "b75b3300949cdc6ce191f9a4b70addbce5d54ff5"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/spatie/laravel-translatable/zipball/f2c5b8805a2dd22799c9aa8ce66cd98ce3170dcb",
-                "reference": "f2c5b8805a2dd22799c9aa8ce66cd98ce3170dcb",
+                "url": "https://api.github.com/repos/spatie/laravel-translatable/zipball/b75b3300949cdc6ce191f9a4b70addbce5d54ff5",
+                "reference": "b75b3300949cdc6ce191f9a4b70addbce5d54ff5",
                 "shasum": ""
             },
             "require": {
-                "illuminate/database": "^11.0|^12.0|^13.0",
-                "illuminate/support": "^11.0|^12.0|^13.0",
-                "php": "^8.3",
-                "spatie/laravel-package-tools": "^1.93.0"
+                "illuminate/database": "^9.0|^10.0|^11.0",
+                "illuminate/support": "^9.0|^10.0|^11.0",
+                "php": "^8.0",
+                "spatie/laravel-package-tools": "^1.11"
             },
             "require-dev": {
-                "friendsofphp/php-cs-fixer": "^3.90",
-                "mockery/mockery": "^1.6.12",
-                "orchestra/testbench": "^9.0|^10.0|^11.0",
-                "pestphp/pest": "^4.0.0"
+                "mockery/mockery": "^1.4",
+                "orchestra/testbench": "^7.0|^8.0|^9.0",
+                "pestphp/pest": "^1.20|^2.0"
             },
             "type": "library",
             "extra": {
@@ -3569,7 +3568,7 @@
             ],
             "support": {
                 "issues": "https://github.com/spatie/laravel-translatable/issues",
-                "source": "https://github.com/spatie/laravel-translatable/tree/6.13.0"
+                "source": "https://github.com/spatie/laravel-translatable/tree/6.7.0"
             },
             "funding": [
                 {
@@ -3577,7 +3576,7 @@
                     "type": "github"
                 }
             ],
-            "time": "2026-02-21T14:20:19+00:00"
+            "time": "2024-05-13T12:34:22+00:00"
         },
         {
             "name": "stripe/stripe-php",

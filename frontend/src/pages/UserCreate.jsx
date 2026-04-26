@@ -1,3 +1,4 @@
+import React from 'react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MaterialSymbol } from 'react-material-symbols';
@@ -117,7 +118,7 @@ export default function UserCreate() {
               >
                 {isAdmin && <option value="Admin">{t('users.admin')}</option>}
                 <option value="Owner">{t('users.owner')}</option>
-                <option value="Veterinarian">{t('users.veterinarian')}</option>
+                <option value="Manager">{t('users.manager')}</option>
                 <option value="Shepherd">{t('users.shepherd')}</option>
               </select>
               <MaterialSymbol icon="expand_more" className="absolute right-4 top-1/2 -translate-y-1/2 text-[#002819]/40 pointer-events-none" />
@@ -162,3 +163,4 @@ export default function UserCreate() {
     </div>
   );
 }
+

@@ -1,6 +1,7 @@
+import React from 'react';
 import { createContext, useContext, useState, useEffect } from 'react';
+import { getAuthUser, setAuthUser, setAuthToken, setUserRole, clearAuth, getAuthToken } from '../utils/cookies';
 import { apiFetch } from '../utils/api';
-import { getAuthUser, setAuthUser, setAuthToken, setUserId, setUserRole, clearAuth } from '../utils/storage';
 
 const AuthContext = createContext({ user: null, isAuthenticated: false, login: async () => false, logout: () => {} });
 
@@ -18,35 +19,48 @@ export function AuthProvider({ children }) {
 
   const login = async (email, password) => {
     try {
-      const response = await apiFetch('/api/login', {
+      const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8050';
+      
+      const response = await fetch(`${API_BASE}/api/auth/login`, {
         method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json', 
+          'Accept': 'application/json' 
+        },
         body: JSON.stringify({ email, password }),
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        if (data.user) {
-          setUser(data.user);
-          setAuthUser(data.user);
-          setUserId(data.user.id);
-          setUserRole(data.user.role);
-        } else {
-          const defaultUser = { id: 0, email, name: 'User', role: 'Admin', phone: null };
-          setUser(defaultUser);
-          setAuthUser(defaultUser);
-          setUserId(0);
-          setUserRole('Admin');
-        }
-        if (data.token) {
-          setAuthToken(data.token);
-        }
-        setIsAuthenticated(true);
-        return true;
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Login failed response:', response.status, errorData);
+        return false;
       }
+      
+      const data = await response.json();
+      console.log('Login success:', data);
+      
+      if (data.user) {
+        const userRole = data.user.role || 'Owner';
+        const userWithRole = { ...data.user, role: userRole };
+        
+        setUser(userWithRole);
+        setAuthUser(userWithRole);
+        setUserRole(userRole);
+      } else {
+        const defaultUser = { id: 0, email, name: 'User', role: 'Admin', phone: null };
+        setUser(defaultUser);
+        setAuthUser(defaultUser);
+        setUserRole('Admin');
+      }
+      if (data.token) {
+        setAuthToken(data.token);
+      }
+      setIsAuthenticated(true);
+      return true;
     } catch (error) {
       console.error('Login error:', error);
+      return false;
     }
-    return false;
   };
 
   const logout = async () => {

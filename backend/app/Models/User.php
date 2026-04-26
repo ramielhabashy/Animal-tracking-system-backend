@@ -8,6 +8,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
 
+/**
+ * User model with multilingual support.
+ *
+ * The 'language' field stores the user's preferred language code (e.g., 'en', 'ar', 'ur', 'eu').
+ * This references the languages table for available options and RTL support.
+ */
 class User extends Authenticatable
 {
     use HasApiTokens, HasRoles;
@@ -18,7 +24,6 @@ class User extends Authenticatable
         'password',
         'phone',
         'location',
-        'role',
         'language',
         'subscription_tier',
         'subscription_status',
@@ -68,44 +73,19 @@ class User extends Authenticatable
 
     public function shepherds(): HasMany
     {
-        return $this->hasMany(User::class, 'managed_by')->where('role', 'Shepherd');
+        return $this->hasMany(User::class, 'managed_by');
     }
 
     public function managers(): HasMany
     {
-        return $this->hasMany(User::class, 'managed_by')->where('role', 'Manager');
-    }
-
-    public function isAdmin(): bool
-    {
-        return $this->role === 'Admin';
-    }
-
-    public function isOwner(): bool
-    {
-        return $this->role === 'Owner';
-    }
-
-    public function isManager(): bool
-    {
-        return $this->role === 'Manager';
-    }
-
-    public function isShepherd(): bool
-    {
-        return $this->role === 'Shepherd';
-    }
-
-    public function isDoctor(): bool
-    {
-        return $this->role === 'Doctor';
+        return $this->hasMany(User::class, 'managed_by');
     }
 
     public function canManage(User $user): bool
     {
-        if ($this->isAdmin()) return true;
-        if ($this->isOwner() && $user->managed_by === $this->id) return true;
-        if ($this->isManager() && $user->managed_by === $this->id) return true;
+        if ($this->hasRole('Admin')) return true;
+        if ($this->hasRole('Owner') && $user->managed_by === $this->id) return true;
+        if ($this->hasRole('Manager') && $user->managed_by === $this->id) return true;
         return false;
     }
 
@@ -124,6 +104,18 @@ class User extends Authenticatable
         return User::where('managed_by', $this->id)->count();
     }
 
+    public function getPrimaryRoleName(): string
+    {
+        return $this->getRoleNames()->first() ?? 'Owner';
+    }
+
+    public function isOverUserLimit(): bool
+    {
+        $tier = $this->subscriptionTier;
+        if (!$tier || $tier->max_users === 0) return false;
+        return $this->getUserCount() > $tier->max_users;
+    }
+
     public function isOverAnimalLimit(): bool
     {
         $tier = $this->subscriptionTier;
@@ -136,12 +128,5 @@ class User extends Authenticatable
         $tier = $this->subscriptionTier;
         if (!$tier || $tier->max_devices === 0) return false;
         return $this->getDeviceCount() > $tier->max_devices;
-    }
-
-    public function isOverUserLimit(): bool
-    {
-        $tier = $this->subscriptionTier;
-        if (!$tier || $tier->max_users === 0) return false;
-        return $this->getUserCount() > $tier->max_users;
     }
 }

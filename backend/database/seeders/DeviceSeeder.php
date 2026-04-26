@@ -71,12 +71,12 @@ class DeviceSeeder extends Seeder
             Device::updateOrCreate(['device_id' => $device['device_id']], $device);
         }
         
-        $animals = Animal::whereNotNull('device_id')->get();
-        foreach ($animals as $idx => $animal) {
-            $device = Device::find($idx + 1);
-            if ($device) {
-                $device->animal_id = $animal->id;
-                $device->owner_id = $animal->owner_id;
+        $animals = Animal::take(6)->get();
+        $devices = Device::all();
+        foreach ($devices as $idx => $device) {
+            if (isset($animals[$idx])) {
+                $device->animal_id = $animals[$idx]->id;
+                $device->owner_id = $animals[$idx]->owner_id;
                 $device->save();
             }
         }

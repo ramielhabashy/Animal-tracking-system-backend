@@ -1,3 +1,4 @@
+import React from 'react';
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { MaterialSymbol } from 'react-material-symbols';
@@ -369,3 +370,4 @@ export default function AnimalForm() {
     </div>
   );
 }
+

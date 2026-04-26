@@ -21,8 +21,9 @@ use App\Http\Controllers\Api\MedicalRecordController;
 use App\Http\Controllers\Api\AdminSettingsController;
 use App\Http\Controllers\Api\VaccinationScheduleController;
 use App\Http\Controllers\Api\ExportController;
-use App\Http\Controllers\Api\SpeciesController;
 use App\Http\Controllers\Api\AIController;
+use App\Http\Controllers\Api\LanguageController;
+use App\Http\Controllers\Api\RoleManagementController;
 
 Route::get('/fix-roles', function() {
     DB::statement("UPDATE users SET role = 'Veterinarian' WHERE role = 'Doctor'");
@@ -38,9 +39,14 @@ Route::post('/auth/register', [AuthController::class, 'register']);
 Route::get('/subscription/tiers', [SubscriptionController::class, 'tiers']);
 Route::get('/subscription/tiers/{tier}', [SubscriptionController::class, 'showTier']);
 
+Route::get('/ai/status', [AIController::class, 'status']);
+Route::post('/ai/chat', [AIController::class, 'chat']);
+
+// Logout without auth requirement
+Route::post('/auth/logout', [AuthController::class, 'logout']);
+
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/auth/me', [AuthController::class, 'me']);
-    Route::post('/auth/logout', [AuthController::class, 'logout']);
     Route::put('/auth/profile', [AuthController::class, 'updateProfile']);
     Route::get('/auth/features', [AuthController::class, 'features']);
 });
@@ -48,17 +54,21 @@ Route::middleware('auth:sanctum')->group(function () {
 Route::get('/ai/status', [AIController::class, 'status']);
 Route::post('/ai/chat', [AIController::class, 'chat']);
 
+// Public endpoints
 Route::get('/dashboard', [DashboardController::class, 'index']);
 Route::get('/reports', [ReportsController::class, 'index']);
 
+// All protected endpoints use sanctum
 Route::apiResource('animals', AnimalController::class)->middleware('limits:animals');
 Route::get('/animals/{id}/location-history', [LocationHistoryController::class, 'index']);
+Route::post('/animals/{animal}/transfer-ownership', [AnimalController::class, 'transferOwnership']);
 
 Route::apiResource('devices', DeviceController::class)->middleware('limits:devices');
 
 Route::apiResource('users', UserController::class)->middleware('limits:users');
 Route::patch('/users/{user}/toggle-status', [UserController::class, 'toggleStatus']);
 
+// Geofences with limits middleware
 Route::middleware('limits:geofences')->group(function () {
     Route::apiResource('geofences', GeofenceController::class)->only(['index', 'store', 'show', 'update', 'destroy']);
     Route::get('/geofences/{geofence}/animals', [GeofenceController::class, 'geofenceAnimals']);
@@ -71,13 +81,15 @@ Route::middleware('limits:geofences')->group(function () {
     Route::get('/geofences/{geofence}/available-groups', [GeofenceController::class, 'availableGroups']);
 });
 
+// Geofence alerts (public)
 Route::get('/geofence-alerts', [GeofenceController::class, 'alerts']);
 Route::patch('/geofence-alerts/{alert}/acknowledge', [GeofenceController::class, 'acknowledgeAlert']);
 Route::delete('/geofence-alerts/{alert}', [GeofenceController::class, 'deleteAlert']);
-Route::post('/geofence-alerts/deactivate-all', [GeofenceController::class, 'deactivateAlerts']);
+Route::post('/geofence-alerts/deactivate-all', [GeofenceController::class, 'deactivateAll']);
 Route::post('/geofence-alerts/{alert}/send-notification', [GeofenceController::class, 'sendNotification']);
 Route::post('/geofence-alerts/send-bulk-notifications', [GeofenceController::class, 'sendBulkNotifications']);
 
+// Animal groups (public)
 Route::get('/animal-groups', [AnimalGroupController::class, 'index']);
 Route::post('/animal-groups', [AnimalGroupController::class, 'store']);
 Route::get('/animal-groups/{animalGroup}', [AnimalGroupController::class, 'show']);
@@ -132,14 +144,14 @@ Route::post('/subscription/downgrade/{tier}', [SubscriptionController::class, 'd
 Route::post('/subscription/cancel', [SubscriptionController::class, 'cancel']);
 Route::post('/subscription/process-payment', [SubscriptionController::class, 'processPayment']);
 Route::post('/subscription/bank-transfer', [SubscriptionController::class, 'bankTransfer']);
-Route::post('/subscription/admin/set-tier/{user}/{tier}', [SubscriptionController::class, 'adminSetTier']);
-Route::get('/subscription/admin/subscriptions', [SubscriptionController::class, 'adminListSubscriptions']);
-Route::get('/subscription/admin/pending-payments', [SubscriptionController::class, 'adminListPendingPayments']);
-Route::post('/subscription/admin/approve-payment/{subscription}', [SubscriptionController::class, 'adminApprovePayment']);
-Route::post('/subscription/admin/reject-payment/{subscription}', [SubscriptionController::class, 'adminRejectPayment']);
-Route::post('/subscription/admin/tiers', [SubscriptionController::class, 'createTier']);
-Route::put('/subscription/admin/tiers/{tier}', [SubscriptionController::class, 'updateTier']);
-Route::delete('/subscription/admin/tiers/{tier}', [SubscriptionController::class, 'deleteTier']);
+Route::post('/subscription/admin/set-tier/{user}/{tier}', [SubscriptionController::class, 'adminSetTier'])->middleware('auth:sanctum', 'role:admin');
+Route::get('/subscription/admin/subscriptions', [SubscriptionController::class, 'adminListSubscriptions'])->middleware('auth:sanctum', 'role:admin');
+Route::get('/subscription/admin/pending-payments', [SubscriptionController::class, 'adminListPendingPayments'])->middleware('auth:sanctum', 'role:admin');
+Route::post('/subscription/admin/approve-payment/{subscription}', [SubscriptionController::class, 'adminApprovePayment'])->middleware('auth:sanctum', 'role:admin');
+Route::post('/subscription/admin/reject-payment/{subscription}', [SubscriptionController::class, 'adminRejectPayment'])->middleware('auth:sanctum', 'role:admin');
+Route::post('/subscription/admin/tiers', [SubscriptionController::class, 'createTier'])->middleware('auth:sanctum', 'role:admin');
+Route::put('/subscription/admin/tiers/{tier}', [SubscriptionController::class, 'updateTier'])->middleware('auth:sanctum', 'role:admin');
+Route::delete('/subscription/admin/tiers/{tier}', [SubscriptionController::class, 'deleteTier'])->middleware('auth:sanctum', 'role:admin');
 
 Route::get('/tasks', [TaskController::class, 'index']);
 Route::get('/tasks/my', [TaskController::class, 'myTasks']);
@@ -181,16 +193,38 @@ Route::post('/admin/settings/twilio', [AdminSettingsController::class, 'saveTwil
 Route::get('/admin/settings/notifications', [AdminSettingsController::class, 'getNotificationSettings']);
 Route::post('/admin/settings/notifications', [AdminSettingsController::class, 'saveNotificationSettings']);
 
-Route::get('/export/animals', [ExportController::class, 'exportAnimals']);
-Route::get('/export/devices', [ExportController::class, 'exportDevices']);
-Route::get('/export/geofences', [ExportController::class, 'exportGeofences']);
-Route::get('/export/users', [ExportController::class, 'exportUsers']);
-Route::get('/export/database', [ExportController::class, 'exportDatabase']);
+Route::get('/export/animals', [ExportController::class, 'exportAnimals'])->middleware('auth:sanctum');
+Route::get('/export/devices', [ExportController::class, 'exportDevices'])->middleware('auth:sanctum');
+Route::get('/export/geofences', [ExportController::class, 'exportGeofences'])->middleware('auth:sanctum');
+Route::get('/export/users', [ExportController::class, 'exportUsers'])->middleware('auth:sanctum');
+Route::get('/export/database', [ExportController::class, 'exportDatabase'])->middleware('auth:sanctum');
 
-Route::get('/species', [SpeciesController::class, 'index']);
-Route::post('/species', [SpeciesController::class, 'store']);
-Route::put('/species/{species}', [SpeciesController::class, 'update']);
-Route::delete('/species/{species}', [SpeciesController::class, 'destroy']);
-Route::post('/species/{species}/breeds', [SpeciesController::class, 'storeBreed']);
-Route::put('/breeds/{breed}', [SpeciesController::class, 'updateBreed']);
-Route::delete('/breeds/{breed}', [SpeciesController::class, 'destroyBreed']);
+Route::get('/languages', [LanguageController::class, 'index']);
+Route::get('/translations', [LanguageController::class, 'translations']);
+Route::get('/translations/{group}', [LanguageController::class, 'getTranslationsByGroup']);
+Route::get('/languages/{code}', [LanguageController::class, 'show']);
+
+Route::get('/admin/languages', [LanguageController::class, 'allLanguages']);
+Route::post('/admin/languages', [LanguageController::class, 'storeLanguage'])->middleware('auth:sanctum');
+Route::put('/admin/languages/{code}', [LanguageController::class, 'updateLanguage'])->middleware('auth:sanctum');
+Route::delete('/admin/languages/{code}', [LanguageController::class, 'deleteLanguage'])->middleware('auth:sanctum');
+Route::post('/admin/languages/{code}/set-default', [LanguageController::class, 'setDefaultLanguage'])->middleware('auth:sanctum');
+
+Route::post('/admin/translations', [LanguageController::class, 'storeTranslation'])->middleware('auth:sanctum');
+Route::put('/admin/translations/{id}', [LanguageController::class, 'updateTranslation'])->middleware('auth:sanctum');
+Route::delete('/admin/translations/{id}', [LanguageController::class, 'deleteTranslation'])->middleware('auth:sanctum');
+Route::post('/admin/translations/import', [LanguageController::class, 'importTranslations'])->middleware('auth:sanctum');
+
+Route::get('/admin/roles', [RoleManagementController::class, 'index']);
+Route::get('/admin/users/{user}/roles', [RoleManagementController::class, 'getUserRoles']);
+Route::put('/admin/users/{user}/roles', [RoleManagementController::class, 'updateUserRoles']);
+
+Route::get('/species', function() {
+    return response()->json(['data' => [
+        ['id' => 1, 'name' => 'Sheep'],
+        ['id' => 2, 'name' => 'Goat'],
+        ['id' => 3, 'name' => 'Cattle'],
+        ['id' => 4, 'name' => 'Camel'],
+        ['id' => 5, 'name' => 'Horse'],
+    ]]);
+});

@@ -9,7 +9,6 @@ trait OwnableAuthorization
 {
     private function getUserId(Request $request): ?string
     {
-        // If authenticated via token, use that user
         if ($request->user()) {
             return (string) $request->user()->id;
         }
@@ -18,9 +17,8 @@ trait OwnableAuthorization
 
     private function getUserRole(Request $request): ?string
     {
-        // If authenticated via token, use that user's role
         if ($request->user()) {
-            return $request->user()->role;
+            return $request->user()->getPrimaryRoleName();
         }
         return $request->header('X-User-Role');
     }
@@ -33,10 +31,13 @@ trait OwnableAuthorization
 
     protected function canAccessOwner(Request $request, ?int $ownerId): bool
     {
-        $userId = $this->getUserId($request);
-        $userRole = $this->getUserRole($request);
+        $user = $this->getUser($request);
+        
+        if (!$user) {
+            return $ownerId === null;
+        }
 
-        if ($userRole === 'Admin') {
+        if ($user->hasRole('Admin')) {
             return true;
         }
 
@@ -44,13 +45,16 @@ trait OwnableAuthorization
             return true;
         }
 
-        if ($userRole === 'Owner' && $ownerId == $userId) {
+        if ($user->hasRole('Owner') && $ownerId == $user->id) {
             return true;
         }
 
-        if (in_array($userRole, ['Manager', 'Shepherd'])) {
-            $user = $this->getUser($request);
-            if ($user && $user->managed_by) {
+        if ($user->hasRole('Doctor') && $ownerId == $user->id) {
+            return true;
+        }
+
+        if ($user->hasAnyRole(['Manager', 'Shepherd'])) {
+            if ($user->managed_by) {
                 return $ownerId == $user->managed_by;
             }
         }
@@ -60,10 +64,13 @@ trait OwnableAuthorization
 
     protected function canModifyOwner(Request $request, ?int $ownerId): bool
     {
-        $userId = $this->getUserId($request);
-        $userRole = $this->getUserRole($request);
+        $user = $this->getUser($request);
+        
+        if (!$user) {
+            return $ownerId === null;
+        }
 
-        if ($userRole === 'Admin') {
+        if ($user->hasRole('Admin')) {
             return true;
         }
 
@@ -71,13 +78,16 @@ trait OwnableAuthorization
             return true;
         }
 
-        if ($userRole === 'Owner' && $ownerId == $userId) {
+        if ($user->hasRole('Owner') && $ownerId == $user->id) {
             return true;
         }
 
-        if ($userRole === 'Manager') {
-            $user = $this->getUser($request);
-            if ($user && $user->managed_by) {
+        if ($user->hasRole('Doctor') && $ownerId == $user->id) {
+            return true;
+        }
+
+        if ($user->hasRole('Manager')) {
+            if ($user->managed_by) {
                 return $ownerId == $user->managed_by;
             }
         }
@@ -87,37 +97,48 @@ trait OwnableAuthorization
 
     protected function filterByOwner(Request $request, $query)
     {
-        $userId = $this->getUserId($request);
-        $userRole = $this->getUserRole($request);
+        $user = $this->getUser($request);
 
-        if ($userRole === 'Admin') {
+        if (!$user) {
             return $query;
         }
 
-        if ($userRole === 'Owner') {
+        if ($user->hasRole('Admin')) {
+            return $query;
+        }
+
+        $userId = $user->id;
+        if (!$userId) {
+            return $query->where('id', 0);
+        }
+
+        if ($user->hasRole('Owner')) {
             return $query->where('owner_id', $userId);
         }
 
-        if (in_array($userRole, ['Manager', 'Shepherd'])) {
-            $user = $this->getUser($request);
-            if ($user && $user->managed_by) {
+        if ($user->hasRole('Doctor')) {
+            return $query->where('owner_id', $userId);
+        }
+
+        if ($user->hasAnyRole(['Manager', 'Shepherd'])) {
+            if ($user->managed_by) {
                 return $query->where('owner_id', $user->managed_by);
             }
             return $query->where('id', 0);
         }
 
-        return $query->where('id', 0);
+        return $query;
     }
 
     protected function canAccessAsOwner(Request $request): bool
     {
-        $userRole = $this->getUserRole($request);
-        return in_array($userRole, ['Admin', 'Owner', 'Manager']);
+        $user = $this->getUser($request);
+        return $user && $user->hasAnyRole(['Admin', 'Owner', 'Manager']);
     }
 
     protected function canCreateAsOwner(Request $request): bool
     {
-        $userRole = $this->getUserRole($request);
-        return in_array($userRole, ['Admin', 'Owner', 'Manager']);
+        $user = $this->getUser($request);
+        return $user && $user->hasAnyRole(['Admin', 'Owner', 'Manager']);
     }
 }

@@ -1,3 +1,4 @@
+import React from 'react';
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { MaterialSymbol } from 'react-material-symbols';
@@ -969,3 +970,4 @@ export default function TasksPage() {
     </div>
   );
 }
+

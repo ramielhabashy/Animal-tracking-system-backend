@@ -6,6 +6,7 @@ use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\HandleCors;
 use App\Http\Middleware\CheckSubscriptionLimits;
 use App\Http\Middleware\CheckFeatureAccess;
+use App\Http\Middleware\CustomAuthenticate;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -19,11 +20,15 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'limits' => CheckSubscriptionLimits::class,
             'feature' => CheckFeatureAccess::class,
+            'auth' => CustomAuthenticate::class,
+            'encrypt_cookies' => \App\Http\Middleware\EncryptCookies::class,
         ]);
         $middleware->api(prepend: [
-            HandleCors::class,
+            \Illuminate\Http\Middleware\HandleCors::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        //
+        $exceptions->report(function (\Throwable $e) {
+            report($e);
+        });
     })->create();

@@ -75,10 +75,15 @@ class PredefinedTaskController extends Controller
     {
         $userId = $request->header('X-User-Id');
         $userRole = $request->header('X-User-Role');
+        $authUser = $request->user();
+
+        if ($authUser) {
+            $userRole = $authUser->getPrimaryRoleName();
+        }
 
         if ($userRole !== 'Admin' && $predefinedTask->owner_id != $userId) {
             $manager = User::find($userId);
-            if (!$manager || $manager->role !== 'Manager' || !in_array($predefinedTask->owner_id, User::where('managed_by', $userId)->pluck('id')->toArray())) {
+            if (!$manager || !$manager->hasRole('Manager') || !in_array($predefinedTask->owner_id, User::where('managed_by', $userId)->pluck('id')->toArray())) {
                 return response()->json(['message' => 'Unauthorized', 'error' => 'unauthorized'], 403);
             }
         }

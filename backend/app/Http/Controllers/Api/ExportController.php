@@ -136,7 +136,7 @@ class ExportController extends Controller
                     $user->name,
                     $user->email,
                     $user->phone ?? '',
-                    $user->role,
+                    $user->getPrimaryRoleName(),
                     $user->manager ? $user->manager->name : '',
                     $user->created_at,
                 ];

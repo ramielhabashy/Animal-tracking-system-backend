@@ -1,3 +1,4 @@
+import React from 'react';
 import { useState, useRef, useEffect } from 'react';
 import { MaterialSymbol } from 'react-material-symbols';
 import { useI18n } from '../i18n';
@@ -10,8 +11,12 @@ const GEMINI_MODELS = [
   { id: 'gemini-2.0-flash-lite-001', name: 'Gemini 2.0 Flash Lite', description: 'Lightweight & fast', context: '1M tokens' },
 ];
 
-const API_KEY_STORAGE = 'gemini_api_key';
-const SETUP_COMPLETED_KEY = 'gemini_setup_completed';
+const API_KEY_SESSION = 'gemini_api_key';
+const SETUP_COMPLETED_SESSION = 'gemini_setup_completed';
+
+const getSession = (key) => sessionStorage.getItem(key);
+const setSession = (key, value) => sessionStorage.setItem(key, value);
+const removeSession = (key) => sessionStorage.removeItem(key);
 
 export default function AIAssistant() {
   const { t, dir, language } = useI18n();
@@ -25,14 +30,14 @@ export default function AIAssistant() {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedModel, setSelectedModel] = useState(GEMINI_MODELS[0].id);
   const [showSettings, setShowSettings] = useState(false);
-  const [apiKey, setApiKey] = useState(() => localStorage.getItem(API_KEY_STORAGE) || '');
+  const [apiKey, setApiKey] = useState(() => getSession(API_KEY_SESSION) || '');
   const [setupApiKey, setSetupApiKey] = useState('');
   const [userContext, setUserContext] = useState(null);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
 
   const hasApiKey = !!apiKey;
-  const hasCompletedSetup = localStorage.getItem(SETUP_COMPLETED_KEY) === 'true';
+  const hasCompletedSetup = getSession(SETUP_COMPLETED_SESSION) === 'true';
 
   useEffect(() => {
     if (isOpen && !hasApiKey && !hasCompletedSetup) {
@@ -109,8 +114,8 @@ export default function AIAssistant() {
   const saveApiKey = (key) => {
     setApiKey(key);
     setSetupApiKey(key);
-    localStorage.setItem(API_KEY_STORAGE, key);
-    localStorage.setItem(SETUP_COMPLETED_KEY, 'true');
+setSession(API_KEY_SESSION, key);
+      setSession(SETUP_COMPLETED_SESSION, 'true');
     setShowSetup(false);
     setSetupStep(1);
     fetchUserContext();
@@ -124,7 +129,7 @@ export default function AIAssistant() {
 
   const skipSetup = () => {
     setShowSetup(false);
-    localStorage.setItem(SETUP_COMPLETED_KEY, 'true');
+    setSession(SETUP_COMPLETED_SESSION, 'true');
   };
 
   const getWelcomeMessage = () => {

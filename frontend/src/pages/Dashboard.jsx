@@ -1,3 +1,4 @@
+import React from 'react';
 import { useState, useEffect, useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
@@ -6,8 +7,9 @@ import 'leaflet.heat';
 import { MaterialSymbol } from 'react-material-symbols';
 import { Link } from 'react-router-dom';
 import { apiFetch } from '../utils/api';
-import { useAuth } from '../context/AuthContext';
 import { useI18n } from '../i18n';
+import { useAuth } from '../hooks/useAuth';
+import { getAuthUser } from '../utils/cookies';
 
 const createCustomIcon = () => {
   return L.divIcon({
@@ -52,7 +54,6 @@ const pathColors = [
 
 export default function Dashboard() {
   const { t, dir } = useI18n();
-  const { user: authUser } = useAuth();
   const isRtl = dir === 'rtl';
   const [user, setUser] = useState(null);
 
@@ -71,9 +72,10 @@ export default function Dashboard() {
   const [vaccinations, setVaccinations] = useState([]);
   const [vaccStats, setVaccStats] = useState({});
 
-  useEffect(() => {
-    if (authUser) {
-      setUser(authUser);
+useEffect(() => {
+    const storedUser = getAuthUser();
+    if (storedUser) {
+      setUser(storedUser);
     }
     fetchDashboardData();
   }, []);
@@ -571,3 +573,4 @@ export default function Dashboard() {
     </div>
   );
 }
+

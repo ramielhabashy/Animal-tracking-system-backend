@@ -68,6 +68,12 @@ class GeofenceController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        $authUser = $request->user();
+        
+        if ($authUser && !$authUser->hasPermissionTo('manage_geofences')) {
+            return response()->json(['message' => 'Unauthorized to create geofences', 'error' => 'unauthorized'], 403);
+        }
+        
         if (!$this->canCreateAsOwner($request)) {
             return response()->json(['message' => 'Unauthorized to create geofences', 'error' => 'unauthorized'], 403);
         }
@@ -115,6 +121,12 @@ class GeofenceController extends Controller
 
     public function update(Request $request, Geofence $geofence): JsonResponse
     {
+        $authUser = $request->user();
+        
+        if ($authUser && !$authUser->hasPermissionTo('manage_geofences')) {
+            return response()->json(['message' => 'Unauthorized to modify geofence', 'error' => 'unauthorized'], 403);
+        }
+        
         if (!$this->canModifyOwner($request, $geofence->owner_id)) {
             return response()->json(['message' => 'Unauthorized to modify geofence', 'error' => 'unauthorized'], 403);
         }
@@ -141,6 +153,12 @@ class GeofenceController extends Controller
 
     public function destroy(Request $request, Geofence $geofence): JsonResponse
     {
+        $authUser = $request->user();
+        
+        if ($authUser && !$authUser->hasPermissionTo('manage_geofences')) {
+            return response()->json(['message' => 'Unauthorized to delete geofence', 'error' => 'unauthorized'], 403);
+        }
+        
         if (!$this->canModifyOwner($request, $geofence->owner_id)) {
             return response()->json(['message' => 'Unauthorized to delete geofence', 'error' => 'unauthorized'], 403);
         }

@@ -29,19 +29,20 @@ class AnimalController extends Controller
 
     public function store(StoreAnimalRequest $request): JsonResponse
     {
-        $userId = $request->header('X-User-Id');
-        $userRole = $request->header('X-User-Role');
         $authUser = $request->user();
         
         if ($authUser) {
-            $userId = $authUser->id;
-            $userRole = $authUser->role;
+            if (!$authUser->hasPermissionTo('manage_animals')) {
+                return response()->json(['message' => 'Unauthorized to create animals', 'error' => 'unauthorized'], 403);
+            }
+        } else {
+            $userRole = $request->header('X-User-Role');
+            if (!in_array($userRole, ['Admin', 'Owner', 'Manager', 'Veterinarian'])) {
+                return response()->json(['message' => 'Unauthorized to create animals', 'error' => 'unauthorized'], 403);
+            }
         }
         
-        if (!in_array($userRole, ['Admin', 'Owner', 'Manager'])) {
-            return response()->json(['message' => 'Unauthorized to create animals', 'error' => 'unauthorized'], 403);
-        }
-        
+        $userId = $request->header('X-User-Id');
         $data = $request->validated();
         
         if (!empty($data['device_id'])) {
@@ -57,18 +58,20 @@ class AnimalController extends Controller
         
         $data['animal_id'] = 'OA-' . date('Y') . '-' . str_pad(Animal::count() + 1, 4, '0', STR_PAD_LEFT);
         
-        if ($userRole === 'Owner' && $userId && empty($data['owner_id'])) {
+        $userRole = $authUser ? $authUser->getPrimaryRoleName() : $request->header('X-User-Role');
+        
+        if ($authUser && $authUser->hasRole('Owner') && $userId && empty($data['owner_id'])) {
             $data['owner_id'] = $userId;
         }
         
-        if ($userRole === 'Manager') {
+        if ($authUser && $authUser->hasRole('Manager')) {
             $user = $authUser ?: User::find($userId);
             if ($user && $user->managed_by) {
                 $data['owner_id'] = $user->managed_by;
             }
         }
         
-        if ($userRole === 'Admin' && empty($data['owner_id'])) {
+        if ($authUser && $authUser->hasRole('Admin') && empty($data['owner_id'])) {
             $data['owner_id'] = null;
         }
         
@@ -77,6 +80,13 @@ class AnimalController extends Controller
             $filename = 'animal_' . time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
             $path = $file->storeAs('public/images', $filename, 'local');
             $data['identification_photo'] = '/storage/' . str_replace('public/', '', $path);
+        } elseif ($request->has('identification_photo') && is_string($request->identification_photo) && strpos($request->identification_photo, 'data:image') === 0) {
+            $base64Data = $request->identification_photo;
+            $imageData = base64_decode(explode(',', $base64Data)[1] ?? $base64Data);
+            $filename = 'animal_' . time() . '_' . uniqid() . '.png';
+            $path = 'public/images/' . $filename;
+            Storage::disk('local')->put($path, $imageData);
+            $data['identification_photo'] = '/storage/' . $filename;
         }
         
         $animal = Animal::create($data);
@@ -100,6 +110,12 @@ class AnimalController extends Controller
 
     public function update(UpdateAnimalRequest $request, Animal $animal): JsonResponse
     {
+        $authUser = $request->user();
+        
+        if ($authUser && !$authUser->hasPermissionTo('manage_animals')) {
+            return response()->json(['message' => 'Unauthorized to modify animal', 'error' => 'unauthorized'], 403);
+        }
+        
         if (!$this->canModifyOwner($request, $animal->owner_id)) {
             return response()->json(['message' => 'Unauthorized to modify animal', 'error' => 'unauthorized'], 403);
         }
@@ -134,6 +150,17 @@ class AnimalController extends Controller
             $filename = 'animal_' . time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
             $path = $file->storeAs('public/images', $filename, 'local');
             $data['identification_photo'] = '/storage/' . str_replace('public/', '', $path);
+        } elseif ($request->has('identification_photo') && is_string($request->identification_photo) && strpos($request->identification_photo, 'data:image') === 0) {
+            if ($animal->identification_photo && Storage::disk('local')->exists(str_replace('/storage/', '', $animal->identification_photo))) {
+                Storage::disk('local')->delete(str_replace('/storage/', '', $animal->identification_photo));
+            }
+            
+            $base64Data = $request->identification_photo;
+            $imageData = base64_decode(explode(',', $base64Data)[1] ?? $base64Data);
+            $filename = 'animal_' . time() . '_' . uniqid() . '.png';
+            $path = 'public/images/' . $filename;
+            Storage::disk('local')->put($path, $imageData);
+            $data['identification_photo'] = '/storage/' . $path;
         }
         
         $animal->update($data);
@@ -147,6 +174,12 @@ class AnimalController extends Controller
 
     public function destroy(Request $request, Animal $animal): JsonResponse
     {
+        $authUser = $request->user();
+        
+        if ($authUser && !$authUser->hasPermissionTo('manage_animals')) {
+            return response()->json(['message' => 'Unauthorized to delete animal', 'error' => 'unauthorized'], 403);
+        }
+        
         if (!$this->canModifyOwner($request, $animal->owner_id)) {
             return response()->json(['message' => 'Unauthorized to delete animal', 'error' => 'unauthorized'], 403);
         }
@@ -158,5 +191,35 @@ class AnimalController extends Controller
         $animal->delete();
 
         return response()->json(['message' => 'Animal deleted successfully']);
+    }
+
+    public function transferOwnership(Request $request, Animal $animal): JsonResponse
+    {
+        if (!$this->canModifyOwner($request, $animal->owner_id)) {
+            return response()->json(['message' => 'Unauthorized to transfer animal ownership', 'error' => 'unauthorized'], 403);
+        }
+
+        $validated = $request->validate([
+            'new_owner_id' => 'required|exists:users,id',
+        ]);
+
+        $newOwnerId = $validated['new_owner_id'];
+        $newOwner = User::find($newOwnerId);
+
+        if (!$newOwner) {
+            return response()->json(['message' => 'New owner not found'], 404);
+        }
+
+        if (!$newOwner->hasAnyRole(['Admin', 'Owner'])) {
+            return response()->json(['message' => 'New owner must be an Admin or Owner'], 400);
+        }
+
+        $animal->update(['owner_id' => $newOwnerId]);
+        $animal->load(['owner', 'device']);
+
+        return response()->json([
+            'message' => 'Animal ownership transferred successfully',
+            'data' => new AnimalResource($animal),
+        ]);
     }
 }

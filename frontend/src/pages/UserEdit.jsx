@@ -1,3 +1,4 @@
+import React from 'react';
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { MaterialSymbol } from 'react-material-symbols';
@@ -28,20 +29,30 @@ export default function UserEdit() {
     fetchData();
   }, [id]);
 
-  const fetchData = async () => {
+const fetchData = async () => {
     try {
-      const [userRes, tiersRes] = await Promise.all([
+      const [userRes, tiersRes, rolesRes] = await Promise.all([
         apiFetch(`/api/users/${id}`),
         apiFetch('/api/subscription/tiers'),
+        apiFetch(`/api/admin/users/${id}/roles`),
       ]);
       
       if (userRes.ok) {
         const user = await userRes.json();
+        let userRole = 'Shepherd';
+        
+        if (rolesRes.ok) {
+          const rolesData = await rolesRes.json();
+          if (rolesData.roles && rolesData.roles.length > 0) {
+            userRole = rolesData.roles[0];
+          }
+        }
+        
         setForm({
           name: user.name || '',
           email: user.email || '',
           phone: user.phone || '',
-          role: user.role || 'Shepherd',
+          role: userRole,
           is_active: user.is_active !== false,
           subscription_tier_id: user.subscription_tier_id || '',
           password: '',
@@ -62,7 +73,7 @@ export default function UserEdit() {
   const set = (field, value) => {
     const newForm = { ...form, [field]: value };
     if (field === 'role') {
-      if (value === 'Veterinarian' || value === 'Shepherd') {
+      if (value === 'Manager' || value === 'Shepherd') {
         newForm.subscription_tier_id = '';
       }
     }
@@ -188,7 +199,7 @@ export default function UserEdit() {
                     className="input-field appearance-none pr-12"
                   >
                     <option value="Shepherd">{t('users.shepherd')}</option>
-                    <option value="Veterinarian">{t('users.veterinarian')}</option>
+                    <option value="Manager">{t('users.manager')}</option>
                     <option value="Owner">{t('users.owner')}</option>
                     <option value="Admin">{t('users.admin')}</option>
                   </select>
@@ -307,3 +318,4 @@ export default function UserEdit() {
     </form>
   );
 }
+

@@ -79,7 +79,7 @@ class AIController extends Controller
         $animals = \App\Models\Animal::where('owner_id', $user->id)->count();
         $devices = \App\Models\Device::where('owner_id', $user->id)->count();
 
-        return "User: {$user->name}, Role: {$user->role}, Animals: {$animals}, Devices: {$devices}";
+        return "User: {$user->name}, Role: " . $user->getPrimaryRoleName() . ", Animals: {$animals}, Devices: {$devices}";
     }
 
     protected function buildPrompt($message, $userContext)

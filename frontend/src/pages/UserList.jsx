@@ -1,3 +1,4 @@
+import React from 'react';
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { MaterialSymbol } from 'react-material-symbols';
@@ -33,7 +34,7 @@ export default function UserList() {
     setCurrentPage(1);
   }, [searchQuery]);
 
-  const fetchData = async () => {
+const fetchData = async () => {
     setLoading(true);
     try {
       const [usersRes, tiersRes] = await Promise.all([
@@ -43,8 +44,11 @@ export default function UserList() {
       
       if (usersRes.ok) {
         const usersData = await usersRes.json();
-        setUsers(usersData.data || []);
-        setTotalUsers(usersData.meta?.total || usersData.total || 0);
+        // API returns {value: [...]} format
+        const usersArray = usersData.data || usersData.value || usersData || [];
+        console.log('Users array:', usersArray);
+        setUsers(usersArray);
+        setTotalUsers(usersData.meta?.total || usersData.Count || usersArray.length || 0);
       }
       
       if (tiersRes.ok) {
@@ -75,7 +79,7 @@ export default function UserList() {
     const tier = tiers.find(t => t.id === tierId);
     return tier?.name || null;
   };
-  const roleColors = { Admin: 'bg-[#002819]/5 text-[#002819]', Veterinarian: 'bg-purple-100 text-purple-700', Owner: 'bg-[#D4AF37]/20 text-[#735c00]', Shepherd: 'bg-[#eeeee9] text-[#404943]' };
+  const roleColors = { Admin: 'bg-[#002819]/5 text-[#002819]', Manager: 'bg-[#eeeee9] text-[#404943]', Owner: 'bg-[#D4AF37]/20 text-[#735c00]', Shepherd: 'bg-[#eeeee9] text-[#404943]' };
 
   const handleDelete = async (userId) => {
     if (!confirm('Delete this user?')) return;
@@ -241,3 +245,4 @@ export default function UserList() {
     </div>
   );
 }
+

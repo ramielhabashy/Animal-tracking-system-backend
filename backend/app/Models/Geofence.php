@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Geofence extends Model
 {
+    public $translatable = ['name'];
+
     protected $fillable = [
         'name',
         'coordinates',

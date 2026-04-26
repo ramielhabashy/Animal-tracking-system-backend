@@ -11,6 +11,8 @@ class Auction extends Model
 {
     use HasFactory;
 
+    public $translatable = ['title', 'description'];
+
     protected $fillable = [
         'animal_id',
         'owner_id',

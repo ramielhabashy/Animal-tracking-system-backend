@@ -1,14 +1,15 @@
+import React from 'react';
 import { useState, useEffect } from 'react';
 import { MaterialSymbol } from 'react-material-symbols';
 import { apiFetch } from '../utils/api';
 import { exportDatabase } from '../utils/export';
 import { useI18n } from '../i18n';
 import { usePlatform } from '../context/PlatformContext';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../hooks/useAuth';
+import { getAuthUser } from '../utils/cookies';
 
 export default function SettingsPage() {
   const { t, dir } = useI18n();
-  const { user } = useAuth();
   const { refreshPlatformName } = usePlatform();
   const isRtl = dir === 'rtl';
   const [activeTab, setActiveTab] = useState('general');
@@ -76,9 +77,10 @@ export default function SettingsPage() {
     fetchSettings();
   }, []);
 
-  const fetchSettings = async () => {
+const fetchSettings = async () => {
     setLoading(true);
     try {
+      const user = getAuthUser();
       const userRole = user?.role;
 
       const [generalRes, smtpRes, stripeRes, geminiRes, whatsappRes, twilioRes, speciesRes] = await Promise.all([
@@ -959,3 +961,4 @@ export default function SettingsPage() {
     </div>
   );
 }
+

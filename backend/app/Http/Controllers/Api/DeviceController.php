@@ -36,6 +36,12 @@ class DeviceController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        $authUser = $request->user();
+        
+        if ($authUser && !$authUser->hasPermissionTo('manage_devices')) {
+            return response()->json(['message' => 'Unauthorized to create devices', 'error' => 'unauthorized'], 403);
+        }
+        
         if (!$this->canCreateAsOwner($request)) {
             return response()->json(['message' => 'Unauthorized to create devices', 'error' => 'unauthorized'], 403);
         }
@@ -80,6 +86,12 @@ class DeviceController extends Controller
 
     public function update(Request $request, Device $device): JsonResponse
     {
+        $authUser = $request->user();
+        
+        if ($authUser && !$authUser->hasPermissionTo('manage_devices')) {
+            return response()->json(['message' => 'Unauthorized', 'error' => 'unauthorized'], 403);
+        }
+        
         if (!$this->canAccessOwner($request, $device->owner_id)) {
             return response()->json(['message' => 'Unauthorized', 'error' => 'unauthorized'], 403);
         }
@@ -106,6 +118,12 @@ class DeviceController extends Controller
 
     public function destroy(Request $request, Device $device): JsonResponse
     {
+        $authUser = $request->user();
+        
+        if ($authUser && !$authUser->hasPermissionTo('manage_devices')) {
+            return response()->json(['message' => 'Unauthorized', 'error' => 'unauthorized'], 403);
+        }
+        
         if (!$this->canAccessOwner($request, $device->owner_id)) {
             return response()->json(['message' => 'Unauthorized', 'error' => 'unauthorized'], 403);
         }

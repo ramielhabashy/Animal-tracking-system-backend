@@ -25,12 +25,38 @@ class UserController extends Controller
             return User::find($userId);
         }
         
+        // Also try to find user by bearer token
+        $token = $request->bearerToken();
+        if ($token) {
+            $tokenRecord = \Laravel\Sanctum\PersonalAccessToken::findToken($token);
+            if ($tokenRecord) {
+                return User::find($tokenRecord->tokenable_id);
+            }
+        }
+        
         return null;
     }
     
     private function getAuthRole(Request $request): string
     {
-        return $request->header('X-User-Role', 'Owner');
+        $user = $request->user();
+        if ($user) {
+            return $user->getPrimaryRoleName();
+        }
+        
+        // Try X-User-Role header (sent by React frontend)
+        $roleHeader = $request->header('X-User-Role');
+        if ($roleHeader) {
+            return $roleHeader;
+        }
+        
+        // Try to get role from token-based user lookup
+        $authUser = $this->getAuthUser($request);
+        if ($authUser) {
+            return $authUser->getPrimaryRoleName();
+        }
+        
+        return 'Owner';
     }
     
     private function isAdmin(Request $request): bool
@@ -67,23 +93,41 @@ class UserController extends Controller
         $authUser = $this->getAuthUser($request);
         $role = $this->getAuthRole($request);
         
+        // If we found user from token lookup, use their role
+        if ($authUser) {
+            $role = $authUser->getRoleNames()->first() ?? $role;
+        }
+        
+        // Admin sees all users
         if ($role === 'Admin') {
             return $query;
         }
         
+        // If no authenticated user and not Admin, return empty
+        if (!$authUser) {
+            return $query->where('id', 0);
+        }
+        
+        // Owner/Veterinarian see only their managed users
         if ($role === 'Owner' || $role === 'Veterinarian') {
             return $query->where('managed_by', $authUser->id);
         }
         
+        // Others see only themselves
         return $query->where('id', $authUser->id);
     }
 
     public function index(Request $request): JsonResponse
     {
-        $query = User::query();
+        $query = User::query()->with('subscriptionTier');
         $query = $this->filterByRole($request, $query);
         
-        $users = $query->paginate(15);
+        $users = $query->paginate(15)->map(function ($user) {
+            $userArray = $user->toArray();
+            $userArray['role'] = $user->getRoleNames()->first() ?? 'Shepherd';
+            return $userArray;
+        });
+        
         return response()->json($users);
     }
 
@@ -101,7 +145,8 @@ class UserController extends Controller
             'email' => $user->email,
             'phone' => $user->phone,
             'location' => $user->location,
-            'role' => $user->role,
+            'role' => $user->getPrimaryRoleName(),
+            'roles' => $user->getRoleNames()->toArray(),
             'is_active' => $user->is_active,
             'avatar_url' => $user->avatar_url,
             'subscription_tier_id' => $user->subscription_tier_id,
@@ -130,9 +175,10 @@ class UserController extends Controller
             'email' => 'required|email|unique:users,email',
             'phone' => 'nullable|string',
             'location' => 'nullable|string',
-            'role' => 'sometimes|string|in:Admin,Owner,Veterinarian,Shepherd',
+            'role' => 'sometimes|string|in:Admin,Owner,Doctor,Shepherd,Manager',
             'is_active' => 'nullable|boolean',
             'password' => 'nullable|string|min:8',
+            'subscription_tier_id' => 'nullable|exists:subscription_tiers,id',
         ]);
 
         $requestedRole = $validated['role'] ?? 'Shepherd';
@@ -143,22 +189,27 @@ class UserController extends Controller
             'password' => Hash::make($validated['password'] ?? 'Welcome123'),
             'phone' => $validated['phone'] ?? null,
             'location' => $validated['location'] ?? null,
-            'role' => $requestedRole,
             'is_active' => $request->boolean('is_active', true),
         ];
         
         if ($authRole === 'Owner') {
-            if (!in_array($requestedRole, ['Veterinarian', 'Shepherd'])) {
-                return response()->json(['message' => 'Owner can only add Veterinarian or Shepherd roles'], 403);
+            if (!in_array($requestedRole, ['Doctor', 'Shepherd'])) {
+                return response()->json(['message' => 'Owner can only add Doctor or Shepherd roles'], 403);
             }
             $userData['managed_by'] = $authUser->id;
         } elseif ($authRole === 'Admin') {
             if ($request->has('managed_by') && $request->managed_by) {
                 $userData['managed_by'] = $request->managed_by;
             }
+            if ($request->has('subscription_tier_id') && $request->subscription_tier_id) {
+                $userData['subscription_tier_id'] = $request->subscription_tier_id;
+            }
         }
         
         $user = User::create($userData);
+        
+        // Assign role via Spatie
+        $user->assignRole($requestedRole);
         
         if ($request->hasFile('avatar_url')) {
             $file = $request->file('avatar_url');
@@ -182,15 +233,24 @@ class UserController extends Controller
             'email' => 'sometimes|email|unique:users,email,' . $user->id,
             'phone' => 'nullable|string',
             'location' => 'nullable|string',
-            'role' => 'sometimes|in:Admin,Owner,Veterinarian,Shepherd',
+            'role' => 'sometimes|in:Admin,Owner,Doctor,Shepherd,Manager',
             'is_active' => 'nullable|boolean',
             'password' => 'nullable|string|min:8',
             'managed_by' => 'nullable|exists:users,id',
+            'subscription_tier_id' => 'nullable|exists:subscription_tiers,id',
         ]);
         
         $role = $this->getAuthRole($request);
         
         if ($role !== 'Admin') {
+            unset($validated['role']);
+            unset($validated['subscription_tier_id']);
+            unset($validated['managed_by']);
+        }
+        
+        // Handle role update via Spatie
+        if (isset($validated['role']) && $validated['role']) {
+            $user->syncRoles([$validated['role']]);
             unset($validated['role']);
         }
         

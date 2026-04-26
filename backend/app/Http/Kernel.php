@@ -38,5 +38,7 @@ class Kernel extends HttpKernel
         'throttle.api' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
         'limits' => \App\Http\Middleware\CheckSubscriptionLimits::class,
         'feature' => \App\Http\Middleware\CheckFeatureAccess::class,
+        'encrypt_cookies' => \App\Http\Middleware\EncryptCookies::class,
+        'role' => \App\Http\Middleware\CheckRole::class,
     ];
 }

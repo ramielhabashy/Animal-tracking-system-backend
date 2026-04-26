@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class MedicalRecord extends Model
 {
+    public $translatable = ['title', 'description', 'notes'];
+
     protected $fillable = [
         'animal_id',
         'owner_id',

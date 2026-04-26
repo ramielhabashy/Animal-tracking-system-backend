@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Models\SubscriptionTier;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
+use Spatie\Permission\Models\Role;
 
 class UserSeeder extends Seeder
 {
@@ -62,8 +63,15 @@ class UserSeeder extends Seeder
             ],
         ];
 
-        foreach ($users as $user) {
-            User::updateOrCreate(['email' => $user['email']], $user);
+        foreach ($users as $userData) {
+            $role = $userData['role'];
+            unset($userData['role']);
+            
+            $user = User::updateOrCreate(['email' => $userData['email']], $userData);
+            $spatieRole = Role::where('name', $role)->first();
+            if ($spatieRole) {
+                $user->syncRoles([$spatieRole]);
+            }
         }
     }
 }

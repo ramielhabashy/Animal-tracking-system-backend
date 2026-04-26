@@ -1,3 +1,4 @@
+import React from 'react';
 import { useState } from 'react';
 import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { MaterialSymbol } from 'react-material-symbols';
@@ -7,54 +8,55 @@ import { useAuth } from '../../context/AuthContext';
 import { useI18n } from '../../i18n';
 
 const mainNavItems = [
-  { path: '/dashboard', icon: 'dashboard', labelKey: 'nav.dashboard' },
-  { path: '/animals', icon: 'pets', labelKey: 'nav.animals', hasSubmenu: true },
-  { path: '/medical-records', icon: 'medical_services', labelKey: 'nav.medicalRecords', hasSubmenu: true },
-  { path: '/devices', icon: 'sensors', labelKey: 'nav.devices' },
-  { path: '/map', icon: 'map', labelKey: 'nav.mapView' },
-  { path: '/auctions', icon: 'gavel', labelKey: 'nav.auctions', hasSubmenu: true, ownerOnly: true },
-  { path: '/alerts', icon: 'warning', labelKey: 'nav.alerts' },
-  { path: '/tasks', icon: 'task', labelKey: 'nav.tasks', hasSubmenu: true },
-  { path: '/subscription', icon: 'credit_score', labelKey: 'nav.subscription', ownerOnly: true },
-  { path: '/users', icon: 'group', labelKey: 'nav.users', hasSubmenu: true, ownerOnly: true },
-  { path: '/settings', icon: 'settings', labelKey: 'settings.title', adminOnly: true },
+  { path: '/dashboard', icon: 'dashboard', labelKey: 'nav.dashboard', roles: ['Admin', 'Owner', 'Manager', 'Shepherd', 'Doctor'] },
+  { path: '/animals', icon: 'pets', labelKey: 'nav.animals', hasSubmenu: true, roles: ['Admin', 'Owner', 'Manager', 'Shepherd', 'Doctor'] },
+  { path: '/medical-records', icon: 'medical_services', labelKey: 'nav.medicalRecords', hasSubmenu: true, roles: ['Admin', 'Owner', 'Manager', 'Doctor'] },
+  { path: '/devices', icon: 'sensors', labelKey: 'nav.devices', roles: ['Admin', 'Owner', 'Manager'] },
+  { path: '/map', icon: 'map', labelKey: 'nav.mapView', roles: ['Admin', 'Owner', 'Manager'] },
+  { path: '/auctions', icon: 'gavel', labelKey: 'nav.auctions', hasSubmenu: true, roles: ['Admin', 'Owner'] },
+  { path: '/alerts', icon: 'warning', labelKey: 'nav.alerts', roles: ['Admin', 'Owner', 'Manager'] },
+  { path: '/tasks', icon: 'task', labelKey: 'nav.tasks', hasSubmenu: true, roles: ['Admin', 'Owner', 'Manager', 'Shepherd', 'Doctor'] },
+  { path: '/subscription', icon: 'credit_score', labelKey: 'nav.subscription', roles: ['Admin', 'Owner'] },
+  { path: '/users', icon: 'group', labelKey: 'nav.users', hasSubmenu: true, roles: ['Admin', 'Owner'] },
+  { path: '/reports', icon: 'assessment', labelKey: 'nav.reports', roles: ['Admin', 'Owner', 'Manager'] },
+  { path: '/settings', icon: 'settings', labelKey: 'settings.title', roles: ['Admin'] },
 ];
 
 const animalSubmenu = [
-  { path: '/animals', labelKey: 'animals.title' },
-  { path: '/animal-groups', labelKey: 'nav.animalGroups' },
-  { path: '/geofences', labelKey: 'nav.geofences' },
+  { path: '/animals', labelKey: 'animals.title', roles: ['Admin', 'Owner', 'Manager', 'Shepherd', 'Doctor'] },
+  { path: '/animal-groups', labelKey: 'nav.animalGroups', roles: ['Admin', 'Owner', 'Manager'] },
+  { path: '/geofences', labelKey: 'nav.geofences', roles: ['Admin', 'Owner', 'Manager'] },
 ];
 
 const medicalSubmenu = [
-  { path: '/medical-records', labelKey: 'nav.medicalRecords' },
-  { path: '/vaccination-schedule', labelKey: 'nav.vaccinationSchedule' },
+  { path: '/medical-records', labelKey: 'nav.medicalRecords', roles: ['Admin', 'Owner', 'Manager', 'Doctor'] },
+  { path: '/vaccination-schedule', labelKey: 'nav.vaccinationSchedule', roles: ['Admin', 'Owner', 'Manager', 'Doctor'] },
 ];
 
 const auctionSubmenu = [
-  { path: '/auctions', labelKey: 'nav.browseAuctions' },
-  { path: '/my-payments', labelKey: 'nav.auctionPayments', ownerOnly: true },
-  { path: '/payments', labelKey: 'nav.managePayments', adminOnly: true },
+  { path: '/auctions', labelKey: 'nav.browseAuctions', roles: ['Admin', 'Owner'] },
+  { path: '/my-payments', labelKey: 'nav.auctionPayments', roles: ['Admin', 'Owner'] },
+  { path: '/payments', labelKey: 'nav.managePayments', roles: ['Admin'] },
 ];
 
 const usersSubmenu = [
-  { path: '/users', labelKey: 'nav.users' },
-  { path: '/team', labelKey: 'nav.team', adminOnly: true },
+  { path: '/users', labelKey: 'nav.users', roles: ['Admin', 'Owner'] },
+  { path: '/team', labelKey: 'nav.team', roles: ['Admin'] },
 ];
 
 const tasksSubmenu = [
-  { path: '/tasks', labelKey: 'tasks.title' },
-  { path: '/task-logs-archive', labelKey: 'nav.taskLogs', ownerOnly: true },
+  { path: '/tasks', labelKey: 'tasks.title', roles: ['Admin', 'Owner', 'Manager', 'Shepherd', 'Doctor'] },
+  { path: '/task-logs-archive', labelKey: 'nav.taskLogs', roles: ['Admin', 'Owner'] },
 ];
 
 export default function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
-  const [animalSubmenuOpen, setAnimalSubmenuOpen] = useState(false);
+const [animalSubmenuOpen, setAnimalSubmenuOpen] = useState(false);
   const [auctionSubmenuOpen, setAuctionSubmenuOpen] = useState(false);
-  const [usersSubmenuOpen, setUsersSubmenuOpen] = useState(true);
-  const [tasksSubmenuOpen, setTasksSubmenuOpen] = useState(true);
-  const [medicalSubmenuOpen, setMedicalSubmenuOpen] = useState(true);
+  const [usersSubmenuOpen, setUsersSubmenuOpen] = useState(false);
+  const [tasksSubmenuOpen, setTasksSubmenuOpen] = useState(false);
+  const [medicalSubmenuOpen, setMedicalSubmenuOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const { user } = useAuth();
   const { t, dir } = useI18n();
@@ -67,23 +69,12 @@ export default function Layout() {
   const isUsersActive = location.pathname === '/users' || location.pathname === '/team' || location.pathname.startsWith('/users/');
   const isTasksActive = location.pathname === '/tasks' || location.pathname.startsWith('/task-logs');
 
-  const getSubmenu = (item) => {
-    if (item.path === '/animals') return animalSubmenu;
-    if (item.path === '/medical-records') return medicalSubmenu;
-    if (item.path === '/auctions') return auctionSubmenu.filter(subItem => {
-      if (subItem.adminOnly && user?.role !== 'Admin') return false;
-      if (subItem.ownerOnly && !['Admin', 'Owner', 'Veterinarian'].includes(user?.role)) return false;
-      return true;
-    });
-    if (item.path === '/users') return usersSubmenu.filter(subItem => {
-      if (subItem.adminOnly && user?.role !== 'Admin') return false;
-      return true;
-    });
-    if (item.path === '/tasks') return tasksSubmenu.filter(subItem => {
-      if (subItem.adminOnly && user?.role !== 'Admin') return false;
-      if (subItem.ownerOnly && !['Admin', 'Owner', 'Veterinarian'].includes(user?.role)) return false;
-      return true;
-    });
+const getSubmenu = (item) => {
+    if (item.path === '/animals') return animalSubmenu.filter(subItem => !subItem.roles || subItem.roles.includes(user?.role));
+    if (item.path === '/medical-records') return medicalSubmenu.filter(subItem => !subItem.roles || subItem.roles.includes(user?.role));
+    if (item.path === '/auctions') return auctionSubmenu.filter(subItem => !subItem.roles || subItem.roles.includes(user?.role));
+    if (item.path === '/users') return usersSubmenu.filter(subItem => !subItem.roles || subItem.roles.includes(user?.role));
+    if (item.path === '/tasks') return tasksSubmenu.filter(subItem => !subItem.roles || subItem.roles.includes(user?.role));
     return null;
   };
 
@@ -120,11 +111,7 @@ export default function Layout() {
     return 'chevron_right';
   };
 
-  const visibleNavItems = mainNavItems.filter(item => {
-    if (item.adminOnly && user?.role !== 'Admin') return false;
-    if (item.ownerOnly && !['Admin', 'Owner'].includes(user?.role)) return false;
-    return true;
-  });
+const visibleNavItems = mainNavItems.filter(item => !item.roles || item.roles.includes(user?.role));
 
   return (
     <div className="flex min-h-screen bg-[#FAF1F5]">
@@ -286,3 +273,4 @@ export default function Layout() {
     </div>
   );
 }
+

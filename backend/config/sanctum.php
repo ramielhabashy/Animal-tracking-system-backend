@@ -34,7 +34,7 @@ return [
     |
     */
 
-    'guard' => ['web'],
+    'guard' => ['sanctum'],
 
     /*
     |--------------------------------------------------------------------------
@@ -76,9 +76,9 @@ return [
     */
 
     'middleware' => [
-        'authenticate_session' => null,
-        'encrypt_cookies' => null,
-        'validate_csrf_token' => null,
+        'authenticate_session' => false,
+        'encrypt_cookies' => false,
+        'validate_csrf_token' => false,
     ],
 
 ];

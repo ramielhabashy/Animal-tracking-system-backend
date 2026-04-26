@@ -10,6 +10,8 @@ class VaccinationSchedule extends Model
 {
     use HasFactory;
 
+    public $translatable = ['vaccine_name', 'vaccination_type', 'notes', 'veterinarian', 'clinic'];
+
     protected $fillable = [
         'animal_id',
         'owner_id',

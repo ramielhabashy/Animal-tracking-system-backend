@@ -16,7 +16,7 @@ class LocationHistorySeeder extends Seeder
             $baseLat = $device->gps_lat;
             $baseLng = $device->gps_lng;
 
-            $animal = \App\Models\Animal::where('device_id', $device->id)->first();
+            $animal = $device->animal;
             if (!$animal) continue;
 
             $currentLat = $baseLat;

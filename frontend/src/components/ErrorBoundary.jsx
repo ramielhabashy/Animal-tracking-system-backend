@@ -1,5 +1,4 @@
-import { Component } from 'react';
-import { Box, Typography, Button } from '@mui/material';
+import React, { Component } from 'react';
 
 export class ErrorBoundary extends Component {
   constructor(props) {
@@ -22,15 +21,15 @@ export class ErrorBoundary extends Component {
   render() {
     if (this.state.hasError) {
       return (
-        <Box sx={{ p: 4, textAlign: 'center' }}>
-          <Typography variant="h5" gutterBottom>Something went wrong</Typography>
-          <Typography color="text.secondary" sx={{ mb: 2 }}>
+        <div style={{ padding: 16, textAlign: 'center' }}>
+          <h5>Something went wrong</h5>
+          <p style={{ color: '#666', marginBottom: 16 }}>
             {this.state.error?.message || 'An unexpected error occurred'}
-          </Typography>
-          <Button variant="contained" onClick={this.handleReset}>
+          </p>
+          <button onClick={this.handleReset} style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: '#06402B', color: 'white', cursor: 'pointer' }}>
             Try Again
-          </Button>
-        </Box>
+          </button>
+        </div>
       );
     }
 
@@ -55,15 +54,16 @@ export class ErrorBoundaryRoute extends Component {
   render() {
     if (this.state.hasError) {
       return (
-        <Box sx={{ p: 4, textAlign: 'center' }}>
-          <Typography variant="h5" gutterBottom>Page failed to load</Typography>
-          <Button variant="contained" onClick={() => window.location.reload()}>
+        <div style={{ padding: 16, textAlign: 'center' }}>
+          <h5>Page failed to load</h5>
+          <button onClick={() => window.location.reload()} style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: '#06402B', color: 'white', cursor: 'pointer' }}>
             Reload Page
-          </Button>
-        </Box>
+          </button>
+        </div>
       );
     }
 
     return this.props.children;
   }
 }
+

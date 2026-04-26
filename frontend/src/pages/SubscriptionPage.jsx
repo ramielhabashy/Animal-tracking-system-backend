@@ -1,9 +1,10 @@
+import React from 'react';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MaterialSymbol } from 'react-material-symbols';
 import { apiFetch } from '../utils/api';
 import { useI18n } from '../i18n';
-import { getPendingSubscription, clearPendingSubscription } from '../utils/storage';
+import { getPendingSubscription, setPendingSubscription } from '../utils/cookies';
 
 export default function SubscriptionPage() {
   const { t, dir } = useI18n();
@@ -50,7 +51,7 @@ export default function SubscriptionPage() {
         setLimits(data.limits);
         
         if ((sub?.status === 'active' || sub?.status === 'pending_payment') && isFromRegistration) {
-          clearPendingSubscription();
+          setPendingSubscription(false);
           navigate('/dashboard');
         }
       }
@@ -92,7 +93,7 @@ export default function SubscriptionPage() {
         setMessage({ type: 'success', text: 'Bank transfer proof uploaded! You will be notified once approved.' });
         setShowPaymentModal(false);
         if (isFromRegistration) {
-          clearPendingSubscription();
+          setPendingSubscription(false);
           navigate('/dashboard');
         }
         fetchData();
@@ -133,7 +134,7 @@ export default function SubscriptionPage() {
         setMessage({ type: 'success', text: 'Payment successful! Your subscription is now active.' });
         setShowPaymentModal(false);
         if (isFromRegistration) {
-          clearPendingSubscription();
+          setPendingSubscription(false);
         }
         fetchData();
         setTimeout(() => navigate('/dashboard'), 1500);
@@ -156,7 +157,7 @@ export default function SubscriptionPage() {
       
       if (response.ok) {
         if (isFromRegistration) {
-          clearPendingSubscription();
+          setPendingSubscription(false);
         }
         navigate('/dashboard');
       } else {
@@ -429,3 +430,4 @@ export default function SubscriptionPage() {
     </div>
   );
 }
+

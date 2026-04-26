@@ -1,3 +1,4 @@
+import React from 'react';
 import { useState, useEffect } from 'react';
 import { MaterialSymbol } from 'react-material-symbols';
 import { apiFetch } from '../utils/api';
@@ -10,9 +11,10 @@ export default function TeamPage() {
   
   const [allUsers, setAllUsers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [showAssignModal, setShowAssignModal] = useState(false);
-  const [selectedOwner, setSelectedOwner] = useState(null);
+const [showAddModal, setShowAddModal] = useState(false);
+  const [showRoleModal, setShowRoleModal] = useState(false);
+  const [selectedUserForRole, setSelectedUserForRole] = useState(null);
+  const [selectedRole, setSelectedRole] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
   const [message, setMessage] = useState(null);
   const [expandedOwners, setExpandedOwners] = useState({});
@@ -42,15 +44,14 @@ export default function TeamPage() {
     fetchData();
   }, []);
 
-  const fetchData = async () => {
+const fetchData = async () => {
     try {
       const usersRes = await apiFetch('/api/users');
       if (usersRes.ok) {
         const data = await usersRes.json();
-        setAllUsers(data.data || []);
-        console.log('Users fetched:', data.data?.length || 0);
-      } else {
-        console.error('Users fetch failed:', usersRes.status, await usersRes.text());
+        // Handle format: {value: [...]} or {data: [...]} or []
+        const usersArray = data.data || data.value || data || [];
+        setAllUsers(usersArray);
       }
     } catch (error) {
       console.error('Failed to fetch users:', error);
@@ -123,7 +124,7 @@ export default function TeamPage() {
     }
   };
 
-  const handleRemoveMember = async (memberId) => {
+const handleRemoveMember = async (memberId) => {
     if (!confirm(t('teamPage.removeConfirm'))) return;
 
     try {
@@ -142,6 +143,37 @@ export default function TeamPage() {
     }
   };
 
+  const handleRoleChange = async (userId, newRole) => {
+    if (!newRole) return;
+    
+    setActionLoading(true);
+    try {
+      const response = await apiFetch(`/api/admin/users/${userId}/roles`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: newRole }),
+      });
+
+      if (response.ok) {
+        setMessage({ type: 'success', text: t('teamPage.roleChanged') || 'Role updated successfully' });
+        fetchData();
+      } else {
+        const data = await response.json();
+        setMessage({ type: 'error', text: data.message || t('teamPage.failedRoleChange') });
+      }
+    } catch (error) {
+      setMessage({ type: 'error', text: t('teamPage.failedRoleChange') });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const openRoleModal = (user) => {
+    setSelectedUserForRole(user);
+    setSelectedRole(user.role);
+    setShowRoleModal(true);
+  };
+
   const toggleOwner = (ownerId) => {
     setExpandedOwners(prev => ({
       ...prev,
@@ -158,7 +190,7 @@ export default function TeamPage() {
 
   const getRoleBadge = (role) => {
     const styles = {
-      Veterinarian: 'bg-purple-100 text-purple-700',
+      Manager: 'bg-purple-100 text-purple-700',
       Shepherd: 'bg-blue-100 text-blue-700',
       Owner: 'bg-amber-100 text-amber-700',
       Admin: 'bg-red-100 text-red-700',
@@ -172,7 +204,7 @@ export default function TeamPage() {
 
   const getRoleIcon = (role) => {
     switch (role) {
-      case 'Veterinarian': return 'medical_services';
+      case 'Manager': return 'manage_accounts';
       case 'Shepherd': return 'grass';
       case 'Owner': return 'person';
       default: return 'person';
@@ -266,7 +298,7 @@ export default function TeamPage() {
                         <div key={member.id} className="p-4 pl-20 flex items-center justify-between hover:bg-gray-50 transition-colors">
                           <div className="flex items-center gap-4">
                             <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold ${
-                              member.role === 'Veterinarian' ? 'bg-purple-500' : 'bg-blue-500'
+                              member.role === 'Manager' ? 'bg-purple-500' : 'bg-blue-500'
                             }`}>
                               <MaterialSymbol icon={getRoleIcon(member.role)} size={20} />
                             </div>
@@ -275,8 +307,17 @@ export default function TeamPage() {
                               <p className="text-xs text-[#717973]">{member.email}</p>
                             </div>
                           </div>
-                          <div className="flex items-center gap-4">
+<div className="flex items-center gap-4">
                             {getRoleBadge(member.role)}
+                            {(isAdmin || isOwnTeam) && (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); openRoleModal(member); }}
+                                className="p-2 text-[#06402B] hover:bg-[#F4F4EF] rounded-lg transition-colors"
+                                title="Change role"
+                              >
+                                <MaterialSymbol icon="swap_horiz" size={20} />
+                              </button>
+                            )}
                             {(isAdmin || isOwnTeam) && (
                               <button
                                 onClick={(e) => { e.stopPropagation(); handleRemoveMember(member.id); }}
@@ -321,7 +362,7 @@ export default function TeamPage() {
               <div key={u.id} className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
                 <div className="flex items-center gap-4">
                   <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold ${
-                    u.role === 'Veterinarian' ? 'bg-purple-500' : 'bg-blue-500'
+                    u.role === 'Manager' ? 'bg-purple-500' : 'bg-blue-500'
                   }`}>
                     <MaterialSymbol icon={getRoleIcon(u.role)} size={20} />
                   </div>
@@ -330,8 +371,15 @@ export default function TeamPage() {
                     <p className="text-xs text-[#717973]">{u.email}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
+<div className="flex items-center gap-3">
                   {getRoleBadge(u.role)}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); openRoleModal(u); }}
+                    className="p-2 text-[#06402B] hover:bg-[#F4F4EF] rounded-lg transition-colors"
+                    title="Change role"
+                  >
+                    <MaterialSymbol icon="swap_horiz" size={20} />
+                  </button>
                   <select
                     onChange={(e) => e.target.value && handleAssignOwner(u, parseInt(e.target.value))}
                     className="px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white"
@@ -384,7 +432,7 @@ export default function TeamPage() {
                   className="w-full px-4 py-2 border border-gray-200 rounded-lg"
                 >
                   <option value="Shepherd">{t('users.shepherd')}</option>
-                  <option value="Veterinarian">{t('users.veterinarian')}</option>
+                  <option value="Manager">{t('users.manager')}</option>
                 </select>
               </div>
               <div>
@@ -442,10 +490,64 @@ export default function TeamPage() {
                   {actionLoading ? t('teamPage.adding') : t('teamPage.addMember')}
                 </button>
               </div>
-            </form>
+</form>
+          </div>
+        </div>
+      )}
+
+      {/* Role Change Modal */}
+      {showRoleModal && selectedUserForRole && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-xl">
+            <div className="p-6 border-b border-gray-100">
+              <h2 className="text-xl font-bold text-[#002819]">Change Role</h2>
+              <p className="text-sm text-[#717973] mt-1">
+                Update role for {selectedUserForRole.name}
+              </p>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('users.role')}</label>
+                <select
+                  value={selectedRole}
+                  onChange={(e) => setSelectedRole(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-200 rounded-lg"
+                >
+                  <option value="Shepherd">{t('users.shepherd')}</option>
+                  <option value="Manager">{t('users.manager')}</option>
+                  {isAdmin && (
+                    <>
+                      <option value="Owner">{t('users.owner')}</option>
+                      <option value="Admin">{t('users.admin')}</option>
+                    </>
+                  )}
+                </select>
+              </div>
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowRoleModal(false)}
+                  className="flex-1 px-4 py-2 border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50"
+                >
+                  {t('common.cancel')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleRoleChange(selectedUserForRole.id, selectedRole);
+                    setShowRoleModal(false);
+                  }}
+                  disabled={actionLoading}
+                  className="flex-1 px-4 py-2 bg-[#002819] text-white rounded-lg hover:bg-[#06402b] disabled:opacity-50 font-medium"
+                >
+                  {actionLoading ? t('common.loading') : t('common.save')}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
     </div>
   );
 }
+

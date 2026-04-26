@@ -8,7 +8,7 @@
         "laravel/sanctum": "^4.3",
         "laravel/tinker": "^2.9",
         "spatie/laravel-permission": "^6.25",
-        "spatie/laravel-translatable": "^6.13",
+        "spatie/laravel-translatable": "6.7",
         "stripe/stripe-php": "^20.0"
     },
     "require-dev": {

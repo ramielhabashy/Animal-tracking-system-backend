@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class AnimalGroup extends Model
 {
+    public $translatable = ['name', 'description'];
+
     protected $fillable = [
         'name',
         'description',

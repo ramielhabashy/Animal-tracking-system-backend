@@ -6,9 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class Breed extends Model
 {
-    protected $fillable = ['species_id', 'name', 'description', 'is_active'];
-
-    protected $casts = ['is_active' => 'boolean'];
+    public $translatable = ['name', 'description'];
+    public $casts = ['is_active' => 'boolean'];
 
     public function species()
     {

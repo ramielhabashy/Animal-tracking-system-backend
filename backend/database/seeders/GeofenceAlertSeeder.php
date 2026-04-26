@@ -12,11 +12,11 @@ class GeofenceAlertSeeder extends Seeder
 {
     public function run(): void
     {
-        $animals = Animal::whereNotNull('device_id')->get();
+        $devices = Device::whereNotNull('gps_lat')->whereNotNull('gps_lng')->get();
         $geofences = Geofence::all();
 
-        if ($geofences->isEmpty() || $animals->isEmpty()) {
-            $this->command->warn('No geofences or animals found. Skipping GeofenceAlertSeeder.');
+        if ($geofences->isEmpty() || $devices->isEmpty()) {
+            $this->command->warn('No geofences or devices found. Skipping GeofenceAlertSeeder.');
             return;
         }
 
@@ -50,9 +50,9 @@ class GeofenceAlertSeeder extends Seeder
         $alertIndex = 0;
         $geofenceIndex = 0;
 
-        foreach ($animals as $animal) {
-            $device = Device::find($animal->device_id);
-            if (!$device || !$device->gps_lat) continue;
+        foreach ($devices as $device) {
+            $animal = $device->animal;
+            if (!$animal) continue;
 
             $alertsPerAnimal = rand(2, 4);
             

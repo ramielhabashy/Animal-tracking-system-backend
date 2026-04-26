@@ -30,7 +30,7 @@ class TaskController extends Controller
         }
 
         $manager = User::find($userId);
-        if ($manager && ($manager->role === 'Manager' || $manager->role === 'Owner')) {
+        if ($manager && $manager->hasAnyRole(['Manager', 'Owner'])) {
             $managedUsers = User::where('managed_by', $userId)->pluck('id')->toArray();
             return in_array($task->owner_id, $managedUsers) || in_array($task->assigned_to, $managedUsers);
         }
@@ -99,10 +99,16 @@ class TaskController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        $authUser = $request->user();
+        
+        if ($authUser && !$authUser->hasPermissionTo('manage_tasks')) {
+            return response()->json(['message' => 'Unauthorized to create tasks', 'error' => 'unauthorized'], 403);
+        }
+        
         $userId = $request->header('X-User-Id');
         $userRole = $request->header('X-User-Role');
 
-        if (!in_array($userRole, ['Admin', 'Owner', 'Manager'])) {
+        if (!$authUser && !in_array($userRole, ['Admin', 'Owner', 'Manager'])) {
             return response()->json(['message' => 'Unauthorized to create tasks', 'error' => 'unauthorized'], 403);
         }
 
@@ -223,6 +229,12 @@ class TaskController extends Controller
 
     public function destroy(Request $request, Task $task): JsonResponse
     {
+        $authUser = $request->user();
+        
+        if ($authUser && !$authUser->hasPermissionTo('manage_tasks')) {
+            return response()->json(['message' => 'Unauthorized', 'error' => 'unauthorized'], 403);
+        }
+        
         $userId = $request->header('X-User-Id');
         $userRole = $request->header('X-User-Role');
 

@@ -8,6 +8,8 @@ use Carbon\Carbon;
 
 class Task extends Model
 {
+    public $translatable = ['title', 'description'];
+
     protected $fillable = [
         'owner_id',
         'assigned_to',

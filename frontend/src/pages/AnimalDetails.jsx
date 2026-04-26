@@ -1,3 +1,4 @@
+import React from 'react';
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
@@ -576,3 +577,4 @@ function getStatusConfig(temp) {
   if (tempNum > 39) return { bg: 'bg-amber-50 text-amber-700', label: 'Warning' };
   return { bg: 'bg-emerald-50 text-emerald-700', label: 'Normal' };
 }
+

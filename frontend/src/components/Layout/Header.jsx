@@ -1,3 +1,4 @@
+import React from 'react';
 import { useState, useEffect } from 'react';
 import { MaterialSymbol } from 'react-material-symbols';
 import { useNavigate, Link } from 'react-router-dom';
@@ -138,3 +139,4 @@ export default function Header() {
     </header>
   );
 }
+

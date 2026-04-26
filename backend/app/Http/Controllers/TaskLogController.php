@@ -29,7 +29,7 @@ class TaskLogController extends Controller
         }
 
         $manager = User::find($userId);
-        if ($manager && ($manager->role === 'Manager' || $manager->role === 'Owner')) {
+        if ($manager && $manager->hasAnyRole(['Manager', 'Owner'])) {
             $managedUsers = User::where('managed_by', $userId)->pluck('id')->toArray();
             return in_array($task->owner_id, $managedUsers) || in_array($task->assigned_to, $managedUsers);
         }

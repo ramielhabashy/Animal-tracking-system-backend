@@ -1,7 +1,7 @@
 {
   "$schema": "https://opencode.ai/config.json",
   "project": {
-    "name": "FullStack App",
+    "name": "Animal Tracking System",
     "stack": ["Laravel API", "React Web", "Flutter Mobile"]
   },
   "subagents": {
@@ -37,13 +37,28 @@
       "input": ["endpoints", "pages", "screens"],
       "output": ["issues"],
       "mode": "subagent"
+    },
+    "brain": {
+      "instructions": "Break feature into backend, frontend, and mobile tasks.",
+      "role": "Plan feature breakdown",
+      "input": ["feature"],
+      "output": ["task_breakdown"],
+      "mode": "subagent"
+    },
+    "developer": {
+      "instructions": "Implement Laravel APIs, React UI, and Flutter screens.",
+      "role": "Implement features",
+      "input": ["task_breakdown"],
+      "output": ["implementation"],
+      "mode": "subagent"
+    },
+    "tester": {
+      "instructions": "Test API, UI, and mobile. Report issues clearly.",
+      "role": "Test and validate",
+      "input": ["implementation"],
+      "output": ["test_report"],
+      "mode": "subagent"
     }
   },
-  "workflow": [
-    "lead",
-    "backend",
-    "web",
-    "mobile",
-    "qa"
-  ]
+  "workflow": ["lead", "brain", "backend", "web", "mobile", "developer", "tester", "qa"]
 }
