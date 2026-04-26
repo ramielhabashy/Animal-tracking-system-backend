@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Api\Tasks;
 
 use App\Models\Task;
 use App\Models\User;
@@ -9,6 +9,7 @@ use App\Models\Geofence;
 use App\Models\PredefinedTask;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use App\Http\Controllers\Controller;
 
 class TaskController extends Controller
 {

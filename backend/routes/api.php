@@ -2,28 +2,28 @@
 
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\DB;
-use App\Http\Controllers\Api\AuthController;
-use App\Http\Controllers\AnimalController;
+use App\Http\Controllers\Api\Auth\AuthController;
 use App\Http\Controllers\Api\DashboardController;
-use App\Http\Controllers\Api\DeviceController;
-use App\Http\Controllers\Api\UserController;
-use App\Http\Controllers\Api\MapController;
-use App\Http\Controllers\Api\LocationHistoryController;
-use App\Http\Controllers\GeofenceController;
-use App\Http\Controllers\AuctionController;
-use App\Http\Controllers\AnimalGroupController;
-use App\Http\Controllers\SubscriptionController;
-use App\Http\Controllers\TaskController;
-use App\Http\Controllers\TaskLogController;
-use App\Http\Controllers\Api\ReportsController;
-use App\Http\Controllers\Api\PredefinedTaskController;
-use App\Http\Controllers\Api\MedicalRecordController;
-use App\Http\Controllers\Api\AdminSettingsController;
-use App\Http\Controllers\Api\VaccinationScheduleController;
-use App\Http\Controllers\Api\ExportController;
-use App\Http\Controllers\Api\AIController;
-use App\Http\Controllers\Api\LanguageController;
-use App\Http\Controllers\Api\RoleManagementController;
+use App\Http\Controllers\Api\Resources\AnimalController;
+use App\Http\Controllers\Api\Resources\DeviceController;
+use App\Http\Controllers\Api\Users\UserController;
+use App\Http\Controllers\Api\Location\MapController;
+use App\Http\Controllers\Api\Location\LocationHistoryController;
+use App\Http\Controllers\Api\Location\GeofenceController;
+use App\Http\Controllers\Api\Business\AuctionController;
+use App\Http\Controllers\Api\Resources\AnimalGroupController;
+use App\Http\Controllers\Api\Business\SubscriptionController;
+use App\Http\Controllers\Api\Tasks\TaskController;
+use App\Http\Controllers\Api\Tasks\TaskLogController;
+use App\Http\Controllers\Api\Admin\ReportsController;
+use App\Http\Controllers\Api\Tasks\PredefinedTaskController;
+use App\Http\Controllers\Api\Health\MedicalRecordController;
+use App\Http\Controllers\Api\Admin\AdminSettingsController;
+use App\Http\Controllers\Api\Health\VaccinationScheduleController;
+use App\Http\Controllers\Api\Admin\ExportController;
+use App\Http\Controllers\Api\Ai\AIController;
+use App\Http\Controllers\Api\Admin\LanguageController;
+use App\Http\Controllers\Api\Users\RoleManagementController;
 
 Route::get('/fix-roles', function() {
     DB::statement("UPDATE users SET role = 'Veterinarian' WHERE role = 'Doctor'");
@@ -42,7 +42,6 @@ Route::get('/subscription/tiers/{tier}', [SubscriptionController::class, 'showTi
 Route::get('/ai/status', [AIController::class, 'status']);
 Route::post('/ai/chat', [AIController::class, 'chat']);
 
-// Logout without auth requirement
 Route::post('/auth/logout', [AuthController::class, 'logout']);
 
 Route::middleware('auth:sanctum')->group(function () {
@@ -54,11 +53,9 @@ Route::middleware('auth:sanctum')->group(function () {
 Route::get('/ai/status', [AIController::class, 'status']);
 Route::post('/ai/chat', [AIController::class, 'chat']);
 
-// Public endpoints
 Route::get('/dashboard', [DashboardController::class, 'index']);
 Route::get('/reports', [ReportsController::class, 'index']);
 
-// All protected endpoints use sanctum
 Route::apiResource('animals', AnimalController::class)->middleware('limits:animals');
 Route::get('/animals/{id}/location-history', [LocationHistoryController::class, 'index']);
 Route::post('/animals/{animal}/transfer-ownership', [AnimalController::class, 'transferOwnership']);
@@ -68,7 +65,6 @@ Route::apiResource('devices', DeviceController::class)->middleware('limits:devic
 Route::apiResource('users', UserController::class)->middleware('limits:users');
 Route::patch('/users/{user}/toggle-status', [UserController::class, 'toggleStatus']);
 
-// Geofences with limits middleware
 Route::middleware('limits:geofences')->group(function () {
     Route::apiResource('geofences', GeofenceController::class)->only(['index', 'store', 'show', 'update', 'destroy']);
     Route::get('/geofences/{geofence}/animals', [GeofenceController::class, 'geofenceAnimals']);
@@ -81,15 +77,13 @@ Route::middleware('limits:geofences')->group(function () {
     Route::get('/geofences/{geofence}/available-groups', [GeofenceController::class, 'availableGroups']);
 });
 
-// Geofence alerts (public)
 Route::get('/geofence-alerts', [GeofenceController::class, 'alerts']);
 Route::patch('/geofence-alerts/{alert}/acknowledge', [GeofenceController::class, 'acknowledgeAlert']);
 Route::delete('/geofence-alerts/{alert}', [GeofenceController::class, 'deleteAlert']);
-Route::post('/geofence-alerts/deactivate-all', [GeofenceController::class, 'deactivateAll']);
+Route::post('/geofence-alerts/deactivate-all', [GeofenceController::class, 'deactivateAlerts']);
 Route::post('/geofence-alerts/{alert}/send-notification', [GeofenceController::class, 'sendNotification']);
 Route::post('/geofence-alerts/send-bulk-notifications', [GeofenceController::class, 'sendBulkNotifications']);
 
-// Animal groups (public)
 Route::get('/animal-groups', [AnimalGroupController::class, 'index']);
 Route::post('/animal-groups', [AnimalGroupController::class, 'store']);
 Route::get('/animal-groups/{animalGroup}', [AnimalGroupController::class, 'show']);

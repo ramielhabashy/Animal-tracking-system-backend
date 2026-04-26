@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Api\Business;
 
 use App\Models\Auction;
 use App\Models\Bid;
@@ -11,6 +11,7 @@ use Illuminate\Http\JsonResponse;
 use App\Http\Resources\AuctionResource;
 use App\Http\Resources\BidResource;
 use App\Http\Controllers\Traits\OwnableAuthorization;
+use App\Http\Controllers\Controller;
 
 class AuctionController extends Controller
 {

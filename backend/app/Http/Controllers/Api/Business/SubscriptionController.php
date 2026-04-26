@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Api\Business;
 
 use App\Models\SubscriptionTier;
 use App\Models\UserSubscription;
@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Stripe\Stripe;
 use Stripe\Charge;
+use App\Http\Controllers\Controller;
 
 class SubscriptionController extends Controller
 {
@@ -31,10 +32,8 @@ class SubscriptionController extends Controller
         $requestingUserId = $request->header('X-User-Id');
         $requestingUserRole = $request->header('X-User-Role');
         
-        // Admin can view any user's subscription
         $targetUserId = $request->input('user_id') ?: $requestingUserId;
         
-        // Non-admin users can only view their own
         if ($requestingUserRole !== 'Admin' && $targetUserId != $requestingUserId) {
             return response()->json(['message' => 'Unauthorized', 'error' => 'unauthorized'], 403);
         }

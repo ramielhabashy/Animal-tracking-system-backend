@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Api;
+namespace App\Http\Controllers\Api\Users;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
@@ -13,19 +13,16 @@ class UserController extends Controller
 {
     private function getAuthUser(Request $request): ?User
     {
-        // Try authenticated user first (Sanctum token)
         $user = $request->user();
         if ($user) {
             return $user;
         }
         
-        // Fall back to X-User-Id header
         $userId = $request->header('X-User-Id');
         if ($userId) {
             return User::find($userId);
         }
         
-        // Also try to find user by bearer token
         $token = $request->bearerToken();
         if ($token) {
             $tokenRecord = \Laravel\Sanctum\PersonalAccessToken::findToken($token);
@@ -44,13 +41,11 @@ class UserController extends Controller
             return $user->getPrimaryRoleName();
         }
         
-        // Try X-User-Role header (sent by React frontend)
         $roleHeader = $request->header('X-User-Role');
         if ($roleHeader) {
             return $roleHeader;
         }
         
-        // Try to get role from token-based user lookup
         $authUser = $this->getAuthUser($request);
         if ($authUser) {
             return $authUser->getPrimaryRoleName();
@@ -93,27 +88,22 @@ class UserController extends Controller
         $authUser = $this->getAuthUser($request);
         $role = $this->getAuthRole($request);
         
-        // If we found user from token lookup, use their role
         if ($authUser) {
             $role = $authUser->getRoleNames()->first() ?? $role;
         }
         
-        // Admin sees all users
         if ($role === 'Admin') {
             return $query;
         }
         
-        // If no authenticated user and not Admin, return empty
         if (!$authUser) {
             return $query->where('id', 0);
         }
         
-        // Owner/Veterinarian see only their managed users
         if ($role === 'Owner' || $role === 'Veterinarian') {
             return $query->where('managed_by', $authUser->id);
         }
         
-        // Others see only themselves
         return $query->where('id', $authUser->id);
     }
 
@@ -208,7 +198,6 @@ class UserController extends Controller
         
         $user = User::create($userData);
         
-        // Assign role via Spatie
         $user->assignRole($requestedRole);
         
         if ($request->hasFile('avatar_url')) {
@@ -248,7 +237,6 @@ class UserController extends Controller
             unset($validated['managed_by']);
         }
         
-        // Handle role update via Spatie
         if (isset($validated['role']) && $validated['role']) {
             $user->syncRoles([$validated['role']]);
             unset($validated['role']);

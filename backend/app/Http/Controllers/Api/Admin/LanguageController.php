@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Api;
+namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
@@ -51,29 +51,21 @@ class LanguageController extends Controller
         return response()->json($translations);
     }
 
-    /**
-     * Get all translations for a specific locale (including model JSON columns)
-     */
     public function getAllTranslationsForLocale(Request $request)
     {
         $locale = $request->get('lang', 'en');
         
-        // Get UI string translations from translations table
         $uiTranslations = DB::table('translations')
             ->where('language_code', $locale)
             ->get()
             ->pluck('value', 'key');
         
-        // Build group-based keys for UI translations
         $uiGrouped = [];
         foreach ($uiTranslations as $key => $value) {
-            // This returns translations with group.key format already from getAllTranslations
         }
         
-        // Get model data translations (from JSON columns)
         $modelTranslations = [];
         
-        // Species
         $species = DB::table('species')->get();
         foreach ($species as $s) {
             $nameJson = json_decode($s->name_json ?? '{}', true);
@@ -82,7 +74,6 @@ class LanguageController extends Controller
             $modelTranslations['species.' . $s->id . '.description'] = $descJson[$locale] ?? $s->description;
         }
         
-        // Breeds
         $breeds = DB::table('breeds')->get();
         foreach ($breeds as $b) {
             $nameJson = json_decode($b->name_json ?? '{}', true);
@@ -91,14 +82,12 @@ class LanguageController extends Controller
             $modelTranslations['breed.' . $b->id . '.description'] = $descJson[$locale] ?? $b->description;
         }
         
-        // Geofences
         $geofences = DB::table('geofences')->get();
         foreach ($geofences as $g) {
             $nameJson = json_decode($g->name_json ?? '{}', true);
             $modelTranslations['geofence.' . $g->id . '.name'] = $nameJson[$locale] ?? $g->name;
         }
         
-        // Animal Groups
         $groups = DB::table('animal_groups')->get();
         foreach ($groups as $grp) {
             $nameJson = json_decode($grp->name_json ?? '{}', true);
@@ -107,7 +96,6 @@ class LanguageController extends Controller
             $modelTranslations['group.' . $grp->id . '.description'] = $descJson[$locale] ?? $grp->description;
         }
         
-        // Subscription Tiers
         $tiers = DB::table('subscription_tiers')->get();
         foreach ($tiers as $t) {
             $nameJson = json_decode($t->name_json ?? '{}', true);
@@ -116,13 +104,11 @@ class LanguageController extends Controller
             $modelTranslations['tier.' . $t->id . '.description'] = $descJson[$locale] ?? $t->description;
         }
         
-        // Merge UI translations with group prefix
         $uiGrouped = [];
         foreach ($uiTranslations as $key => $value) {
             $uiGrouped['ui.' . $key] = $value;
         }
         
-        // Combine both
         $allTranslations = array_merge($uiGrouped, $modelTranslations);
         
         return response()->json($allTranslations);

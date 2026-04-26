@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Api\Location;
 
 use App\Models\Geofence;
 use App\Models\GeofenceAlert;
@@ -12,6 +12,7 @@ use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use App\Http\Controllers\Traits\OwnableAuthorization;
+use App\Http\Controllers\Controller;
 
 class GeofenceController extends Controller
 {
@@ -332,11 +333,8 @@ class GeofenceController extends Controller
         
         $query = Animal::with('device');
         
-        // If user is Admin, show all. Otherwise filter by geofence owner
         if ($userRole === 'Admin') {
-            //
         } else {
-            // Only show animals belonging to the geofence owner
             $query->where('owner_id', $geofenceOwnerId);
         }
 
@@ -398,11 +396,8 @@ class GeofenceController extends Controller
         
         $query = AnimalGroup::with('animals');
         
-        // If user is Admin, show all. Otherwise filter by geofence owner
         if ($userRole === 'Admin') {
-            //
         } else {
-            // Only show groups belonging to the geofence owner
             $query->where('owner_id', $geofenceOwnerId);
         }
 

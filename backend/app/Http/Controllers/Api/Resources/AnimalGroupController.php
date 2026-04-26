@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Api\Resources;
 
 use App\Models\AnimalGroup;
 use App\Models\Animal;
@@ -8,6 +8,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use App\Http\Controllers\Traits\OwnableAuthorization;
+use App\Http\Controllers\Controller;
 
 class AnimalGroupController extends Controller
 {
@@ -23,7 +24,6 @@ class AnimalGroupController extends Controller
         
         $groups = $query->withCount('animals')->orderBy('created_at', 'desc')->get();
         
-        // Filter animals in each group to only show user's own animals
         $groups = $groups->map(function($group) use ($userId, $userRole) {
             $filteredAnimals = $group->animals->filter(function($animal) use ($userId, $userRole) {
                 if ($userRole === 'Admin') return true;
@@ -69,7 +69,6 @@ class AnimalGroupController extends Controller
             $ownerId = $request->input('owner_id');
         }
 
-        // For admin, validate that animals belong to the selected owner
         $animalIds = $validated['animal_ids'] ?? [];
         if ($userRole === 'Admin' && $ownerId && !empty($animalIds)) {
             $ownedAnimalIds = Animal::whereIn('id', $animalIds)
@@ -111,7 +110,6 @@ class AnimalGroupController extends Controller
         $userRole = $request->header('X-User-Role');
         $userId = $request->header('X-User-Id');
         
-        // Admin can always update
         if ($userRole !== 'Admin') {
             if (!$this->canAccessOwner($request, $animalGroup->owner_id)) {
                 return response()->json(['message' => 'Unauthorized', 'error' => 'unauthorized'], 403);
@@ -133,14 +131,12 @@ class AnimalGroupController extends Controller
             'color' => $validated['color'] ?? $animalGroup->color,
         ];
 
-        // Admin can update owner_id
         if ($userRole === 'Admin' && isset($validated['owner_id']) && $validated['owner_id'] !== '') {
             $updateData['owner_id'] = $validated['owner_id'];
         }
 
         $animalGroup->update($updateData);
 
-        // For admin, validate that animals belong to the owner
         $animalIds = $validated['animal_ids'] ?? null;
         if ($userRole === 'Admin' && $animalGroup->owner_id && $animalIds !== null) {
             $ownedAnimalIds = Animal::whereIn('id', $animalIds)
@@ -181,7 +177,6 @@ class AnimalGroupController extends Controller
             'animal_ids.*' => 'exists:animals,id',
         ]);
 
-        // For admin, ensure animals belong to group owner
         $userRole = $request->header('X-User-Role');
         if ($userRole === 'Admin' && $animalGroup->owner_id) {
             $ownedAnimals = Animal::whereIn('id', $validated['animal_ids'])
@@ -225,7 +220,6 @@ class AnimalGroupController extends Controller
         
         $query = Animal::with('device');
         
-        // Filter animals based on group owner for admin
         if ($userRole === 'Admin') {
             if ($animalGroup->owner_id) {
                 $query->where('owner_id', $animalGroup->owner_id);

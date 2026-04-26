@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Api;
+namespace App\Http\Controllers\Api\Health;
 
 use App\Http\Controllers\Controller;
 use App\Models\MedicalRecord;
@@ -18,7 +18,6 @@ class MedicalRecordController extends Controller
         $query = MedicalRecord::with(['animal']);
 
         if ($userRole === 'Admin') {
-            // Admin sees all records
         } elseif ($userRole === 'Owner') {
             $query->where('owner_id', $userId);
         } elseif ($userRole === 'Manager') {
@@ -175,7 +174,6 @@ class MedicalRecordController extends Controller
         $query = MedicalRecord::query();
 
         if ($userRole === 'Admin') {
-            // All records
         } elseif ($userRole === 'Owner') {
             $query->where('owner_id', $userId);
         } elseif ($userRole === 'Manager') {

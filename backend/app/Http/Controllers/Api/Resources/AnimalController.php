@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Api\Resources;
 
 use App\Models\Animal;
 use App\Models\User;
@@ -12,6 +12,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use App\Http\Controllers\Traits\OwnableAuthorization;
+use App\Http\Controllers\Controller;
 
 class AnimalController extends Controller
 {

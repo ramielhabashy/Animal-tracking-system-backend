@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Api\Tasks;
 
 use App\Models\TaskLog;
 use App\Models\Task;
@@ -8,6 +8,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Storage;
+use App\Http\Controllers\Controller;
 
 class TaskLogController extends Controller
 {
@@ -45,7 +46,6 @@ class TaskLogController extends Controller
         $query = TaskLog::with(['task', 'user']);
 
         if ($userRole === 'Admin' || $userRole === 'Owner') {
-            // Admins and Owners see all logs for their tasks
         } elseif ($userRole === 'Manager') {
             $managedUserIds = User::where('managed_by', $userId)->pluck('id')->toArray();
             $managedUserIds[] = $userId;
@@ -54,7 +54,6 @@ class TaskLogController extends Controller
                   ->orWhereIn('assigned_to', $managedUserIds);
             });
         } else {
-            // Shepherds only see their own logs
             $query->where('user_id', $userId);
         }
 
@@ -146,7 +145,6 @@ class TaskLogController extends Controller
         $userRole = $request->header('X-User-Role');
 
         if ($userRole === 'Admin') {
-            // Allow
         } elseif ($userRole === 'Owner' || $userRole === 'Manager') {
             if ($taskLog->task->owner_id != $userId && $taskLog->task->assigned_to != $userId) {
                 $managedUsers = User::where('managed_by', $userId)->pluck('id')->toArray();
@@ -242,7 +240,6 @@ class TaskLogController extends Controller
         $query = TaskLog::with(['task', 'user']);
 
         if ($userRole === 'Admin') {
-            // Show all
         } elseif ($userRole === 'Owner') {
             $query->whereHas('task', function ($q) use ($userId) {
                 $q->where('owner_id', $userId);
