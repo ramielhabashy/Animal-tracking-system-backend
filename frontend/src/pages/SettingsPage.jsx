@@ -66,16 +66,36 @@ export default function SettingsPage() {
     enabled: false,
   });
 
-  const [speciesList, setSpeciesList] = useState([]);
+const [speciesList, setSpeciesList] = useState([]);
   const [editingSpecies, setEditingSpecies] = useState(null);
   const [editingBreed, setEditingBreed] = useState(null);
   const [newSpeciesName, setNewSpeciesName] = useState('');
   const [newBreedName, setNewBreedName] = useState('');
   const [selectedSpeciesForBreed, setSelectedSpeciesForBreed] = useState(null);
 
-  useEffect(() => {
+  const [languages, setLanguages] = useState([]);
+  const [languageForm, setLanguageForm] = useState({ code: '', name: '', native_name: '', direction: 'ltr' });
+  const [editingLanguage, setEditingLanguage] = useState(null);
+
+  const [showTranslations, setShowTranslations] = useState(false);
+  const [translations, setTranslations] = useState([]);
+  const [selectedLanguageForTranslation, setSelectedLanguageForTranslation] = useState(null);
+  const [selectedGroup, setSelectedGroup] = useState('common');
+  const groups = ['common', 'dashboard', 'animals', 'devices', 'geofences', 'alerts', 'tasks', 'auctions', 'profile', 'settings'];
+
+  const [rolesData, setRolesData] = useState({ roles: [], permissions: [], permissionsByCategory: {} });
+  const [roleForm, setRoleForm] = useState({ name: '', permissions: [] });
+  const [editingRole, setEditingRole] = useState(null);
+
+useEffect(() => {
     fetchSettings();
   }, []);
+
+  useEffect(() => {
+    if (selectedLanguageForTranslation && showTranslations) {
+      loadTranslations();
+    }
+  }, [selectedLanguageForTranslation, selectedGroup, showTranslations]);
 
 const fetchSettings = async () => {
     setLoading(true);
@@ -83,7 +103,33 @@ const fetchSettings = async () => {
       const user = getAuthUser();
       const userRole = user?.role;
 
-      const [generalRes, smtpRes, stripeRes, geminiRes, whatsappRes, twilioRes, speciesRes] = await Promise.all([
+      const defaultPermissions = [
+        'user_view', 'user_create', 'user_edit', 'user_delete', 'user_assign_role',
+        'animal_view', 'animal_create', 'animal_edit', 'animal_delete', 'animal_view_health',
+        'device_view', 'device_create', 'device_edit', 'device_delete',
+        'geofence_view', 'geofence_create', 'geofence_edit', 'geofence_delete',
+        'task_view', 'task_create', 'task_complete', 'task_delete',
+        'report_view', 'report_export',
+        'settings_view', 'settings_edit',
+        'medical_record_view', 'medical_record_create', 'medical_record_edit',
+        'vaccination_view', 'vaccination_create', 'vaccination_edit',
+        'auction_view', 'auction_create', 'auction_edit', 'auction_bid',
+      ];
+
+      const defaultPermissionsByCategory = {
+        'users': { label: 'Users', permissions: ['user_view', 'user_create', 'user_edit', 'user_delete', 'user_assign_role'] },
+        'animals': { label: 'Animals', permissions: ['animal_view', 'animal_create', 'animal_edit', 'animal_delete', 'animal_view_health'] },
+        'devices': { label: 'Devices', permissions: ['device_view', 'device_create', 'device_edit', 'device_delete'] },
+        'geofences': { label: 'Geofences', permissions: ['geofence_view', 'geofence_create', 'geofence_edit', 'geofence_delete'] },
+        'tasks': { label: 'Tasks', permissions: ['task_view', 'task_create', 'task_complete', 'task_delete'] },
+        'reports': { label: 'Reports', permissions: ['report_view', 'report_export'] },
+        'settings': { label: 'Settings', permissions: ['settings_view', 'settings_edit'] },
+        'medical': { label: 'Medical', permissions: ['medical_record_view', 'medical_record_create', 'medical_record_edit'] },
+        'vaccinations': { label: 'Vaccinations', permissions: ['vaccination_view', 'vaccination_create', 'vaccination_edit'] },
+        'auctions': { label: 'Auctions', permissions: ['auction_view', 'auction_create', 'auction_edit', 'auction_bid'] },
+      };
+
+      const [generalRes, smtpRes, stripeRes, geminiRes, whatsappRes, twilioRes, speciesRes, languagesRes, rolesRes] = await Promise.all([
         apiFetch('/api/admin/settings/general'),
         apiFetch('/api/admin/settings/smtp'),
         apiFetch('/api/admin/settings/stripe'),
@@ -91,7 +137,24 @@ const fetchSettings = async () => {
         apiFetch('/api/admin/settings/whatsapp'),
         apiFetch('/api/admin/settings/twilio'),
         userRole === 'Admin' ? apiFetch('/api/species') : Promise.resolve({ ok: false }),
+        userRole === 'Admin' ? apiFetch('/api/admin/languages') : Promise.resolve({ ok: false }),
+        userRole === 'Admin' ? apiFetch('/api/admin/roles') : Promise.resolve({ ok: false }),
       ]);
+
+      if (rolesRes.ok) {
+        const rolesJson = await rolesRes.json();
+        const perms = rolesJson.permissions?.length > 0 ? rolesJson.permissions : defaultPermissions;
+        const byCategory = rolesJson.permissionsByCategory || {};
+        const finalByCategory = Object.keys(byCategory).length > 0 ? byCategory : defaultPermissionsByCategory;
+        setRolesData({ roles: rolesJson.roles || [], permissions: perms, permissionsByCategory: finalByCategory });
+      } else {
+        setRolesData({ roles: [], permissions: defaultPermissions, permissionsByCategory: defaultPermissionsByCategory });
+      }
+
+      if (languagesRes.ok) {
+        const langData = await languagesRes.json();
+        setLanguages(langData.data || langData);
+      }
 
       if (speciesRes.ok) {
         const speciesData = await speciesRes.json();
@@ -258,7 +321,7 @@ const fetchSettings = async () => {
     }
   };
 
-  const handleSaveTwilio = async () => {
+const handleSaveTwilio = async () => {
     setSaving(true);
     setMessage(null);
     try {
@@ -280,9 +343,203 @@ const fetchSettings = async () => {
     }
   };
 
-  const tabs = [
+  const handleSaveLanguage = async () => {
+    if (!languageForm.code || !languageForm.name || !languageForm.native_name) {
+      setMessage({ type: 'error', text: 'All fields are required' });
+      return;
+    }
+    setSaving(true);
+    setMessage(null);
+    try {
+      const res = editingLanguage
+        ? await apiFetch(`/api/admin/languages/${editingLanguage}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(languageForm),
+          })
+        : await apiFetch('/api/admin/languages', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(languageForm),
+          });
+      if (res.ok) {
+        setMessage({ type: 'success', text: t('settings.saved') });
+        setLanguageForm({ code: '', name: '', native_name: '', direction: 'ltr' });
+        setEditingLanguage(null);
+        const langRes = await apiFetch('/api/admin/languages');
+        if (langRes.ok) setLanguages(await langRes.json());
+      } else {
+        const data = await res.json();
+        setMessage({ type: 'error', text: data.message || data.error || 'Failed to save' });
+      }
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Network error' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteLanguage = async (code) => {
+    if (!confirm('Are you sure? This will also delete all translations for this language.')) return;
+    try {
+      const res = await apiFetch(`/api/admin/languages/${code}`, { method: 'DELETE' });
+      if (res.ok) {
+        const langRes = await apiFetch('/api/admin/languages');
+        if (langRes.ok) setLanguages(await langRes.json());
+      } else {
+        const data = await res.json();
+        setMessage({ type: 'error', text: data.error || 'Failed to delete' });
+      }
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Network error' });
+    }
+  };
+
+  const handleSetDefaultLanguage = async (code) => {
+    try {
+      const res = await apiFetch(`/api/admin/languages/${code}/set-default`, { method: 'POST' });
+      if (res.ok) {
+        const langRes = await apiFetch('/api/admin/languages');
+        if (langRes.ok) setLanguages(await langRes.json());
+      }
+    } catch (error) {
+      console.error('Failed to set default');
+    }
+  };
+
+  const handleToggleLanguage = async (lang) => {
+    try {
+      const res = await apiFetch(`/api/admin/languages/${lang.code}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_active: !lang.is_active }),
+      });
+      if (res.ok) {
+        const langRes = await apiFetch('/api/admin/languages');
+        if (langRes.ok) setLanguages(await langRes.json());
+      }
+    } catch (error) {
+      console.error('Failed to toggle');
+    }
+  };
+
+  const loadTranslations = async () => {
+    if (!selectedLanguageForTranslation) return;
+    try {
+      const res = await apiFetch('/api/translations', { params: { group: selectedGroup, lang: selectedLanguageForTranslation } });
+      if (res.ok) {
+        const data = await res.json();
+        setTranslations(data || []);
+      }
+    } catch (error) {
+      console.error('Failed to load translations:', error);
+    }
+  };
+
+  const handleSaveTranslation = async (id, value) => {
+    try {
+      await apiFetch(`/api/admin/translations/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ value }),
+      });
+    } catch (error) {
+      console.error('Failed to save translation:', error);
+    }
+  };
+
+  const handleSelectLanguageForTranslation = (lang) => {
+    setSelectedLanguageForTranslation(lang.code);
+    setSelectedGroup('common');
+    setShowTranslations(true);
+  };
+
+  const handleSaveRole = async () => {
+    if (!roleForm.name.trim()) {
+      setMessage({ type: 'error', text: 'Role name is required' });
+      return;
+    }
+    setSaving(true);
+    setMessage(null);
+    try {
+      const res = editingRole
+        ? await apiFetch(`/api/admin/roles/${editingRole}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ permissions: roleForm.permissions }),
+          })
+        : await apiFetch('/api/admin/roles', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(roleForm),
+          });
+      if (res.ok) {
+        setMessage({ type: 'success', text: t('settings.saved') });
+        setRoleForm({ name: '', permissions: [] });
+        setEditingRole(null);
+        const rolesRes = await apiFetch('/api/admin/roles');
+        if (rolesRes.ok) {
+          const rolesJson = await rolesRes.json();
+          setRolesData({ roles: rolesJson.roles || [], permissions: rolesJson.permissions || [], permissionsByCategory: rolesJson.permissionsByCategory || {} });
+        }
+      } else {
+        const data = await res.json();
+        setMessage({ type: 'error', text: data.message || 'Failed to save' });
+      }
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Network error' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteRole = async (roleName) => {
+    if (!confirm(`Are you sure you want to delete the "${roleName}" role?`)) return;
+    try {
+      const res = await apiFetch(`/api/admin/roles/${roleName}`, { method: 'DELETE' });
+      if (res.ok) {
+        const rolesRes = await apiFetch('/api/admin/roles');
+        if (rolesRes.ok) {
+          const rolesJson = await rolesRes.json();
+          setRolesData({ roles: rolesJson.roles || [], permissions: rolesJson.permissions || [], permissionsByCategory: rolesJson.permissionsByCategory || {} });
+        }
+      } else {
+        const data = await res.json();
+        setMessage({ type: 'error', text: data.message || 'Failed to delete' });
+      }
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Network error' });
+    }
+  };
+
+  const handleEditRole = (role) => {
+    setEditingRole(role.name);
+    setRoleForm({ name: role.name, permissions: role.permissions || [] });
+  };
+
+  const togglePermission = (perm) => {
+    setRoleForm(prev => ({
+      ...prev,
+      permissions: prev.permissions.includes(perm)
+        ? prev.permissions.filter(p => p !== perm)
+        : [...prev.permissions, perm]
+    }));
+  };
+
+  const toggleAllInCategory = (categoryPerms, checked) => {
+    setRoleForm(prev => ({
+      ...prev,
+      permissions: checked
+        ? [...new Set([...prev.permissions, ...categoryPerms])]
+        : prev.permissions.filter(p => !categoryPerms.includes(p))
+    }));
+  };
+
+const tabs = [
     { id: 'general', label: t('settings.general'), icon: 'settings' },
     { id: 'species', label: 'Species', icon: 'pets' },
+    { id: 'languages', label: t('settings.languages') || 'Languages', icon: 'language' },
+    { id: 'roles', label: t('settings.roles') || 'Roles', icon: 'admin_panel_settings' },
     { id: 'smtp', label: t('settings.smtp'), icon: 'mail' },
     { id: 'stripe', label: t('settings.stripe'), icon: 'credit_card' },
     { id: 'gemini', label: t('settings.gemini'), icon: 'psychology' },
@@ -570,6 +827,361 @@ const fetchSettings = async () => {
                   </div>
                 ))}
               </div>
+            </div>
+</div>
+        </div>
+      )}
+
+      {/* Languages Tab */}
+      {activeTab === 'languages' && !showTranslations && (
+        <div className="bg-white rounded-[2rem] p-8 shadow-sm">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-12 h-12 bg-[#002819] rounded-xl flex items-center justify-center">
+              <MaterialSymbol icon="language" size={24} className="text-white" />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-[#002819]">{t('settings.languageSettings') || 'Language Settings'}</h3>
+              <p className="text-sm text-[#717973]">{t('settings.languageDescription') || 'Manage system languages and translations'}</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 mb-6">
+            <div>
+              <label className="block text-xs font-bold text-[#404943] uppercase tracking-wider mb-2">{t('common.code') || 'Code'}</label>
+              <input
+                type="text"
+                value={languageForm.code}
+                onChange={(e) => setLanguageForm({ ...languageForm, code: e.target.value.toLowerCase() })}
+                placeholder="e.g. fr"
+                disabled={!!editingLanguage}
+                className="w-full bg-[#F4F4EF] border-none rounded-xl p-4 text-[#002819] focus:ring-2 focus:ring-[#06402B]/20"
+                maxLength={3}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-[#404943] uppercase tracking-wider mb-2">{t('common.name') || 'Name'}</label>
+              <input
+                type="text"
+                value={languageForm.name}
+                onChange={(e) => setLanguageForm({ ...languageForm, name: e.target.value })}
+                placeholder="e.g. French"
+                className="w-full bg-[#F4F4EF] border-none rounded-xl p-4 text-[#002819] focus:ring-2 focus:ring-[#06402B]/20"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-[#404943] uppercase tracking-wider mb-2">{t('common.nativeName') || 'Native Name'}</label>
+              <input
+                type="text"
+                value={languageForm.native_name}
+                onChange={(e) => setLanguageForm({ ...languageForm, native_name: e.target.value })}
+                placeholder="e.g. Français"
+                className="w-full bg-[#F4F4EF] border-none rounded-xl p-4 text-[#002819] focus:ring-2 focus:ring-[#06402B]/20"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-[#404943] uppercase tracking-wider mb-2">{t('common.direction') || 'Direction'}</label>
+              <select
+                value={languageForm.direction}
+                onChange={(e) => setLanguageForm({ ...languageForm, direction: e.target.value })}
+                className="w-full bg-[#F4F4EF] border-none rounded-xl p-4 text-[#002819] focus:ring-2 focus:ring-[#06402B]/20"
+              >
+                <option value="ltr">LTR</option>
+                <option value="rtl">RTL</option>
+              </select>
+            </div>
+            <div className="flex items-end gap-2">
+              <button
+                onClick={handleSaveLanguage}
+                disabled={saving}
+                className="flex-1 py-3 bg-[#002819] text-white rounded-xl font-bold hover:bg-[#06402b] transition disabled:opacity-50"
+              >
+                {saving ? '...' : editingLanguage ? t('common.update') || 'Update' : t('common.add') || 'Add'}
+              </button>
+              {editingLanguage && (
+                <button
+                  onClick={() => { setEditingLanguage(null); setLanguageForm({ code: '', name: '', native_name: '', direction: 'ltr' }); }}
+                  className="px-4 py-3 bg-gray-400 text-white rounded-xl font-bold hover:bg-gray-500"
+                >
+                  ×
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="overflow-x-auto rounded-xl border border-[#F4F4EF]">
+            <table className="w-full">
+              <thead className="bg-[#F4F4EF]">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-[#404943] uppercase">{t('common.code') || 'Code'}</th>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-[#404943] uppercase">{t('common.name') || 'Name'}</th>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-[#404943] uppercase">{t('common.nativeName') || 'Native'}</th>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-[#404943] uppercase">{t('common.direction') || 'Dir'}</th>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-[#404943] uppercase">{t('common.status') || 'Status'}</th>
+                  <th className="px-4 py-3 text-right text-xs font-bold text-[#404943] uppercase">{t('common.actions') || 'Actions'}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {languages.map((lang) => (
+                  <tr key={lang.code} className="border-t border-[#F4F4EF]">
+                    <td className="px-4 py-3 font-mono font-bold text-[#002819]">{lang.code}</td>
+                    <td className="px-4 py-3 text-[#002819]">{lang.name}</td>
+                    <td className="px-4 py-3 text-[#002819]">{lang.native_name}</td>
+                    <td className="px-4 py-3 uppercase text-xs text-[#404943]">{lang.direction}</td>
+                    <td className="px-4 py-3">
+                      <span className={`px-2 py-1 rounded-lg text-xs font-bold ${lang.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+                        {lang.is_active ? 'Active' : 'Inactive'}
+                      </span>
+                      {lang.is_default && (
+                        <span className="ml-2 px-2 py-1 rounded-lg text-xs font-bold bg-[#D4AF37] text-white">
+                          Default
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <button
+                        onClick={() => { setEditingLanguage(lang.code); setLanguageForm({ code: lang.code, name: lang.name, native_name: lang.native_name, direction: lang.direction }); }}
+                        className="text-[#002819] hover:text-[#06402B] font-medium text-sm mr-3"
+                      >
+                        {t('common.edit')}
+                      </button>
+                      <button
+                        onClick={() => handleSelectLanguageForTranslation(lang)}
+                        className="text-green-600 hover:text-green-700 font-medium text-sm mr-3"
+                      >
+                        Translate
+                      </button>
+                      <button
+                        onClick={() => handleToggleLanguage(lang)}
+                        className={`font-medium text-sm mr-3 ${lang.is_active ? 'text-orange-600' : 'text-emerald-600'}`}
+                      >
+                        {lang.is_active ? t('common.disable') : t('common.enable')}
+                      </button>
+                      {!lang.is_default && (
+                        <button
+                          onClick={() => handleSetDefaultLanguage(lang.code)}
+                          className="text-purple-600 hover:text-purple-700 font-medium text-sm mr-3"
+                        >
+                          {t('common.setDefault')}
+                        </button>
+                      )}
+                      {!lang.is_default && (
+                        <button
+                          onClick={() => handleDeleteLanguage(lang.code)}
+                          className="text-red-600 hover:text-red-700 font-medium text-sm"
+                        >
+                          {t('common.delete')}
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Translations Panel */}
+      {activeTab === 'languages' && showTranslations && (
+        <div className="bg-white rounded-[2rem] p-8 shadow-sm">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-12 h-12 bg-[#002819] rounded-xl flex items-center justify-center">
+              <MaterialSymbol icon="translate" size={24} className="text-white" />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-[#002819]">Manage Translations</h3>
+              <p className="text-sm text-[#717973]">Edit translation values for selected language</p>
+            </div>
+          </div>
+
+          <div className="flex gap-4 mb-4 items-center">
+            <button
+              onClick={() => setShowTranslations(false)}
+              className="flex items-center gap-1 text-gray-600 hover:text-gray-900"
+            >
+              <MaterialSymbol icon="arrow_back" size={20} />
+              <span>Back to Languages</span>
+            </button>
+            <span className="text-gray-400">|</span>
+            <select
+              value={selectedLanguageForTranslation}
+              onChange={(e) => setSelectedLanguageForTranslation(e.target.value)}
+              className="border border-[#F4F4EF] rounded-xl px-3 py-2 min-w-[200px]"
+            >
+              {languages.map(lang => (
+                <option key={lang.code} value={lang.code}>{lang.name} ({lang.code})</option>
+              ))}
+            </select>
+            <select
+              value={selectedGroup}
+              onChange={(e) => setSelectedGroup(e.target.value)}
+              className="border border-[#F4F4EF] rounded-xl px-3 py-2"
+            >
+              {groups.map(group => (
+                <option key={group} value={group}>{group}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="overflow-x-auto rounded-xl border border-[#F4F4EF]">
+            <table className="w-full">
+              <thead className="bg-[#F4F4EF] sticky top-0">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-[#404943] uppercase w-1/3">Key</th>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-[#404943] uppercase">Value</th>
+                </tr>
+              </thead>
+              <tbody>
+                {translations.length === 0 ? (
+                  <tr>
+                    <td colSpan="2" className="px-4 py-8 text-center text-gray-500">
+                      No translations found for this language and group.
+                    </td>
+                  </tr>
+                ) : (
+                  translations.map((trans) => (
+                    <tr key={trans.id} className="border-t border-[#F4F4EF]">
+                      <td className="px-4 py-3 font-mono text-sm text-[#002819]">{trans.key}</td>
+                      <td className="px-4 py-3">
+                        <input
+                          type="text"
+                          defaultValue={trans.value}
+                          onBlur={(e) => handleSaveTranslation(trans.id, e.target.value)}
+                          className="w-full border-none rounded-lg px-3 py-2 bg-[#F4F4EF] focus:ring-2 focus:ring-[#06402B]/20"
+                        />
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Roles Tab */}
+      {activeTab === 'roles' && (
+        <div className="bg-white rounded-[2rem] p-8 shadow-sm">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-12 h-12 bg-[#002819] rounded-xl flex items-center justify-center">
+              <MaterialSymbol icon="admin_panel_settings" size={24} className="text-white" />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-[#002819]">{t('settings.roleSettings') || 'Role Settings'}</h3>
+              <p className="text-sm text-[#717973]">{t('settings.roleDescription') || 'Manage roles and permissions'}</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div>
+              <h4 className="font-bold text-[#002819] mb-4">{editingRole ? t('common.edit') : t('common.add')} Role</h4>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-[#404943] uppercase tracking-wider mb-2">{t('common.name') || 'Role Name'}</label>
+                  <input
+                    type="text"
+                    value={roleForm.name}
+                    onChange={(e) => setRoleForm({ ...roleForm, name: e.target.value })}
+                    placeholder="Role name"
+                    disabled={!!editingRole}
+                    className="w-full bg-[#F4F4EF] border-none rounded-xl px-4 py-3 text-[#002819] font-semibold disabled:opacity-50"
+                  />
+                </div>
+
+                {Object.entries(rolesData.permissionsByCategory).map(([categoryKey, category]) => (
+                  <div key={categoryKey} className="border border-[#F4F4EF] rounded-xl p-4">
+                    <label className="flex items-center gap-2 mb-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={category.permissions.every(p => roleForm.permissions.includes(p))}
+                        onChange={(e) => toggleAllInCategory(category.permissions, e.target.checked)}
+                        className="w-4 h-4 rounded border-2 border-[#D4AF37] text-[#D4AF37]"
+                      />
+                      <span className="font-bold text-[#002819]">{category.label}</span>
+                    </label>
+                    <div className="grid grid-cols-2 gap-2 pl-6">
+                      {category.permissions.map((perm) => (
+                        <label key={perm} className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={roleForm.permissions.includes(perm)}
+                            onChange={() => togglePermission(perm)}
+                            className="w-4 h-4 rounded border-2 border-[#D4AF37] text-[#D4AF37]"
+                          />
+                          <span className="text-sm text-[#404943]">{perm}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+
+                <button
+                  onClick={handleSaveRole}
+                  disabled={saving}
+                  className="w-full py-3 bg-[#002819] text-white rounded-xl font-bold hover:bg-[#06402b] transition disabled:opacity-50"
+                >
+                  {saving ? '...' : editingRole ? (t('common.update') || 'Update') : (t('common.add') || 'Add')} Role
+                </button>
+                {editingRole && (
+                  <button
+                    onClick={() => { setEditingRole(null); setRoleForm({ name: '', permissions: [] }); }}
+                    className="w-full py-3 bg-gray-400 text-white rounded-xl font-bold hover:bg-gray-500"
+                  >
+                    {t('common.cancel') || 'Cancel'}
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div>
+              <h4 className="font-bold text-[#002819] mb-4">{t('settings.existingRoles') || 'Existing Roles'}</h4>
+              {rolesData.roles.length === 0 ? (
+                <div className="text-center py-8 text-[#717973]">
+                  No roles found. Add a new role to get started.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {rolesData.roles.map((role) => (
+                  <div key={role.name} className={`p-4 rounded-xl ${role.is_system ? 'bg-gray-100' : 'bg-[#f4f4ef]'}`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-[#002819]">{role.name}</span>
+                        {role.is_system && (
+                          <span className="px-2 py-0.5 rounded text-xs bg-gray-300 text-gray-600">System</span>
+                        )}
+                      </div>
+                      <span className="text-sm text-[#717973]">{role.user_count || 0} user{(role.user_count || 0) !== 1 ? 's' : ''}</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1 mb-2">
+                      {role.permissions?.slice(0, 6).map((perm) => (
+                        <span key={perm} className="px-2 py-1 bg-white rounded text-xs text-[#404943]">
+                          {perm}
+                        </span>
+                      ))}
+                      {role.permissions?.length > 6 && (
+                        <span className="px-2 py-1 text-xs text-[#717973]">+{role.permissions.length - 6} more</span>
+                      )}
+                    </div>
+                    {!role.is_system && (
+                      <div className="flex gap-2 pt-2 border-t border-gray-200">
+                        <button
+onClick={() => handleEditRole(role)}
+                          className="text-sm text-[#002819] hover:text-[#06402B] font-medium"
+                        >
+                          {t('common.edit')}
+                        </button>
+                        <button
+                          onClick={() => handleDeleteRole(role.name)}
+                          className="text-sm text-red-600 hover:text-red-700 font-medium"
+                        >
+                          {t('common.delete')}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+                </div>
+              )}
             </div>
           </div>
         </div>

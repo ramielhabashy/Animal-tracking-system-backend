@@ -34,7 +34,7 @@ export default function RolesPage() {
       const res = await apiFetch('/api/admin/roles');
       if (res.ok) {
         const data = await res.json();
-        setRolesData(data.data || []);
+        setRolesData(data.roles || []);
       } else {
         setRolesData([]);
       }

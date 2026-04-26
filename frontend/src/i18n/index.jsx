@@ -30,8 +30,13 @@ function transformFlatTranslations(data) {
   const nested = {};
   if (Array.isArray(data)) {
     data.forEach(item => {
+      const fullKey = item.group ? `${item.group}.${item.key}` : item.key;
       if (!nested[item.language_code]) nested[item.language_code] = {};
-      nested[item.language_code][item.key] = item.value;
+      // Store both the full key (common.edit) and the short key (edit)
+      nested[item.language_code][fullKey] = item.value;
+      if (item.group && !nested[item.language_code][item.key]) {
+        nested[item.language_code][item.key] = item.value;
+      }
     });
   }
   return nested;
@@ -92,13 +97,23 @@ export function I18nProvider({ children }) {
   }, []);
 
   const t = useCallback((key, params = {}) => {
-    // First try API translations
+    // Helper to extract just the key part without group prefix
+    const getShortKey = (k) => k.includes('.') ? k.split('.').pop() : k;
+    const shortKey = getShortKey(key);
+    
+    // Try full key in API translations (e.g., common.edit)
     let value = getNestedValue(apiTranslations[locale], key);
-    // Then try local translations
+    // Try short key in API translations (e.g., edit)
+    if (!value) value = getNestedValue(apiTranslations[locale], shortKey);
+    // Try full key in local translations
     if (!value) value = getNestedValue(localTranslations[locale], key);
-    // Fallback to English
+    // Try short key in local translations
+    if (!value) value = getNestedValue(localTranslations[locale], shortKey);
+    // Fallback to English full key
     if (!value) value = getNestedValue(localTranslations['en'], key);
-    // Fallback to key
+    // Fallback to English short key
+    if (!value) value = getNestedValue(localTranslations['en'], shortKey);
+    // Fallback to key itself
     if (typeof value !== 'string') return key;
     // Replace params
     if (Object.keys(params).length > 0) {

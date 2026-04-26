@@ -938,5 +938,13 @@ export default {
     twilioAccountSid: 'Account SID',
     twilioAuthToken: 'Auth Token',
     twilioPhoneNumber: 'Phone Number',
+    languages: 'Languages',
+    roles: 'Roles',
+    roleSettings: 'Role Settings',
+    roleDescription: 'Manage roles and permissions',
+    languageSettings: 'Language Settings',
+    languageDescription: 'Manage system languages and translations',
+    manageTranslations: 'Manage Translations',
+    existingRoles: 'Existing Roles',
   },
 };

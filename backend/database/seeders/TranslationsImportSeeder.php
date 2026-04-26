@@ -4,30 +4,47 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 
-class LanguageSeeder extends Seeder
+class TranslationsImportSeeder extends Seeder
 {
     public function run(): void
     {
-        $languages = [
-            ['code' => 'en', 'name' => 'English', 'native_name' => 'English', 'direction' => 'ltr', 'is_active' => true, 'is_default' => true, 'sort_order' => 1],
-            ['code' => 'ar', 'name' => 'Arabic', 'native_name' => 'العربية', 'direction' => 'rtl', 'is_active' => true, 'is_default' => false, 'sort_order' => 2],
-            ['code' => 'ur', 'name' => 'Urdu', 'native_name' => 'اردو', 'direction' => 'rtl', 'is_active' => true, 'is_default' => false, 'sort_order' => 3],
-            ['code' => 'eu', 'name' => 'Basque', 'native_name' => 'Euskara', 'direction' => 'ltr', 'is_active' => true, 'is_default' => false, 'sort_order' => 4],
-        ];
-
-        DB::table('languages')->insert($languages);
-
-        $translations = $this->getTranslations();
-        DB::table('translations')->insert($translations);
+        $translations = $this->getTranslationsFlat();
+        
+        $chunkSize = 500;
+        $chunks = array_chunk($translations, $chunkSize);
+        
+        foreach ($chunks as $index => $chunk) {
+            try {
+                $response = Http::withHeaders([
+                    'Content-Type' => 'application/json',
+                    'Accept' => 'application/json',
+                ])
+                ->timeout(60)
+                ->post('http://localhost:8050/api/admin/translations/import', [
+                    'translations' => $chunk,
+                ]);
+                
+                if ($response->successful()) {
+                    $this->command->info("Imported chunk " . ($index + 1) . " of " . count($chunks) . " (" . count($chunk) . " translations)");
+                } else {
+                    $this->command->error("Failed chunk " . ($index + 1) . ": " . $response->body());
+                }
+            } catch (\Exception $e) {
+                $this->command->error("Error importing chunk " . ($index + 1) . ": " . $e->getMessage());
+            }
+        }
+        
+        $this->command->info("Translation import completed!");
     }
-
-    private function getTranslations(): array
+    
+    private function getTranslationsFlat(): array
     {
         $translations = [];
         
         $groups = [
-'common' => [
+            'common' => [
                 'appName' => ['en' => 'The Oasis', 'ar' => 'الواحة', 'ur' => 'اویسس', 'eu' => 'Oasia'],
                 'quickActions' => ['en' => 'Quick Actions', 'ar' => 'إجراءات سريعة', 'ur' => 'کوئیک ایکشن', 'eu' => 'Ekintza azkarrak'],
                 'success' => ['en' => 'Success', 'ar' => 'نجاح', 'ur' => 'کامیاب', 'eu' => 'Arrakasta'],
@@ -47,7 +64,7 @@ class LanguageSeeder extends Seeder
                 'name' => ['en' => 'Name', 'ar' => 'الاسم', 'ur' => 'نام', 'eu' => 'Izena'],
                 'species' => ['en' => 'Species', 'ar' => 'النوع', 'ur' => 'قسم', 'eu' => 'Speziea'],
                 'breed' => ['en' => 'Breed', 'ar' => 'السلالة', 'ur' => 'نسل', 'eu' => 'Arraza'],
-                'status' => ['en' => 'Status', 'ar' => 'الحالة', 'ur' => 'حالت', 'eu' => 'Egoera'],
+                'status' => ['en' => 'Status', 'ar' => 'الحالة', 'ur' => 'ح��لت', 'eu' => 'Egoera'],
                 'age' => ['en' => 'Age', 'ar' => 'العمر', 'ur' => 'عمر', 'eu' => 'Adina'],
                 'weight' => ['en' => 'Weight', 'ar' => 'الوزن', 'ur' => 'وزن', 'eu' => 'Pisua'],
             ],
@@ -58,7 +75,7 @@ class LanguageSeeder extends Seeder
                 'batteryLevel' => ['en' => 'Battery Level', 'ar' => 'مستوى البطارية', 'ur' => 'بیٹری کی سطح', 'eu' => 'Bateria maila'],
                 'firmware' => ['en' => 'Firmware', 'ar' => 'البرنامج الثابت', 'ur' => ' فرم ویئر', 'eu' => 'Firmwarea'],
             ],
-'auth' => [
+            'auth' => [
                 'login' => ['en' => 'Sign In', 'ar' => 'تسجيل الدخول', 'ur' => 'لاگ ان', 'eu' => 'Saioa hasi'],
                 'register' => ['en' => 'Sign Up', 'ar' => 'التسجيل', 'ur' => 'رجسٹر', 'eu' => 'Erregistratu'],
                 'welcomeBack' => ['en' => 'Welcome Back', 'ar' => 'مرحباً بعودتك', 'ur' => 'واپس خوش آمدید', 'eu' => 'Ongi itzuli'],
@@ -75,7 +92,7 @@ class LanguageSeeder extends Seeder
                 'enterPassword' => ['en' => 'Enter your password', 'ar' => 'أدخل كلمة المرور', 'ur' => 'اپنا پاس ورڈ درج کریں', 'eu' => 'Sartu zure pasahitza'],
                 'emailRequired' => ['en' => 'Email is required', 'ar' => 'البريد الإلكتروني مطلوب', 'ur' => 'ای میل ضروری ہے', 'eu' => 'Posta elektronikoa beharrezkoa da'],
                 'invalidEmail' => ['en' => 'Enter a valid email', 'ar' => 'أدخل بريد إلكتروني صالح', 'ur' => 'درست ایمیل درج کریں', 'eu' => 'Sartu posta elektroniko bali bat'],
-                'passwordRequired' => ['en' => 'Password is required', 'ar' => 'كلمة المرور مطلوبة', 'ur' => 'پاس ورڈ ضروری ہے', 'eu' => 'Pasahitza beharrezkoa da'],
+                'passwordRequired' => ['en' => 'Password is required', 'ar' => 'كلمة المرور مطلوبة', 'ur' => 'پاس ورڈ ضرور�� ہے', 'eu' => 'Pasahitza beharrezkoa da'],
                 'passwordMinLength' => ['en' => 'Password must be at least 4 characters', 'ar' => 'يجب أن تكون كلمة المرور 4 أحرف على الأقل', 'ur' => 'پاس ورڈ میں کم از کم 4 حروف ہونے چاہییے', 'eu' => 'Pasahitzak 4 karaktere izan behar ditu gutxieneko'],
             ],
             'nav' => [
@@ -216,26 +233,9 @@ class LanguageSeeder extends Seeder
                 'loading' => ['en' => 'Loading...', 'ar' => 'جاري التحميل...', 'ur' => 'لوڈ ہو رہا ہے...', 'eu' => 'Kargatzen...'],
                 'code' => ['en' => 'Code', 'ar' => 'الرمز', 'ur' => 'کوڈ', 'eu' => 'Kodea'],
                 'name' => ['en' => 'Name', 'ar' => 'الاسم', 'ur' => 'نام', 'eu' => 'Izena'],
-                'nativeName' => ['en' => 'Native Name', 'ar' => 'الاسم الأصلي', 'ur' => '本 地 نام', 'eu' => 'Jatorrizko izena'],
+                'nativeName' => ['en' => 'Native Name', 'ar' => 'الاسم الأصلي', 'ur' => ' 本地 نام', 'eu' => 'Jatorrizko izena'],
                 'direction' => ['en' => 'Direction', 'ar' => 'الاتجاه', 'ur' => 'سمت', 'eu' => 'Norabidea'],
                 'status' => ['en' => 'Status', 'ar' => 'الحالة', 'ur' => 'حالت', 'eu' => 'Egoera'],
-                // Add common.* prefixed keys
-                'common.add' => ['en' => 'Add', 'ar' => 'إضافة', 'ur' => 'شامل کریں', 'eu' => 'Gehitu'],
-                'common.edit' => ['en' => 'Edit', 'ar' => 'تعديل', 'ur' => 'ترمیم', 'eu' => 'Editatu'],
-                'common.delete' => ['en' => 'Delete', 'ar' => 'حذف', 'ur' => 'حذف کریں', 'eu' => 'Ezabatu'],
-                'common.save' => ['en' => 'Save', 'ar' => 'حفظ', 'ur' => 'محفوظ کریں', 'eu' => 'Gorde'],
-                'common.cancel' => ['en' => 'Cancel', 'ar' => 'إلغاء', 'ur' => 'منسوخ', 'eu' => 'Ezeztatu'],
-                'common.update' => ['en' => 'Update', 'ar' => 'تحديث', 'ur' => 'اپڈیٹ', 'eu' => 'Eguneratu'],
-                'common.enable' => ['en' => 'Enable', 'ar' => 'تفعيل', 'ur' => 'فعال کریں', 'eu' => 'Gaitu'],
-                'common.disable' => ['en' => 'Disable', 'ar' => 'تعطيل', 'ur' => 'غیر فعال', 'eu' => 'Desgaitu'],
-                'common.setDefault' => ['en' => 'Set Default', 'ar' => 'تحديد افتراضي', 'ur' => 'ڈیفالٹ سیٹ کریں', 'eu' => 'Ezarri lehenetsia'],
-                'common.actions' => ['en' => 'Actions', 'ar' => 'الإجراءات', 'ur' => 'کارروائیاں', 'eu' => 'Ekintzak'],
-                'common.loading' => ['en' => 'Loading...', 'ar' => 'جاري التحميل...', 'ur' => 'لوڈ ہو رہا ہے...', 'eu' => 'Kargatzen...'],
-                'common.code' => ['en' => 'Code', 'ar' => 'الرمز', 'ur' => 'کوڈ', 'eu' => 'Kodea'],
-                'common.name' => ['en' => 'Name', 'ar' => 'الاسم', 'ur' => 'نام', 'eu' => 'Izena'],
-                'common.nativeName' => ['en' => 'Native Name', 'ar' => 'الاسم الأصلي', 'ur' => '本 ��� نام', 'eu' => 'Jatorrizko izena'],
-                'common.direction' => ['en' => 'Direction', 'ar' => 'الاتجاه', 'ur' => 'سمت', 'eu' => 'Norabidea'],
-                'common.status' => ['en' => 'Status', 'ar' => 'الحالة', 'ur' => 'حالت', 'eu' => 'Egoera'],
             ],
         ];
 
@@ -247,8 +247,6 @@ class LanguageSeeder extends Seeder
                         'group' => $group,
                         'key' => $key,
                         'value' => $value,
-                        'created_at' => now(),
-                        'updated_at' => now(),
                     ];
                 }
             }

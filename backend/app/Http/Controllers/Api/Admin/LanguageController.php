@@ -133,7 +133,7 @@ class LanguageController extends Controller
             ->orderBy('sort_order')
             ->get();
         
-        return response()->json($languages);
+        return response()->json(['data' => $languages]);
     }
 
     public function storeLanguage(Request $request)

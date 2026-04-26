@@ -24,6 +24,7 @@ use App\Http\Controllers\Api\Admin\ExportController;
 use App\Http\Controllers\Api\Ai\AIController;
 use App\Http\Controllers\Api\Admin\LanguageController;
 use App\Http\Controllers\Api\Users\RoleManagementController;
+use App\Http\Controllers\Api\Resources\SpeciesController;
 
 Route::get('/fix-roles', function() {
     DB::statement("UPDATE users SET role = 'Veterinarian' WHERE role = 'Doctor'");
@@ -210,16 +211,17 @@ Route::put('/admin/translations/{id}', [LanguageController::class, 'updateTransl
 Route::delete('/admin/translations/{id}', [LanguageController::class, 'deleteTranslation'])->middleware('auth:sanctum');
 Route::post('/admin/translations/import', [LanguageController::class, 'importTranslations'])->middleware('auth:sanctum');
 
-Route::get('/admin/roles', [RoleManagementController::class, 'index']);
-Route::get('/admin/users/{user}/roles', [RoleManagementController::class, 'getUserRoles']);
-Route::put('/admin/users/{user}/roles', [RoleManagementController::class, 'updateUserRoles']);
+Route::get('/admin/roles', [RoleManagementController::class, 'index'])->middleware('auth:sanctum');
+Route::post('/admin/roles', [RoleManagementController::class, 'storeRole'])->middleware('auth:sanctum');
+Route::put('/admin/roles/{role}', [RoleManagementController::class, 'updateRole'])->middleware('auth:sanctum');
+Route::delete('/admin/roles/{role}', [RoleManagementController::class, 'deleteRole'])->middleware('auth:sanctum');
+Route::get('/admin/users/{user}/roles', [RoleManagementController::class, 'getUserRoles'])->middleware('auth:sanctum');
+Route::put('/admin/users/{user}/roles', [RoleManagementController::class, 'updateUserRoles'])->middleware('auth:sanctum');
 
-Route::get('/species', function() {
-    return response()->json(['data' => [
-        ['id' => 1, 'name' => 'Sheep'],
-        ['id' => 2, 'name' => 'Goat'],
-        ['id' => 3, 'name' => 'Cattle'],
-        ['id' => 4, 'name' => 'Camel'],
-        ['id' => 5, 'name' => 'Horse'],
-    ]]);
-});
+Route::get('/species', [SpeciesController::class, 'index']);
+Route::post('/species', [SpeciesController::class, 'store'])->middleware('auth:sanctum');
+Route::put('/species/{species}', [SpeciesController::class, 'update'])->middleware('auth:sanctum');
+Route::delete('/species/{species}', [SpeciesController::class, 'destroy'])->middleware('auth:sanctum');
+Route::post('/species/{species}/breeds', [SpeciesController::class, 'storeBreed'])->middleware('auth:sanctum');
+Route::put('/breeds/{breed}', [SpeciesController::class, 'updateBreed'])->middleware('auth:sanctum');
+Route::delete('/breeds/{breed}', [SpeciesController::class, 'destroyBreed'])->middleware('auth:sanctum');

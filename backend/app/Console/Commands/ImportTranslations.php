@@ -1,33 +1,45 @@
 <?php
 
-namespace Database\Seeders;
+namespace App\Console\Commands;
 
-use Illuminate\Database\Seeder;
+use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
-class LanguageSeeder extends Seeder
+class ImportTranslations extends Command
 {
-    public function run(): void
+    protected $signature = 'translations:import';
+    protected $description = 'Import translations from LanguageSeeder to database';
+
+    public function handle(): int
     {
-        $languages = [
-            ['code' => 'en', 'name' => 'English', 'native_name' => 'English', 'direction' => 'ltr', 'is_active' => true, 'is_default' => true, 'sort_order' => 1],
-            ['code' => 'ar', 'name' => 'Arabic', 'native_name' => 'العربية', 'direction' => 'rtl', 'is_active' => true, 'is_default' => false, 'sort_order' => 2],
-            ['code' => 'ur', 'name' => 'Urdu', 'native_name' => 'اردو', 'direction' => 'rtl', 'is_active' => true, 'is_default' => false, 'sort_order' => 3],
-            ['code' => 'eu', 'name' => 'Basque', 'native_name' => 'Euskara', 'direction' => 'ltr', 'is_active' => true, 'is_default' => false, 'sort_order' => 4],
-        ];
-
-        DB::table('languages')->insert($languages);
-
         $translations = $this->getTranslations();
-        DB::table('translations')->insert($translations);
+        
+        $count = 0;
+        foreach ($translations as $t) {
+            DB::table('translations')->updateOrInsert(
+                [
+                    'language_code' => $t['language_code'],
+                    'group' => $t['group'],
+                    'key' => $t['key'],
+                ],
+                [
+                    'value' => $t['value'],
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]
+            );
+            $count++;
+        }
+        
+        $this->info("Imported {$count} translations successfully.");
+        return Command::SUCCESS;
     }
-
+    
     private function getTranslations(): array
     {
         $translations = [];
-        
         $groups = [
-'common' => [
+            'common' => [
                 'appName' => ['en' => 'The Oasis', 'ar' => 'الواحة', 'ur' => 'اویسس', 'eu' => 'Oasia'],
                 'quickActions' => ['en' => 'Quick Actions', 'ar' => 'إجراءات سريعة', 'ur' => 'کوئیک ایکشن', 'eu' => 'Ekintza azkarrak'],
                 'success' => ['en' => 'Success', 'ar' => 'نجاح', 'ur' => 'کامیاب', 'eu' => 'Arrakasta'],
@@ -53,12 +65,12 @@ class LanguageSeeder extends Seeder
             ],
             'devices' => [
                 'title' => ['en' => 'Devices', 'ar' => 'الأجهزة', 'ur' => 'آلات', 'eu' => 'Gailuak'],
-                'addDevice' => ['en' => 'Add Device', 'ar' => 'إضافة جهاز', 'ur' => 'آلہ شامل کریں', 'eu' => 'Gailua gehitu'],
+                'addDevice' => ['en' => 'Add Device', 'ar' => 'إضاف�� جهاز', 'ur' => 'آلہ شامل کریں', 'eu' => 'Gailua gehitu'],
                 'deviceId' => ['en' => 'Device ID', 'ar' => 'معرف الجهاز', 'ur' => 'آلہ کی شناخت', 'eu' => 'Gailuaren ID'],
                 'batteryLevel' => ['en' => 'Battery Level', 'ar' => 'مستوى البطارية', 'ur' => 'بیٹری کی سطح', 'eu' => 'Bateria maila'],
                 'firmware' => ['en' => 'Firmware', 'ar' => 'البرنامج الثابت', 'ur' => ' فرم ویئر', 'eu' => 'Firmwarea'],
             ],
-'auth' => [
+            'auth' => [
                 'login' => ['en' => 'Sign In', 'ar' => 'تسجيل الدخول', 'ur' => 'لاگ ان', 'eu' => 'Saioa hasi'],
                 'register' => ['en' => 'Sign Up', 'ar' => 'التسجيل', 'ur' => 'رجسٹر', 'eu' => 'Erregistratu'],
                 'welcomeBack' => ['en' => 'Welcome Back', 'ar' => 'مرحباً بعودتك', 'ur' => 'واپس خوش آمدید', 'eu' => 'Ongi itzuli'],
@@ -79,7 +91,7 @@ class LanguageSeeder extends Seeder
                 'passwordMinLength' => ['en' => 'Password must be at least 4 characters', 'ar' => 'يجب أن تكون كلمة المرور 4 أحرف على الأقل', 'ur' => 'پاس ورڈ میں کم از کم 4 حروف ہونے چاہییے', 'eu' => 'Pasahitzak 4 karaktere izan behar ditu gutxieneko'],
             ],
             'nav' => [
-                'dashboard' => ['en' => 'Dashboard', 'ar' => 'لوحة التحكم', 'ur' => 'ڈیش بورڈ', 'eu' => 'Azpiegitura'],
+                'dashboard' => ['en' => 'Dashboard', 'ar' => '��وحة التحكم', 'ur' => 'ڈیش بورڈ', 'eu' => 'Azpiegitura'],
                 'users' => ['en' => 'Users', 'ar' => 'المستخدمون', 'ur' => 'صارفین', 'eu' => 'Erabiltzaileak'],
                 'animals' => ['en' => 'Animals', 'ar' => 'الحيوانات', 'ur' => 'جانور', 'eu' => 'Animaliak'],
                 'geofences' => ['en' => 'Geofences', 'ar' => 'الأسوار', 'ur' => 'جغرافیائی حدود', 'eu' => 'Geofenceak'],
@@ -108,7 +120,7 @@ class LanguageSeeder extends Seeder
                 'emailNotificationsSubtitle' => ['en' => 'Receive updates via email', 'ar' => 'تلقي التحديثات عبر البريد', 'ur' => 'ای میل کے ذریعے اپڈیٹس حاصل کریں', 'eu' => 'Eguneratzeak posta bidali'],
                 'darkMode' => ['en' => 'Dark Mode', 'ar' => 'الوضع الداكن', 'ur' => 'ڈارک موڈ', 'eu' => 'Ilun modua'],
                 'darkModeSubtitle' => ['en' => 'Use dark theme', 'ar' => 'استخدم السمة الداكنة', 'ur' => 'ڈارک تھیم کا use کریں', 'eu' => 'Ilun gaia erabili'],
-                'locationTracking' => ['en' => 'Location Tracking', 'ar' => 'تتبع الموقع', 'ur' => 'لوکیشن ٹریکنگ', 'eu' => 'Kokapena jarraitzea'],
+                'locationTracking' => ['en' => 'Location Tracking', 'ar' => 'تتبع الموقع', 'ur' => 'لوکیشن ٹ��یک��گ', 'eu' => 'Kokapena jarraitzea'],
                 'locationTrackingSubtitle' => ['en' => 'Track animal locations', 'ar' => 'تتبع مواقع الحيوانات', 'ur' => 'جانورں کے مقامات ٹریک کریں', 'eu' => 'Animalien kokapena jarraitu'],
                 'temperatureUnit' => ['en' => 'Temperature Unit', 'ar' => 'وحدة الحرارة', 'ur' => 'درجہ حرارت کی اکائی', 'eu' => 'Tenperatura unitatea'],
                 'language' => ['en' => 'Language', 'ar' => 'اللغة', 'ur' => 'زبان', 'eu' => 'Hizkuntza'],
@@ -145,7 +157,7 @@ class LanguageSeeder extends Seeder
                 'fromName' => ['en' => 'From Name', 'ar' => 'من الاسم', 'ur' => 'سے نام', 'eu' => 'Izenetik'],
                 'sendTest' => ['en' => 'Send Test', 'ar' => 'إرسال اختبار', 'ur' => 'ٹیسٹ بھیجیں', 'eu' => 'Proba bidali'],
                 'stripeSettings' => ['en' => 'Payment Settings (Stripe)', 'ar' => 'إعدادات الدفع', 'ur' => 'ادائیگی کی سیٹنگز', 'eu' => 'Ordainketa ezarpenak (Stripe)'],
-                'stripeDescription' => ['en' => 'Configure payment processing', 'ar' => 'تكوين معالجة الدفع', 'ur' => 'ادائیگی کی پروسیسنگ کو ترتیب دیں', 'eu' => 'Ordainketa prozesamendua konfiguratu'],
+                'stripeDescription' => ['en' => 'Configure payment processing', 'ar' => 'تكوين معالجة الدفع', 'ur' => 'ادائیگی کی پروسیسنگ ��و ترتیب دیں', 'eu' => 'Ordainketa prozesamendua konfiguratu'],
                 'enableStripe' => ['en' => 'Enable Payments', 'ar' => 'تفعيل الدفع', 'ur' => 'ادائیگی کو فعال کریں', 'eu' => 'Ordainketak gaitu'],
                 'publicKey' => ['en' => 'Public Key', 'ar' => 'المفتاح العام', 'ur' => 'پبلک کی', 'eu' => 'Giltza publikoa'],
                 'secretKey' => ['en' => 'Secret Key', 'ar' => 'المفتاح السري', 'ur' => 'سیکریٹ کی', 'eu' => 'Giltza sekretua'],
@@ -216,26 +228,9 @@ class LanguageSeeder extends Seeder
                 'loading' => ['en' => 'Loading...', 'ar' => 'جاري التحميل...', 'ur' => 'لوڈ ہو رہا ہے...', 'eu' => 'Kargatzen...'],
                 'code' => ['en' => 'Code', 'ar' => 'الرمز', 'ur' => 'کوڈ', 'eu' => 'Kodea'],
                 'name' => ['en' => 'Name', 'ar' => 'الاسم', 'ur' => 'نام', 'eu' => 'Izena'],
-                'nativeName' => ['en' => 'Native Name', 'ar' => 'الاسم الأصلي', 'ur' => '本 地 نام', 'eu' => 'Jatorrizko izena'],
+                'nativeName' => ['en' => 'Native Name', 'ar' => 'الاسم الأصلي', 'ur' => ' 本地 نام', 'eu' => 'Jatorrizko izena'],
                 'direction' => ['en' => 'Direction', 'ar' => 'الاتجاه', 'ur' => 'سمت', 'eu' => 'Norabidea'],
                 'status' => ['en' => 'Status', 'ar' => 'الحالة', 'ur' => 'حالت', 'eu' => 'Egoera'],
-                // Add common.* prefixed keys
-                'common.add' => ['en' => 'Add', 'ar' => 'إضافة', 'ur' => 'شامل کریں', 'eu' => 'Gehitu'],
-                'common.edit' => ['en' => 'Edit', 'ar' => 'تعديل', 'ur' => 'ترمیم', 'eu' => 'Editatu'],
-                'common.delete' => ['en' => 'Delete', 'ar' => 'حذف', 'ur' => 'حذف کریں', 'eu' => 'Ezabatu'],
-                'common.save' => ['en' => 'Save', 'ar' => 'حفظ', 'ur' => 'محفوظ کریں', 'eu' => 'Gorde'],
-                'common.cancel' => ['en' => 'Cancel', 'ar' => 'إلغاء', 'ur' => 'منسوخ', 'eu' => 'Ezeztatu'],
-                'common.update' => ['en' => 'Update', 'ar' => 'تحديث', 'ur' => 'اپڈیٹ', 'eu' => 'Eguneratu'],
-                'common.enable' => ['en' => 'Enable', 'ar' => 'تفعيل', 'ur' => 'فعال کریں', 'eu' => 'Gaitu'],
-                'common.disable' => ['en' => 'Disable', 'ar' => 'تعطيل', 'ur' => 'غیر فعال', 'eu' => 'Desgaitu'],
-                'common.setDefault' => ['en' => 'Set Default', 'ar' => 'تحديد افتراضي', 'ur' => 'ڈیفالٹ سیٹ کریں', 'eu' => 'Ezarri lehenetsia'],
-                'common.actions' => ['en' => 'Actions', 'ar' => 'الإجراءات', 'ur' => 'کارروائیاں', 'eu' => 'Ekintzak'],
-                'common.loading' => ['en' => 'Loading...', 'ar' => 'جاري التحميل...', 'ur' => 'لوڈ ہو رہا ہے...', 'eu' => 'Kargatzen...'],
-                'common.code' => ['en' => 'Code', 'ar' => 'الرمز', 'ur' => 'کوڈ', 'eu' => 'Kodea'],
-                'common.name' => ['en' => 'Name', 'ar' => 'الاسم', 'ur' => 'نام', 'eu' => 'Izena'],
-                'common.nativeName' => ['en' => 'Native Name', 'ar' => 'الاسم الأصلي', 'ur' => '本 ��� نام', 'eu' => 'Jatorrizko izena'],
-                'common.direction' => ['en' => 'Direction', 'ar' => 'الاتجاه', 'ur' => 'سمت', 'eu' => 'Norabidea'],
-                'common.status' => ['en' => 'Status', 'ar' => 'الحالة', 'ur' => 'حالت', 'eu' => 'Egoera'],
             ],
         ];
 
@@ -247,8 +242,6 @@ class LanguageSeeder extends Seeder
                         'group' => $group,
                         'key' => $key,
                         'value' => $value,
-                        'created_at' => now(),
-                        'updated_at' => now(),
                     ];
                 }
             }

@@ -32,13 +32,22 @@ export const getAuthHeaders = () => {
   return headers;
 };
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8050';
+const API_BASE = ''; // Use Vite proxy
 
 export const getApiBase = () => API_BASE;
 
+const buildUrl = (url, options = {}) => {
+  if (options.params) {
+    const searchParams = new URLSearchParams(options.params);
+    url = `${url}?${searchParams.toString()}`;
+    delete options.params;
+  }
+  return url.startsWith('http') ? url : `${API_BASE}${url}`;
+};
+
 export const apiFetch = async (url, options = {}) => {
   const headers = getAuthHeaders();
-  const fullUrl = url.startsWith('http') ? url : `${API_BASE}${url}`;
+  const fullUrl = buildUrl(url, options);
   const isJsonBody = options.body && !(options.body instanceof FormData) && typeof options.body === 'string';
   
   const fetchOptions = {
@@ -58,10 +67,30 @@ export const apiFetch = async (url, options = {}) => {
 };
 
 const api = {
-  get: async (url, options = {}) => apiFetch(url, { method: 'GET', ...options }),
-  post: async (url, body, options = {}) => apiFetch(url, { method: 'POST', body: JSON.stringify(body), ...options }),
-  put: async (url, body, options = {}) => apiFetch(url, { method: 'PUT', body: JSON.stringify(body), ...options }),
-  delete: async (url, options = {}) => apiFetch(url, { method: 'DELETE', ...options }),
+  get: async (url, options = {}) => {
+    const res = await apiFetch(url, { method: 'GET', ...options });
+    if (!res.ok) return { ok: false, status: res.status };
+    const data = await res.json();
+    return { ok: true, data, status: res.status };
+  },
+  post: async (url, body, options = {}) => {
+    const res = await apiFetch(url, { method: 'POST', body: JSON.stringify(body), ...options });
+    if (!res.ok) return { ok: false, status: res.status, data: {} };
+    const data = await res.json().catch(() => ({}));
+    return { ok: true, data, status: res.status };
+  },
+  put: async (url, body, options = {}) => {
+    const res = await apiFetch(url, { method: 'PUT', body: JSON.stringify(body), ...options });
+    if (!res.ok) return { ok: false, status: res.status, data: {} };
+    const data = await res.json().catch(() => ({}));
+    return { ok: true, data, status: res.status };
+  },
+  delete: async (url, options = {}) => {
+    const res = await apiFetch(url, { method: 'DELETE', ...options });
+    if (!res.ok) return { ok: false, status: res.status };
+    const data = await res.json().catch(() => ({}));
+    return { ok: true, data, status: res.status };
+  },
 };
 
 export default api;
