@@ -16,6 +16,7 @@ export default function LanguageSettingsPage() {
   const [loading, setLoading] = useState(false);
   const [editingLang, setEditingLang] = useState(null);
   const [formData, setFormData] = useState({ code: '', name: '', native_name: '', direction: 'ltr' });
+  const [message, setMessage] = useState(null);
 
   const groups = ['common', 'dashboard', 'animals', 'devices', 'geofences', 'alerts', 'tasks', 'auctions', 'profile', 'settings'];
 
@@ -64,16 +65,25 @@ export default function LanguageSettingsPage() {
     }
     setLoading(true);
     try {
+      let res;
       if (editingLang) {
-        await api.put(`/api/admin/languages/${editingLang}`, formData);
+        res = await api.put(`/api/admin/languages/${editingLang}`, formData);
       } else {
-        await api.post('/api/admin/languages', formData);
+        res = await api.post('/api/admin/languages', formData);
       }
-      setEditingLang(null);
-      setFormData({ code: '', name: '', native_name: '', direction: 'ltr' });
-      loadLanguages();
+      if (res.ok) {
+        setMessage({ type: 'success', text: t('settings.saved') || 'Language saved successfully!' });
+        setEditingLang(null);
+        setFormData({ code: '', name: '', native_name: '', direction: 'ltr' });
+        loadLanguages();
+        setTimeout(() => setMessage(null), 3000);
+      } else {
+        const data = await res.data;
+        setMessage({ type: 'error', text: data.error || 'Failed to save language' });
+      }
     } catch (err) {
-      alert(err.response?.data?.error || 'Failed to save language');
+      console.error('Failed to save language:', err);
+      setMessage({ type: 'error', text: 'Failed to save language' });
     }
     setLoading(false);
   };
@@ -91,34 +101,59 @@ export default function LanguageSettingsPage() {
   const handleDeleteLanguage = async (code) => {
     if (!confirm('Are you sure? This will also delete all translations for this language.')) return;
     try {
-      await api.delete(`/api/admin/languages/${code}`);
-      loadLanguages();
+      const res = await api.delete(`/api/admin/languages/${code}`);
+      if (res.ok) {
+        loadLanguages();
+      } else {
+        const data = await res.data;
+        alert(data.error || 'Failed to delete language');
+      }
     } catch (err) {
-      alert(err.response?.data?.error || 'Failed to delete language');
+      console.error('Failed to delete:', err);
+      alert('Failed to delete language');
     }
   };
 
   const handleSetDefault = async (code) => {
     try {
-      await api.post(`/api/admin/languages/${code}/set-default`);
-      loadLanguages();
+      const res = await api.post(`/api/admin/languages/${code}/set-default`);
+      if (res.ok) {
+        loadLanguages();
+      } else {
+        const data = await res.data;
+        alert(data.error || 'Failed to set default language');
+      }
     } catch (err) {
-      alert(err.response?.data?.error || 'Failed to set default');
+      console.error('Failed to set default:', err);
+      alert('Failed to set default language');
     }
   };
 
   const handleToggleActive = async (lang) => {
     try {
-      await api.put(`/api/admin/languages/${lang.code}`, { is_active: !lang.is_active });
-      loadLanguages();
+      const res = await api.put(`/api/admin/languages/${lang.code}`, { is_active: !lang.is_active });
+      if (res.ok) {
+        loadLanguages();
+      } else {
+        const data = await res.data;
+        alert(data.error || 'Failed to update language');
+      }
     } catch (err) {
-      alert(err.response?.data?.error || 'Failed to update');
+      console.error('Failed to toggle:', err);
+      alert('Failed to update language');
     }
   };
 
   const handleSaveTranslation = async (id, value) => {
     try {
-      await api.put(`/api/admin/translations/${id}`, { value });
+      const res = await api.put(`/api/admin/translations/${id}`, { value });
+      if (res.ok) {
+        setTranslations(prev => prev.map(t => 
+          t.id === id ? { ...t, value } : t
+        ));
+      } else {
+        console.error('Failed to save translation:', res.status);
+      }
     } catch (err) {
       console.error('Failed to save translation:', err);
     }
@@ -149,6 +184,12 @@ export default function LanguageSettingsPage() {
       <h1 className="text-2xl font-bold mb-6">
         {t('settings.languageSettings') || 'Language Settings'}
       </h1>
+
+      {message && (
+        <div className={`p-4 rounded-lg mb-6 ${message.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+          {message.text}
+        </div>
+      )}
 
       {showTranslations ? (
         <div className="bg-white rounded-lg shadow overflow-hidden">
