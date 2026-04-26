@@ -368,6 +368,7 @@ const handleSaveTwilio = async () => {
         setEditingLanguage(null);
         const langRes = await apiFetch('/api/admin/languages');
         if (langRes.ok) setLanguages(await langRes.json());
+        sessionStorage.setItem('oasis_translations_dirty', Date.now().toString());
       } else {
         const data = await res.json();
         setMessage({ type: 'error', text: data.message || data.error || 'Failed to save' });
@@ -386,6 +387,7 @@ const handleSaveTwilio = async () => {
       if (res.ok) {
         const langRes = await apiFetch('/api/admin/languages');
         if (langRes.ok) setLanguages(await langRes.json());
+        sessionStorage.setItem('oasis_translations_dirty', Date.now().toString());
       } else {
         const data = await res.json();
         setMessage({ type: 'error', text: data.error || 'Failed to delete' });
@@ -401,6 +403,7 @@ const handleSaveTwilio = async () => {
       if (res.ok) {
         const langRes = await apiFetch('/api/admin/languages');
         if (langRes.ok) setLanguages(await langRes.json());
+        sessionStorage.setItem('oasis_translations_dirty', Date.now().toString());
       }
     } catch (error) {
       console.error('Failed to set default');
@@ -417,6 +420,7 @@ const handleSaveTwilio = async () => {
       if (res.ok) {
         const langRes = await apiFetch('/api/admin/languages');
         if (langRes.ok) setLanguages(await langRes.json());
+        sessionStorage.setItem('oasis_translations_dirty', Date.now().toString());
       }
     } catch (error) {
       console.error('Failed to toggle');

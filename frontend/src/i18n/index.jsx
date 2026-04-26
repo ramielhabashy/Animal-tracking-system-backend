@@ -46,16 +46,12 @@ export function I18nProvider({ children }) {
   const [locale, setLocaleState] = useState(() => getLocale() || 'en');
   const [dir, setDir] = useState('ltr');
   const [apiTranslations, setApiTranslations] = useState({});
-  const [languages, setLanguages] = useState([
-    { code: 'en', name: 'English', native_name: 'English', direction: 'ltr', is_active: true },
-    { code: 'ar', name: 'Arabic', native_name: 'العربية', direction: 'rtl', is_active: true },
-    { code: 'ur', name: 'Urdu', native_name: 'اردو', direction: 'rtl', is_active: true },
-    { code: 'eu', name: 'Basque', native_name: 'Euskara', direction: 'ltr', is_active: true },
-  ]);
+  const [languages, setLanguages] = useState([]);
 
   useEffect(() => {
-    setDir(locale === 'ar' || locale === 'ur' ? 'rtl' : 'ltr');
-  }, [locale]);
+    const currentLang = languages.find(l => l.code === locale);
+    setDir(currentLang?.direction || 'ltr');
+  }, [locale, languages]);
 
   useEffect(() => {
     const loadLanguages = async () => {
@@ -85,6 +81,30 @@ export function I18nProvider({ children }) {
     };
     loadTranslations();
   }, []);
+
+  useEffect(() => {
+    const checkAndReloadTranslations = async () => {
+      const dirty = sessionStorage.getItem('oasis_translations_dirty');
+      if (dirty) {
+        const dirtyTime = parseInt(dirty, 10);
+        const now = Date.now();
+        const fiveMinutes = 5 * 60 * 1000;
+        
+        if (now - dirtyTime < fiveMinutes) {
+          try {
+            const res = await fetch('http://localhost:8050/api/translations');
+            const data = await res.json();
+            const nested = transformFlatTranslations(data);
+            setApiTranslations(nested);
+          } catch (e) {
+            console.warn('Failed to reload translations:', e.message);
+          }
+        }
+        sessionStorage.removeItem('oasis_translations_dirty');
+      }
+    };
+    checkAndReloadTranslations();
+  }, [locale]);
 
   useEffect(() => {
     document.documentElement.dir = dir;

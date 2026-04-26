@@ -58,7 +58,7 @@ export default function LanguageSettingsPage() {
     }
   };
 
-  const handleSaveLanguage = async () => {
+const handleSaveLanguage = async () => {
     if (!formData.code || !formData.name || !formData.native_name) {
       alert('Please fill in all required fields');
       return;
@@ -69,13 +69,14 @@ export default function LanguageSettingsPage() {
       if (editingLang) {
         res = await api.put(`/api/admin/languages/${editingLang}`, formData);
       } else {
-        res = await api.post('/api/admin/languages', formData);
+        res = await api.post(`/api/admin/languages`, formData);
       }
       if (res.ok) {
         setMessage({ type: 'success', text: t('settings.saved') || 'Language saved successfully!' });
         setEditingLang(null);
         setFormData({ code: '', name: '', native_name: '', direction: 'ltr' });
         loadLanguages();
+        sessionStorage.setItem('oasis_translations_dirty', Date.now().toString());
         setTimeout(() => setMessage(null), 3000);
       } else {
         const data = await res.data;
@@ -104,6 +105,7 @@ export default function LanguageSettingsPage() {
       const res = await api.delete(`/api/admin/languages/${code}`);
       if (res.ok) {
         loadLanguages();
+        sessionStorage.setItem('oasis_translations_dirty', Date.now().toString());
       } else {
         const data = await res.data;
         alert(data.error || 'Failed to delete language');
@@ -119,6 +121,7 @@ export default function LanguageSettingsPage() {
       const res = await api.post(`/api/admin/languages/${code}/set-default`);
       if (res.ok) {
         loadLanguages();
+        sessionStorage.setItem('oasis_translations_dirty', Date.now().toString());
       } else {
         const data = await res.data;
         alert(data.error || 'Failed to set default language');
@@ -134,6 +137,7 @@ export default function LanguageSettingsPage() {
       const res = await api.put(`/api/admin/languages/${lang.code}`, { is_active: !lang.is_active });
       if (res.ok) {
         loadLanguages();
+        sessionStorage.setItem('oasis_translations_dirty', Date.now().toString());
       } else {
         const data = await res.data;
         alert(data.error || 'Failed to update language');
@@ -148,9 +152,13 @@ export default function LanguageSettingsPage() {
     try {
       const res = await api.put(`/api/admin/translations/${id}`, { value });
       if (res.ok) {
+        // 1. Update local state
         setTranslations(prev => prev.map(t => 
           t.id === id ? { ...t, value } : t
         ));
+        
+        // 2. Mark translations as dirty for cache busting
+        sessionStorage.setItem('oasis_translations_dirty', Date.now().toString());
       } else {
         console.error('Failed to save translation:', res.status);
       }
