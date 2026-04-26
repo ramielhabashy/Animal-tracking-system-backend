@@ -19,9 +19,7 @@ class AnimalCrudTest extends TestCase
             'manage_animals', 'manage_devices', 'manage_users', 
             'manage_geofences', 'manage_auctions'
         ]);
-        $this->user->assignRole('Owner');
         $this->otherUser->givePermissionTo(['manage_animals']);
-        $this->otherUser->assignRole('Owner');
         $this->authAs($this->user);
     }
 
@@ -30,6 +28,7 @@ class AnimalCrudTest extends TestCase
         $uniqueId = uniqid('ANI');
         return \App\Models\Animal::create([
             'animal_id' => $overrides['animal_id'] ?? $uniqueId,
+            'name' => $overrides['name'] ?? 'Test Animal',
             'species' => $overrides['species'] ?? 'Sheep',
             'breed' => $overrides['breed'] ?? 'Merino',
             'date_of_birth' => $overrides['date_of_birth'] ?? now()->subYears(2),
@@ -76,22 +75,49 @@ class AnimalCrudTest extends TestCase
 
     public function test_owner_can_view_their_animal(): void
     {
-        $this->markTestSkipped('Skipped - auth issue with role check');
+        $animal = $this->createAnimal(['owner_id' => $this->user->id]);
+
+        $response = $this->getJson("/api/animals/{$animal->id}");
+
+        $response->assertStatus(200)
+            ->assertJsonPath('data.id', $animal->id);
     }
 
     public function test_owner_cannot_view_other_owner_animal(): void
     {
-        $this->markTestSkipped('Skipped - auth issue with role check');
+        $animal = $this->createAnimal(['owner_id' => $this->otherUser->id]);
+
+        $response = $this->getJson("/api/animals/{$animal->id}");
+
+        $response->assertStatus(403);
     }
 
     public function test_owner_can_update_their_animal(): void
     {
-        $this->markTestSkipped('Skipped - auth issue with role check');
+        $animal = $this->createAnimal(['owner_id' => $this->user->id]);
+
+        $response = $this->putJson("/api/animals/{$animal->id}", [
+            'species' => 'Goat',
+            'breed' => 'Boer',
+        ]);
+
+        $response->assertStatus(200)
+            ->assertJsonPath('data.species', 'Goat');
+
+        $this->assertDatabaseHas('animals', [
+            'id' => $animal->id,
+            'species' => 'Goat',
+        ]);
     }
 
     public function test_owner_can_delete_their_animal(): void
     {
-        $this->markTestSkipped('Skipped - auth issue with role check');
+        $animal = $this->createAnimal(['owner_id' => $this->user->id]);
+
+        $response = $this->deleteJson("/api/animals/{$animal->id}");
+
+        $response->assertStatus(200);
+        $this->assertDatabaseMissing('animals', ['id' => $animal->id]);
     }
 
     public function test_animal_creation_requires_required_fields(): void

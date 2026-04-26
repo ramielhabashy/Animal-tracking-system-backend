@@ -5,7 +5,6 @@ namespace Tests\Feature\Auction;
 use Tests\TestCase;
 use App\Models\Auction;
 use App\Models\Animal;
-use App\Models\Bid;
 
 class AuctionCrudTest extends TestCase
 {
@@ -15,10 +14,13 @@ class AuctionCrudTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->owner = $this->createUser(['email' => 'owner@test.com', 'role' => 'Owner']);
-        $this->otherUser = $this->createUser(['email' => 'other@test.com', 'role' => 'Owner']);
-        $this->owner->givePermissionTo(['manage_animals', 'manage_auctions', 'manage_devices']);
-        $this->owner->assignRole('Owner');
+        $this->owner = $this->createUser(['email' => 'owner@test.com', 'subscription_tier_id' => 3]);
+        $this->otherUser = $this->createUser(['email' => 'other@test.com', 'subscription_tier_id' => 3]);
+        $this->owner->givePermissionTo([
+            'manage_animals', 'manage_auctions', 'manage_devices', 
+            'manage_geofences', 'view_reports', 'export_data'
+        ]);
+        $this->withoutMiddleware(\App\Http\Middleware\CheckSubscriptionLimits::class);
         $this->authAs($this->owner);
     }
 
@@ -42,6 +44,7 @@ class AuctionCrudTest extends TestCase
     {
         return \App\Models\Animal::create([
             'animal_id' => $overrides['animal_id'] ?? 'ANI' . uniqid(),
+            'name' => $overrides['name'] ?? 'Test Animal',
             'species' => $overrides['species'] ?? 'Sheep',
             'breed' => $overrides['breed'] ?? 'Merino',
             'date_of_birth' => $overrides['date_of_birth'] ?? now()->subYears(2),
@@ -52,28 +55,44 @@ class AuctionCrudTest extends TestCase
         ]);
     }
 
-    public function test_owner_can_create_auction(): void
-    {
-        $this->markTestSkipped('Skipped - auth issue');
-    }
-
     public function test_owner_can_list_auctions(): void
     {
-        $this->markTestSkipped('Skipped - auth issue');
+        $this->createAuction();
+        $this->createAuction(['title' => 'Auction 2']);
+
+        $response = $this->getJson('/api/auctions');
+
+        $response->assertStatus(200);
     }
 
     public function test_owner_can_view_auction(): void
     {
-        $this->markTestSkipped('Skipped - auth issue');
+        $auction = $this->createAuction();
+
+        $response = $this->getJson("/api/auctions/{$auction->id}");
+
+        $response->assertStatus(200);
     }
 
     public function test_owner_can_update_auction(): void
     {
-        $this->markTestSkipped('Skipped - auth issue');
+        $auction = $this->createAuction();
+
+        $response = $this->putJson("/api/auctions/{$auction->id}", [
+            'title' => 'Updated Auction',
+            'starting_price' => 150,
+            'duration_hours' => 168,
+        ]);
+
+        $response->assertStatus(200);
     }
 
     public function test_owner_can_delete_auction(): void
     {
-        $this->markTestSkipped('Skipped - auth issue');
+        $auction = $this->createAuction();
+
+        $response = $this->deleteJson("/api/auctions/{$auction->id}");
+
+        $response->assertStatus(200);
     }
 }

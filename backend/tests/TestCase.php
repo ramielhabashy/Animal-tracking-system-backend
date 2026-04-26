@@ -96,15 +96,18 @@ abstract class TestCase extends BaseTestCase
     {
         $tierId = $overrides['subscription_tier_id'] ?? 2;
         
-        return \App\Models\User::create([
+        $user = \App\Models\User::create([
             'name' => $overrides['name'] ?? 'Test User',
             'email' => $overrides['email'] ?? 'test@example.com',
             'password' => bcrypt('password123'),
             'phone' => $overrides['phone'] ?? '+1234567890',
-            'role' => $overrides['role'] ?? 'Owner',
             'is_active' => true,
             'subscription_tier_id' => $tierId,
         ]);
+        
+        $user->assignRole($overrides['role'] ?? 'Owner');
+        
+        return $user;
     }
 
     protected function createAnimal(array $overrides = []): \App\Models\Animal
@@ -154,6 +157,7 @@ abstract class TestCase extends BaseTestCase
     protected function authAs(\App\Models\User $user): void
     {
         $this->user = $user;
+        $user->refresh();
         $this->actingAs($user);
     }
 }
