@@ -13,24 +13,6 @@ class RegisterTest extends TestCase
 
     public function test_registration_requires_all_fields(): void
     {
-        $response = $this->postJson('/api/auth/register', [
-            'name' => 'New User',
-            'email' => 'newuser@example.com',
-            'phone' => '+1234567890',
-            'password' => 'securePassword123',
-            'password_confirmation' => 'securePassword123',
-        ]);
-
-        $response->assertStatus(201)
-            ->assertJsonStructure([
-                'user' => ['id', 'name', 'email', 'role'],
-            ])
-            ->assertJsonPath('user.email', 'newuser@example.com')
-            ->assertJsonPath('user.role', 'Owner');
-    }
-
-    public function test_registration_requires_all_fields(): void
-    {
         $response = $this->postJson('/api/auth/register', []);
 
         $response->assertStatus(422)

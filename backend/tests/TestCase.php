@@ -28,6 +28,32 @@ abstract class TestCase extends BaseTestCase
     protected function seedDatabase(): void
     {
         $this->seedSubscriptionTiers();
+        $this->seedPermissions();
+    }
+
+    protected function seedPermissions(): void
+    {
+        $roles = ['Admin', 'Owner', 'Veterinarian', 'Shepherd', 'Manager'];
+        foreach ($roles as $role) {
+            \Spatie\Permission\Models\Role::firstOrCreate(['name' => $role, 'guard_name' => 'web']);
+        }
+
+        $permissions = [
+            'manage_animals',
+            'manage_devices',
+            'manage_users',
+            'manage_geofences',
+            'manage_auctions',
+            'manage_medical_records',
+            'manage_tasks',
+            'manage_vaccinations',
+            'view_reports',
+            'export_data',
+        ];
+
+        foreach ($permissions as $permission) {
+            \Spatie\Permission\Models\Permission::firstOrCreate(['name' => $permission, 'guard_name' => 'web']);
+        }
     }
 
     protected function seedSubscriptionTiers(): void
