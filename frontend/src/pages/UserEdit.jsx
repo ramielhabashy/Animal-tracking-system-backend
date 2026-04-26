@@ -20,10 +20,11 @@ export default function UserEdit() {
     subscription_tier_id: '',
     password: '',
   });
-  const [tiers, setTiers] = useState([]);
+const [tiers, setTiers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState(null);
+  const [availableRoles, setAvailableRoles] = useState([]);
 
   useEffect(() => {
     fetchData();
@@ -31,10 +32,11 @@ export default function UserEdit() {
 
 const fetchData = async () => {
     try {
-      const [userRes, tiersRes, rolesRes] = await Promise.all([
+      const [userRes, tiersRes, rolesRes, availableRolesRes] = await Promise.all([
         apiFetch(`/api/users/${id}`),
         apiFetch('/api/subscription/tiers'),
         apiFetch(`/api/admin/users/${id}/roles`),
+        apiFetch('/api/admin/roles'),
       ]);
       
       if (userRes.ok) {
@@ -62,6 +64,11 @@ const fetchData = async () => {
       if (tiersRes.ok) {
         const tiersData = await tiersRes.json();
         setTiers(tiersData.data || []);
+      }
+      
+      if (availableRolesRes.ok) {
+        const availableRolesData = await availableRolesRes.json();
+        setAvailableRoles(availableRolesData.roles || []);
       }
     } catch (err) {
       console.error('Failed to fetch data:', err);
@@ -190,7 +197,7 @@ const fetchData = async () => {
                 />
               </div>
 
-              <div>
+<div>
                 <label className={`block text-xs font-bold text-[#404943] uppercase tracking-wider mb-2 ${isRtl ? 'text-right' : ''}`}>{t('users.role')}</label>
                 <div className="relative">
                   <select
@@ -198,10 +205,20 @@ const fetchData = async () => {
                     onChange={e => set('role', e.target.value)}
                     className="input-field appearance-none pr-12"
                   >
-                    <option value="Shepherd">{t('users.shepherd')}</option>
-                    <option value="Manager">{t('users.manager')}</option>
-                    <option value="Owner">{t('users.owner')}</option>
-                    <option value="Admin">{t('users.admin')}</option>
+                    {availableRoles.length > 0 ? (
+                      availableRoles.map(roleItem => (
+                        <option key={roleItem.name || roleItem} value={roleItem.name || roleItem}>
+                          {t(`users.${(roleItem.name || roleItem).toLowerCase()}`) || roleItem.name || roleItem}
+                        </option>
+                      ))
+                    ) : (
+                      <>
+                        <option value="Shepherd">{t('users.shepherd')}</option>
+                        <option value="Manager">{t('users.manager')}</option>
+                        <option value="Owner">{t('users.owner')}</option>
+                        <option value="Admin">{t('users.admin')}</option>
+                      </>
+                    )}
                   </select>
                   <MaterialSymbol icon="expand_more" className={`absolute top-1/2 -translate-y-1/2 text-[#002819]/40 pointer-events-none ${isRtl ? 'left-4 right-auto' : 'right-4'}`} />
                 </div>

@@ -17,7 +17,8 @@ const [showAddModal, setShowAddModal] = useState(false);
   const [selectedRole, setSelectedRole] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
   const [message, setMessage] = useState(null);
-  const [expandedOwners, setExpandedOwners] = useState({});
+const [expandedOwners, setExpandedOwners] = useState({});
+  const [availableRoles, setAvailableRoles] = useState([]);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -46,15 +47,21 @@ const [showAddModal, setShowAddModal] = useState(false);
 
 const fetchData = async () => {
     try {
-      const usersRes = await apiFetch('/api/users');
+      const [usersRes, rolesRes] = await Promise.all([
+        apiFetch('/api/users'),
+        apiFetch('/api/admin/roles'),
+      ]);
       if (usersRes.ok) {
         const data = await usersRes.json();
-        // Handle format: {value: [...]} or {data: [...]} or []
         const usersArray = data.data || data.value || data || [];
         setAllUsers(usersArray);
       }
+      if (rolesRes.ok) {
+        const rolesData = await rolesRes.json();
+        setAvailableRoles(rolesData.roles || []);
+      }
     } catch (error) {
-      console.error('Failed to fetch users:', error);
+      console.error('Failed to fetch data:', error);
     } finally {
       setLoading(false);
     }
@@ -425,14 +432,22 @@ const handleRemoveMember = async (memberId) => {
                 </div>
               )}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('users.role')}</label>
+<label className="block text-sm font-medium text-gray-700 mb-1">{t('users.role')}</label>
                 <select
                   value={formData.role}
                   onChange={(e) => setFormData({ ...formData, role: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-200 rounded-lg"
                 >
-                  <option value="Shepherd">{t('users.shepherd')}</option>
-                  <option value="Manager">{t('users.manager')}</option>
+                  {availableRoles.length > 0 ? (
+                    availableRoles.map(r => (
+                      <option key={r.name} value={r.name}>{t(`users.${r.name.toLowerCase()}`) || r.name}</option>
+                    ))
+                  ) : (
+                    <>
+                      <option value="Shepherd">{t('users.shepherd')}</option>
+                      <option value="Manager">{t('users.manager')}</option>
+                    </>
+                  )}
                 </select>
               </div>
               <div>
@@ -513,12 +528,20 @@ const handleRemoveMember = async (memberId) => {
                   onChange={(e) => setSelectedRole(e.target.value)}
                   className="w-full px-4 py-2 border border-gray-200 rounded-lg"
                 >
-                  <option value="Shepherd">{t('users.shepherd')}</option>
-                  <option value="Manager">{t('users.manager')}</option>
-                  {isAdmin && (
+                  {availableRoles.length > 0 ? (
+                    availableRoles.map(r => (
+                      <option key={r.name} value={r.name}>{t(`users.${r.name.toLowerCase()}`) || r.name}</option>
+                    ))
+                  ) : (
                     <>
-                      <option value="Owner">{t('users.owner')}</option>
-                      <option value="Admin">{t('users.admin')}</option>
+                      <option value="Shepherd">{t('users.shepherd')}</option>
+                      <option value="Manager">{t('users.manager')}</option>
+                      {isAdmin && (
+                        <>
+                          <option value="Owner">{t('users.owner')}</option>
+                          <option value="Admin">{t('users.admin')}</option>
+                        </>
+                      )}
                     </>
                   )}
                 </select>

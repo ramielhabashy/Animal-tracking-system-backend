@@ -1,5 +1,4 @@
-import React from 'react';
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MaterialSymbol } from 'react-material-symbols';
 import { apiFetch } from '../utils/api';
@@ -21,6 +20,24 @@ export default function UserCreate() {
   });
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState(null);
+  const [availableRoles, setAvailableRoles] = useState([]);
+
+  useEffect(() => {
+    loadRoles();
+  }, []);
+
+  const loadRoles = async () => {
+    try {
+      const res = await apiFetch('/api/admin/roles');
+      if (res.ok) {
+        const data = await res.json();
+        const roles = data.roles || [];
+        setAvailableRoles(roles.map(r => r.name));
+      }
+    } catch (err) {
+      console.error('Failed to load roles:', err);
+    }
+  };
 
   const set = (field, value) => setForm(f => ({ ...f, [field]: value }));
 
@@ -108,7 +125,7 @@ export default function UserCreate() {
             />
           </div>
 
-          <div>
+<div>
             <label className="block text-xs font-bold text-[#404943] uppercase tracking-wider mb-2 ml-1">{t('users.role')}</label>
             <div className="relative">
               <select
@@ -116,10 +133,18 @@ export default function UserCreate() {
                 onChange={e => set('role', e.target.value)}
                 className="w-full appearance-none bg-[#e8e8e3] border-none rounded-xl p-4 focus:ring-2 focus:ring-[#06402B]/20 transition outline-none pr-10"
               >
-                {isAdmin && <option value="Admin">{t('users.admin')}</option>}
-                <option value="Owner">{t('users.owner')}</option>
-                <option value="Manager">{t('users.manager')}</option>
-                <option value="Shepherd">{t('users.shepherd')}</option>
+                {availableRoles.length > 0 ? (
+                  availableRoles.map(roleName => (
+                    <option key={roleName} value={roleName}>{t(`users.${roleName.toLowerCase()}`) || roleName}</option>
+                  ))
+                ) : (
+                  <>
+                    {isAdmin && <option value="Admin">{t('users.admin')}</option>}
+                    <option value="Owner">{t('users.owner')}</option>
+                    <option value="Manager">{t('users.manager')}</option>
+                    <option value="Shepherd">{t('users.shepherd')}</option>
+                  </>
+                )}
               </select>
               <MaterialSymbol icon="expand_more" className="absolute right-4 top-1/2 -translate-y-1/2 text-[#002819]/40 pointer-events-none" />
             </div>
