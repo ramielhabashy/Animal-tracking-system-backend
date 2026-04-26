@@ -195,6 +195,7 @@ Route::get('/export/database', [ExportController::class, 'exportDatabase'])->mid
 
 Route::get('/languages', [LanguageController::class, 'index']);
 Route::get('/translations', [LanguageController::class, 'translations']);
+Route::get('/translations-all', [LanguageController::class, 'translations']);
 Route::get('/translations/{group}', [LanguageController::class, 'getTranslationsByGroup']);
 Route::get('/languages/{code}', [LanguageController::class, 'show']);
 
