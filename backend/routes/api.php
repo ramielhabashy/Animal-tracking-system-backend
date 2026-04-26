@@ -51,9 +51,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/auth/features', [AuthController::class, 'features']);
 });
 
-Route::get('/ai/status', [AIController::class, 'status']);
-Route::post('/ai/chat', [AIController::class, 'chat']);
-
 Route::get('/dashboard', [DashboardController::class, 'index']);
 Route::get('/reports', [ReportsController::class, 'index']);
 

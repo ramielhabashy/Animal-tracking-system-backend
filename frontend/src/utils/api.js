@@ -1,4 +1,4 @@
-import { getAuthUser, getAuthToken, getUserRole, getLocale } from './cookies';
+import { getAuthUser, getAuthToken, getLocale } from './cookies';
 
 export const getStoredLocale = getLocale;
 export const setStoredLocale = (locale) => {
@@ -10,7 +10,6 @@ export const setStoredLocale = (locale) => {
 export const getAuthHeaders = () => {
   const user = getAuthUser();
   const token = getAuthToken();
-  const userRole = getUserRole();
   const locale = getStoredLocale();
   
   const headers = {
@@ -22,11 +21,8 @@ export const getAuthHeaders = () => {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  if (user) {
-    if (user && user.id) {
-      headers['X-User-Id'] = String(user.id);
-      headers['X-User-Role'] = userRole || user?.role || 'Owner';
-    }
+  if (user && user.id) {
+    headers['X-User-Id'] = String(user.id);
   }
 
   return headers;
