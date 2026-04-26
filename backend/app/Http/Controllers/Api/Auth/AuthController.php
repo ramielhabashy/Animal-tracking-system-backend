@@ -73,7 +73,6 @@ class AuthController extends Controller
             'subscription_tier_id' => $freeTier?->id,
         ]);
 
-        // Assign default Owner role via Spatie
         $user->assignRole('Owner');
 
         $token = $user->createToken('auth-token')->plainTextToken;
