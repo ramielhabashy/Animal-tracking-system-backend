@@ -51,7 +51,31 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/auth/features', [AuthController::class, 'features']);
 });
 
-Route::get('/dashboard', [DashboardController::class, 'index']);
+Route::get('/dashboard', function(\Illuminate\Http\Request $request) {
+    $user = $request->user();
+    
+    if (!$user) {
+        return response()->json(['error' => 'Unauthenticated'], 401);
+    }
+    
+    $userId = $user->id;
+    
+    $totalAnimals = \App\Models\Animal::where('owner_id', $userId)->count();
+    $totalGeofences = \App\Models\Geofence::where('owner_id', $userId)->count();
+    $pendingTasks = \App\Models\Task::where('assigned_to', $userId)
+        ->where('status', 'pending')
+        ->count();
+    $devices = \App\Models\Device::where('owner_id', $userId)->count();
+    
+    return response()->json([
+        'total_animals' => $totalAnimals,
+        'active_alerts' => 0,
+        'total_geofences' => $totalGeofences,
+        'pending_tasks' => $pendingTasks,
+        'healthy_count' => $totalAnimals,
+        'total_devices' => $devices,
+    ]);
+})->middleware('auth:sanctum');
 Route::get('/reports', [ReportsController::class, 'index']);
 
 Route::apiResource('animals', AnimalController::class)->middleware('limits:animals');
