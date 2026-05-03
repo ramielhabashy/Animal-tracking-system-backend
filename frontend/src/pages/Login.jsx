@@ -295,6 +295,7 @@ const handleSubmit = async (e) => {
           </div>
         </div>
       </div>
+    </div>
 
       <footer className={`mt-auto w-full py-8 px-12 z-20 ${isRtl ? 'flex-row-reverse' : ''}`}>
         <div className={`flex justify-between items-center max-w-screen-2xl mx-auto ${isRtl ? 'flex-row-reverse' : ''}`}>
@@ -306,4 +307,5 @@ const handleSubmit = async (e) => {
     </div>
   );
 }
+
 
