@@ -94,8 +94,9 @@ const handleSubmit = async (e) => {
         />
       </div>
 
-      <div className="relative z-10 w-full max-w-md mx-6">
-        <div className="bg-white/95 backdrop-blur-xl p-10 md:p-12 rounded-3xl shadow-[0_24px_64px_rgba(6,64,43,0.15)]">
+      <div className="flex-1 flex items-center justify-center w-full px-6">
+        <div className="relative z-10 w-full max-w-md">
+          <div className="bg-white/95 backdrop-blur-xl p-10 md:p-12 rounded-3xl shadow-[0_24px_64px_rgba(6,64,43,0.15)]">
           <div className="flex flex-col items-center mb-10">
             <div className="w-18 h-18 bg-gradient-to-br from-[#002819] to-[#06402B] rounded-2xl flex items-center justify-center mb-5 shadow-xl shadow-[#002819]/30">
               <MaterialSymbol icon="track_changes" size={36} className="text-[#D4AF37]" weight="fill" />
