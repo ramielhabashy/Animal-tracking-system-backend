@@ -120,11 +120,16 @@ export function I18nProvider({ children }) {
     // Helper to extract just the key part without group prefix
     const getShortKey = (k) => k.includes('.') ? k.split('.').pop() : k;
     const shortKey = getShortKey(key);
-    
+
+    // Check if value is corrupted (contains "?" which indicates bad encoding)
+    const isCorrupted = (val) => typeof val === 'string' && /^[\s?]*$/.test(val);
+
     // Try full key in API translations (e.g., common.edit)
     let value = getNestedValue(apiTranslations[locale], key);
+    if (isCorrupted(value)) value = null;
     // Try short key in API translations (e.g., edit)
     if (!value) value = getNestedValue(apiTranslations[locale], shortKey);
+    if (isCorrupted(value)) value = null;
     // Try full key in local translations
     if (!value) value = getNestedValue(localTranslations[locale], key);
     // Try short key in local translations
