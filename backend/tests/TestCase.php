@@ -15,12 +15,7 @@ abstract class TestCase extends BaseTestCase
     {
         parent::setUp();
         
-        config(['database.default' => 'sqlite']);
-        config(['database.connections.sqlite' => [
-            'driver' => 'sqlite',
-            'database' => ':memory:',
-            'prefix' => '',
-        ]]);
+        // Using MySQL for testing - configured in phpunit.xml or .env.testing
         
         $this->seedDatabase();
     }
