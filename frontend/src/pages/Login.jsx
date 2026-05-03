@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { MaterialSymbol } from 'react-material-symbols';
 import { useAuth as useAuthContext } from '../context/AuthContext';
 import { useI18n } from '../i18n';
+import LanguageSwitcher from '../i18n/LanguageSwitcher';
 import { usePlatform } from '../context/PlatformContext';
 import { setAuthToken, setAuthUser, setUserRole, setPendingSubscription } from '../utils/cookies';
 
@@ -31,7 +32,9 @@ const handleSubmit = async (e) => {
     setError('');
     
     if (isLogin) {
+      console.log('Attempting login with:', email);
       const success = await login(email, password);
+      console.log('Login result:', success);
       if (success) {
         navigate('/dashboard');
       } else {
@@ -75,7 +78,10 @@ const handleSubmit = async (e) => {
   };
 
   return (
-    <div className={`min-h-screen flex items-center justify-center relative overflow-hidden bg-gradient-to-br from-[#FAF1F5] via-[#F4F4EF] to-[#E3E3DE] ${isRtl ? 'rtl' : 'ltr'}`}>
+    <div className={`min-h-screen flex flex-col relative overflow-hidden bg-gradient-to-br from-[#FAF1F5] via-[#F4F4EF] to-[#E3E3DE] ${isRtl ? 'rtl' : 'ltr'}`}>
+      <div className="absolute top-6 right-6 z-20">
+        <LanguageSwitcher />
+      </div>
       <div className="absolute inset-0 z-0">
         <div className="absolute inset-0 bg-[#eeeee9]/30" />
         <div
@@ -289,7 +295,7 @@ const handleSubmit = async (e) => {
         </div>
       </div>
 
-      <footer className={`absolute bottom-0 w-full py-8 px-12 z-20 ${isRtl ? 'flex-row-reverse' : ''}`}>
+      <footer className={`mt-auto w-full py-8 px-12 z-20 ${isRtl ? 'flex-row-reverse' : ''}`}>
         <div className={`flex justify-between items-center max-w-screen-2xl mx-auto ${isRtl ? 'flex-row-reverse' : ''}`}>
             <p className="text-white/80 font-medium text-sm">
             © 2024 {platformName}. Digital Majlis.
