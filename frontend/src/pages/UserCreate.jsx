@@ -31,7 +31,10 @@ export default function UserCreate() {
       const res = await apiFetch('/api/admin/roles');
       if (res.ok) {
         const data = await res.json();
-        const roles = data.roles || [];
+        let roles = data.roles || [];
+        if (!isAdmin) {
+          roles = roles.filter(r => r.name !== 'Admin' && r.name !== 'Owner');
+        }
         setAvailableRoles(roles.map(r => r.name));
       }
     } catch (err) {
@@ -140,7 +143,7 @@ export default function UserCreate() {
                 ) : (
                   <>
                     {isAdmin && <option value="Admin">{t('users.admin')}</option>}
-                    <option value="Owner">{t('users.owner')}</option>
+                    {isAdmin && <option value="Owner">{t('users.owner')}</option>}
                     <option value="Manager">{t('users.manager')}</option>
                     <option value="Shepherd">{t('users.shepherd')}</option>
                   </>

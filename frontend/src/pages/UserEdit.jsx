@@ -4,12 +4,15 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { MaterialSymbol } from 'react-material-symbols';
 import { apiFetch } from '../utils/api';
 import { useI18n } from '../i18n';
+import { useAuth } from '../context/AuthContext';
 
 export default function UserEdit() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { t, dir } = useI18n();
+  const { user: currentUser } = useAuth();
   const isRtl = dir === 'rtl';
+  const isAdmin = currentUser?.role === 'Admin';
   
   const [form, setForm] = useState({
     name: '',
@@ -67,8 +70,14 @@ const fetchData = async () => {
       }
       
       if (availableRolesRes.ok) {
-        const availableRolesData = await availableRolesRes.json();
-        setAvailableRoles(availableRolesData.roles || []);
+        let availableRolesData = await availableRolesRes.json();
+        let roles = availableRolesData.roles || [];
+        
+        if (!isAdmin) {
+          roles = roles.filter(r => r.name !== 'Admin' && r.name !== 'Owner');
+        }
+        
+        setAvailableRoles(roles);
       }
     } catch (err) {
       console.error('Failed to fetch data:', err);
@@ -197,30 +206,40 @@ const fetchData = async () => {
                 />
               </div>
 
-<div>
+              <div>
                 <label className={`block text-xs font-bold text-[#404943] uppercase tracking-wider mb-2 ${isRtl ? 'text-right' : ''}`}>{t('users.role')}</label>
                 <div className="relative">
-                  <select
-                    value={form.role}
-                    onChange={e => set('role', e.target.value)}
-                    className="input-field appearance-none pr-12"
-                  >
-                    {availableRoles.length > 0 ? (
-                      availableRoles.map(roleItem => (
-                        <option key={roleItem.name || roleItem} value={roleItem.name || roleItem}>
-                          {t(`users.${(roleItem.name || roleItem).toLowerCase()}`) || roleItem.name || roleItem}
-                        </option>
-                      ))
-                    ) : (
-                      <>
-                        <option value="Shepherd">{t('users.shepherd')}</option>
-                        <option value="Manager">{t('users.manager')}</option>
-                        <option value="Owner">{t('users.owner')}</option>
-                        <option value="Admin">{t('users.admin')}</option>
-                      </>
-                    )}
-                  </select>
-                  <MaterialSymbol icon="expand_more" className={`absolute top-1/2 -translate-y-1/2 text-[#002819]/40 pointer-events-none ${isRtl ? 'left-4 right-auto' : 'right-4'}`} />
+                  {isAdmin ? (
+                    <select
+                      value={form.role}
+                      onChange={e => set('role', e.target.value)}
+                      className="input-field appearance-none pr-12"
+                    >
+                      {availableRoles.length > 0 ? (
+                        availableRoles.map(roleItem => (
+                          <option key={roleItem.name || roleItem} value={roleItem.name || roleItem}>
+                            {t(`users.${(roleItem.name || roleItem).toLowerCase()}`) || roleItem.name || roleItem}
+                          </option>
+                        ))
+                      ) : (
+                        <>
+                          <option value="Shepherd">{t('users.shepherd')}</option>
+                          <option value="Manager">{t('users.manager')}</option>
+                          <option value="Owner">{t('users.owner')}</option>
+                          <option value="Admin">{t('users.admin')}</option>
+                        </>
+                      )}
+                    </select>
+                  ) : (
+                    <input
+                      value={t(`users.${form.role.toLowerCase()}`) || form.role}
+                      disabled
+                      className="input-field bg-[#e8e8e3] cursor-not-allowed"
+                    />
+                  )}
+                  {isAdmin && (
+                    <MaterialSymbol icon="expand_more" className={`absolute top-1/2 -translate-y-1/2 text-[#002819]/40 pointer-events-none ${isRtl ? 'left-4 right-auto' : 'right-4'}`} />
+                  )}
                 </div>
               </div>
             </div>

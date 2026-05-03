@@ -67,9 +67,14 @@ class UserController extends Controller
         }
         
         $role = $this->getAuthRole($request);
+        $targetRole = $targetUser->getPrimaryRoleName();
         
         if ($role === 'Admin') {
             return true;
+        }
+        
+        if ($targetRole === 'Admin') {
+            return false;
         }
         
         if (($role === 'Owner' || $role === 'Veterinarian') && $targetUser->managed_by == $authUser->id) {
@@ -183,8 +188,8 @@ class UserController extends Controller
         ];
         
         if ($authRole === 'Owner') {
-            if (!in_array($requestedRole, ['Doctor', 'Shepherd'])) {
-                return response()->json(['message' => 'Owner can only add Doctor or Shepherd roles'], 403);
+            if (!in_array($requestedRole, ['Manager', 'Doctor', 'Shepherd'])) {
+                return response()->json(['message' => 'Owner can only add Manager, Doctor, or Shepherd roles'], 403);
             }
             $userData['managed_by'] = $authUser->id;
         } elseif ($authRole === 'Admin') {

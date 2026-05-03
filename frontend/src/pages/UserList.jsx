@@ -25,6 +25,7 @@ export default function UserList() {
   const [totalUsers, setTotalUsers] = useState(0);
   
   const isAdmin = user?.role === 'Admin';
+  const isOwner = user?.role === 'Owner';
 
   useEffect(() => {
     fetchData();
@@ -62,12 +63,17 @@ const fetchData = async () => {
     }
   };
 
-  const filteredUsers = users.filter((user) => {
+  const filteredUsers = users.filter((u) => {
     const search = searchQuery.toLowerCase();
+    
+    if (isOwner && u.role === 'Admin') {
+      return false;
+    }
+    
     return (
-      user.name?.toLowerCase().includes(search) ||
-      user.email?.toLowerCase().includes(search) ||
-      user.phone?.includes(searchQuery)
+      u.name?.toLowerCase().includes(search) ||
+      u.email?.toLowerCase().includes(search) ||
+      u.phone?.includes(searchQuery)
     );
   });
 
@@ -211,12 +217,16 @@ const fetchData = async () => {
                   </td>
                   <td className={`px-6 py-5 ${isRtl ? 'text-left' : 'text-right'}`}>
                     <div className={`flex items-center gap-1 ${isRtl ? 'justify-start' : 'justify-end'}`}>
-                      <Link to={`/users/${user.id}/edit`} className="p-3 text-[#717973] hover:text-[#002819] hover:bg-[#F4F4EF] rounded-xl transition-all">
-                        <MaterialSymbol icon="edit" size={20} />
-                      </Link>
-                      <button onClick={() => handleDelete(user.id)} className="p-3 text-[#717973] hover:text-[#BA1A1A] hover:bg-[#ffdad6]/50 rounded-xl transition-all">
-                        <MaterialSymbol icon="delete" size={20} />
-                      </button>
+                      {!isOwner || (isOwner && user.role !== 'Admin') ? (
+                        <>
+                          <Link to={`/users/${user.id}/edit`} className="p-3 text-[#717973] hover:text-[#002819] hover:bg-[#F4F4EF] rounded-xl transition-all">
+                            <MaterialSymbol icon="edit" size={20} />
+                          </Link>
+                          <button onClick={() => handleDelete(user.id)} className="p-3 text-[#717973] hover:text-[#BA1A1A] hover:bg-[#ffdad6]/50 rounded-xl transition-all">
+                            <MaterialSymbol icon="delete" size={20} />
+                          </button>
+                        </>
+                      ) : null}
                     </div>
                   </td>
                 </tr>
