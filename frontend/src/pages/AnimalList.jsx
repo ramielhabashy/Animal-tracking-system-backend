@@ -41,7 +41,7 @@ export default function AnimalList() {
   const [ownerFilter, setOwnerFilter] = useState('all');
   
   const [currentPage, setCurrentPage] = useState(1);
-  const [perPage, setPerPage] = useState(10);
+  const [perPage, setPerPage] = useState(100);
   const [totalAnimals, setTotalAnimals] = useState(0);
   const [stats, setStats] = useState({ assigned: 0, unassigned: 0 });
   
@@ -161,6 +161,7 @@ export default function AnimalList() {
     const search = debouncedSearch.toLowerCase();
     const matchesSearch = !debouncedSearch || 
       animal.animal_id?.toLowerCase().includes(search) ||
+      animal.name?.toLowerCase().includes(search) ||
       animal.breed?.toLowerCase().includes(search) ||
       animal.species?.toLowerCase().includes(search);
     

@@ -22,6 +22,7 @@ class AnimalController extends Controller
     {
         $query = Animal::with(['owner','device', 'groups', 'geofences']);
         $query = $this->filterByOwner($request, $query);
+        $query = $query->orderBy('created_at', 'desc');
         
         $perPage = $request->input('per_page', 100);
         $animals = $query->paginate($perPage);
