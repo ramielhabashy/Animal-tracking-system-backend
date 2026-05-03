@@ -8,6 +8,7 @@
 :root {
   --primary: #002819;
   --primary-container: #06402B;
+  --primary-container-rgb: 6, 64, 43;
   --tertiary: #D4AF37;
   --tertiary-container: #735C00;
   --surface: #FAF1F5;
@@ -128,12 +129,12 @@ h1, h2, h3, .font-headline {
 
 /* Global Select Styling - Outside layer for higher specificity */
 select {
-  background-color: #F4F4EF !important;
+  background-color: var(--surface-container-low) !important;
   border-radius: 12px !important;
   padding: 12px 42px 12px 12px !important;
   font-size: 14px !important;
   font-weight: 500 !important;
-  color: #002819 !important;
+  color: var(--on-surface) !important;
   border: none !important;
   transition: all 0.2s ease !important;
   cursor: pointer !important;
@@ -147,12 +148,12 @@ select {
 
 select:focus {
   outline: none !important;
-  box-shadow: 0 0 0 3px rgba(6, 64, 43, 0.15), 0 0 0 4px rgba(6, 64, 43, 0.08) !important;
-  background-color: #FFFFFF !important;
+  box-shadow: 0 0 0 3px rgba(var(--primary-container-rgb), 0.15), 0 0 0 4px rgba(var(--primary-container-rgb), 0.08) !important;
+  background-color: var(--surface-container-lowest) !important;
 }
 
 select:hover {
-  background-color: #E3E3DE !important;
+  background-color: var(--surface-container-high) !important;
 }
 
 [dir="rtl"] select {

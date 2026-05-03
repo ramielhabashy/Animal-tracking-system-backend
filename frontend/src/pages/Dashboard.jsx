@@ -18,10 +18,10 @@ const createCustomIcon = () => {
       <div style="
         width: 32px;
         height: 32px;
-        background: linear-gradient(135deg, #002819, #06402B);
+        background: linear-gradient(135deg, var(--primary), var(--primary-container));
         border-radius: 50%;
-        border: 3px solid #D4AF37;
-        box-shadow: 0 4px 12px rgba(6,64,43,0.3);
+        border: 3px solid var(--tertiary);
+        box-shadow: 0 4px 12px rgba(var(--primary-container-rgb), 0.3);
         display: flex;
         align-items: center;
         justify-content: center;

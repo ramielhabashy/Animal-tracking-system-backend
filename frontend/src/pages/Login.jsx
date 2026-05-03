@@ -85,12 +85,7 @@ const handleSubmit = async (e) => {
       <div className="absolute inset-0 z-0">
         <div className="absolute inset-0 bg-[#eeeee9]/30" />
         <div
-          className="w-full h-full"
-          style={{
-            background: 'linear-gradient(135deg, rgba(0, 40, 25, 0.85), rgba(6, 64, 43, 0.7)), url(https://images.unsplash.com/photo-1542332213-31f87348057f?q=80&w=2070&auto=format&fit=crop)',
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-          }}
+          className="w-full h-full bg-[linear-gradient(135deg,rgba(0,40,25,0.85),rgba(6,64,43,0.7)),url(https://images.unsplash.com/photo-1542332213-31f87348057f?q=80&w=2070&auto=format&fit=crop)] bg-cover bg-center"
         />
       </div>
 

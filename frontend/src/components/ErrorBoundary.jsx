@@ -20,17 +20,20 @@ export class ErrorBoundary extends Component {
 
   render() {
     if (this.state.hasError) {
-      return (
-        <div style={{ padding: 16, textAlign: 'center' }}>
-          <h5>Something went wrong</h5>
-          <p style={{ color: '#666', marginBottom: 16 }}>
-            {this.state.error?.message || 'An unexpected error occurred'}
-          </p>
-          <button onClick={this.handleReset} style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: '#06402B', color: 'white', cursor: 'pointer' }}>
-            Try Again
-          </button>
-        </div>
-      );
+    return (
+      <div className="p-4 text-center">
+        <h5>Something went wrong</h5>
+        <p className="text-[#666] mb-4">
+          {this.state.error?.message || 'An unexpected error occurred'}
+        </p>
+        <button
+          onClick={this.handleReset}
+          className="px-4 py-2 rounded-lg border-0 bg-[#06402B] text-white cursor-pointer"
+        >
+          Try Again
+        </button>
+      </div>
+    );
     }
 
     return this.props.children;
@@ -54,9 +57,9 @@ export class ErrorBoundaryRoute extends Component {
   render() {
     if (this.state.hasError) {
       return (
-        <div style={{ padding: 16, textAlign: 'center' }}>
+        <div className="p-4 text-center">
           <h5>Page failed to load</h5>
-          <button onClick={() => window.location.reload()} style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: '#06402B', color: 'white', cursor: 'pointer' }}>
+          <button onClick={() => window.location.reload()} className="px-4 py-2 rounded-lg border-0 bg-[#06402B] text-white cursor-pointer">
             Reload Page
           </button>
         </div>
