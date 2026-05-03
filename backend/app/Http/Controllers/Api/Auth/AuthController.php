@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password;
 use Laravel\Sanctum\PersonalAccessToken;
 
 class AuthController extends Controller
@@ -164,5 +165,22 @@ class AuthController extends Controller
             'tier_name' => $user->subscriptionTier?->name ?? 'Free',
             'tier_slug' => $user->subscriptionTier?->slug ?? 'free',
         ]);
+    }
+
+    public function forgotPassword(Request $request): JsonResponse
+    {
+        $request->validate([
+            'email' => 'required|email',
+        ]);
+
+        $status = Password::sendResetLink(
+            $request->only('email')
+        );
+
+        if ($status === Password::RESET_LINK_SENT) {
+            return response()->json(['message' => 'Password reset link sent to your email.']);
+        }
+
+        return response()->json(['message' => 'Unable to send reset link.'], 400);
     }
 }

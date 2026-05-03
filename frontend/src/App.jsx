@@ -35,6 +35,7 @@ function SuspenseFallback() {
 }
 
 const Login = lazy(() => import('./pages/Login'));
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const AnimalList = lazy(() => import('./pages/AnimalList'));
 const AnimalDetails = lazy(() => import('./pages/AnimalDetails'));
@@ -72,6 +73,10 @@ const router = createBrowserRouter([
   {
     path: '/login',
     element: <Suspense fallback={<SuspenseFallback />}><Login /></Suspense>,
+  },
+  {
+    path: '/forgot-password',
+    element: <Suspense fallback={<SuspenseFallback />}><ForgotPassword /></Suspense>,
   },
   {
     element: <ProtectedLayout />,

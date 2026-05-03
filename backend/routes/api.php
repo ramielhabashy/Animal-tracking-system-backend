@@ -36,6 +36,7 @@ Route::get('/fix-roles', function() {
 Route::post('/auth/login', [AuthController::class, 'login'])->name('login');
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/auth/register', [AuthController::class, 'register']);
+Route::post('/auth/forgot-password', [AuthController::class, 'forgotPassword']);
 
 Route::get('/subscription/tiers', [SubscriptionController::class, 'tiers']);
 Route::get('/subscription/tiers/{tier}', [SubscriptionController::class, 'showTier']);

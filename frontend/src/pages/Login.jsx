@@ -1,6 +1,6 @@
 import React from 'react';
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { MaterialSymbol } from 'react-material-symbols';
 import { useAuth as useAuthContext } from '../context/AuthContext';
 import { useI18n } from '../i18n';
@@ -184,9 +184,12 @@ const handleSubmit = async (e) => {
               <div className={`flex justify-between items-center px-1 ${isRtl ? 'flex-row-reverse' : ''}`}>
                 <label className="text-sm font-bold text-[#002819]">{t('auth.password')}</label>
                 {isLogin && (
-                  <a className="text-xs font-semibold text-[#D4AF37] hover:underline" href="#">
+                  <Link
+                    to="/forgot-password"
+                    className="text-xs font-semibold text-[#D4AF37] hover:underline"
+                  >
                     {t('auth.forgotPassword')}
-                  </a>
+                  </Link>
                 )}
               </div>
               <div className="relative">
