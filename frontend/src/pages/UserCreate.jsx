@@ -17,9 +17,11 @@ export default function UserCreate() {
     phone: '',
     role: 'Shepherd',
     password: '',
+    password_confirmation: '',
   });
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState(null);
+  const [errors, setErrors] = useState({});
   const [availableRoles, setAvailableRoles] = useState([]);
 
   useEffect(() => {
@@ -42,18 +44,48 @@ export default function UserCreate() {
     }
   };
 
-  const set = (field, value) => setForm(f => ({ ...f, [field]: value }));
+  const set = (field, value) => {
+    setForm(f => ({ ...f, [field]: value }));
+    if (errors[field]) {
+      setErrors(prev => { const next = { ...prev }; delete next[field]; return next; });
+    }
+  };
+
+  const validate = () => {
+    const newErrors = {};
+    if (!form.name.trim()) newErrors.name = 'Name is required';
+    if (!form.email.trim()) newErrors.email = 'Email is required';
+    else if (!/\S+@\S+\.\S+/.test(form.email)) newErrors.email = 'Invalid email format';
+    if (!form.password) newErrors.password = 'Password is required';
+    else if (form.password.length < 8) newErrors.password = 'Password must be at least 8 characters';
+    if (form.password !== form.password_confirmation) newErrors.password_confirmation = 'Passwords do not match';
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const submit = async (e) => {
     e.preventDefault();
-    setSaving(true);
     setMsg(null);
+    
+    if (!validate()) {
+      setMsg({ ok: false, text: 'Please fix the errors below' });
+      return;
+    }
+    
+    setSaving(true);
 
     try {
       const res = await apiFetch('/api/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          name: form.name,
+          email: form.email,
+          phone: form.phone,
+          role: form.role,
+          password: form.password,
+          password_confirmation: form.password_confirmation,
+        }),
       });
       const data = await res.json();
 
@@ -61,6 +93,9 @@ export default function UserCreate() {
         setMsg({ ok: true, text: t('users.userCreated') });
         setTimeout(() => navigate('/users'), 1200);
       } else {
+        if (data.errors) {
+          setErrors(data.errors);
+        }
         setMsg({ ok: false, text: data.message || t('users.userCreateFailed') });
       }
     } catch (err) {
@@ -95,26 +130,28 @@ export default function UserCreate() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label className="block text-xs font-bold text-[#404943] uppercase tracking-wider mb-2 ml-1">{t('users.name')}</label>
+            <label className="block text-xs font-bold text-[#404943] uppercase tracking-wider mb-2 ml-1">{t('users.name')} *</label>
             <input
               value={form.name}
               onChange={e => set('name', e.target.value)}
-              className="w-full bg-[#e8e8e3] border-none rounded-xl p-4 focus:ring-2 focus:ring-[#06402B]/20 focus:bg-white transition outline-none"
+              className={`w-full bg-[#e8e8e3] border-none rounded-xl p-4 focus:ring-2 focus:ring-[#06402B]/20 focus:bg-white transition outline-none ${errors.name ? 'ring-2 ring-red-500' : ''}`}
               placeholder="Ahmed Al-Khalidi"
               required
             />
+            {errors.name && <p className="text-red-600 text-xs mt-1 ml-1">{errors.name}</p>}
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-[#404943] uppercase tracking-wider mb-2 ml-1">{t('auth.email')}</label>
+            <label className="block text-xs font-bold text-[#404943] uppercase tracking-wider mb-2 ml-1">{t('auth.email')} *</label>
             <input
               type="email"
               value={form.email}
               onChange={e => set('email', e.target.value)}
-              className="w-full bg-[#e8e8e3] border-none rounded-xl p-4 focus:ring-2 focus:ring-[#06402B]/20 focus:bg-white transition outline-none"
+              className={`w-full bg-[#e8e8e3] border-none rounded-xl p-4 focus:ring-2 focus:ring-[#06402B]/20 focus:bg-white transition outline-none ${errors.email ? 'ring-2 ring-red-500' : ''}`}
               placeholder="ahmed@oasis.com"
               required
             />
+            {errors.email && <p className="text-red-600 text-xs mt-1 ml-1">{errors.email}</p>}
           </div>
 
           <div>
@@ -154,14 +191,29 @@ export default function UserCreate() {
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-[#404943] uppercase tracking-wider mb-2 ml-1">{t('auth.password')}</label>
+            <label className="block text-xs font-bold text-[#404943] uppercase tracking-wider mb-2 ml-1">{t('auth.password')} *</label>
             <input
               type="password"
               value={form.password}
               onChange={e => set('password', e.target.value)}
-              className="w-full bg-[#e8e8e3] border-none rounded-xl p-4 focus:ring-2 focus:ring-[#06402B]/20 focus:bg-white transition outline-none"
+              className={`w-full bg-[#e8e8e3] border-none rounded-xl p-4 focus:ring-2 focus:ring-[#06402B]/20 focus:bg-white transition outline-none ${errors.password ? 'ring-2 ring-red-500' : ''}`}
               placeholder="Min 8 characters"
+              required
             />
+            {errors.password && <p className="text-red-600 text-xs mt-1 ml-1">{errors.password}</p>}
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-[#404943] uppercase tracking-wider mb-2 ml-1">Confirm Password *</label>
+            <input
+              type="password"
+              value={form.password_confirmation}
+              onChange={e => set('password_confirmation', e.target.value)}
+              className={`w-full bg-[#e8e8e3] border-none rounded-xl p-4 focus:ring-2 focus:ring-[#06402B]/20 focus:bg-white transition outline-none ${errors.password_confirmation ? 'ring-2 ring-red-500' : ''}`}
+              placeholder="Confirm password"
+              required
+            />
+            {errors.password_confirmation && <p className="text-red-600 text-xs mt-1 ml-1">{errors.password_confirmation}</p>}
           </div>
         </div>
 

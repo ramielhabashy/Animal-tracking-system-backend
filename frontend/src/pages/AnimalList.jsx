@@ -1,5 +1,5 @@
 import React from 'react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { MaterialSymbol } from 'react-material-symbols';
 import { apiFetch } from '../utils/api';
@@ -18,12 +18,22 @@ export default function AnimalList() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [selectedAnimal, setSelectedAnimal] = useState(null);
   const [selectedDevice, setSelectedDevice] = useState('');
   const [assigning, setAssigning] = useState(false);
   const [message, setMessage] = useState(null);
   const [exporting, setExporting] = useState(false);
+  
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchQuery), 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+  
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearch]);
   
   const [speciesFilter, setSpeciesFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -56,7 +66,7 @@ export default function AnimalList() {
   useEffect(() => {
     fetchData();
     fetchStats();
-  }, [currentPage, perPage]);
+  }, [currentPage, perPage, debouncedSearch]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -148,8 +158,8 @@ export default function AnimalList() {
   };
 
   const filteredAnimals = animals.filter((animal) => {
-    const search = searchQuery.toLowerCase();
-    const matchesSearch =
+    const search = debouncedSearch.toLowerCase();
+    const matchesSearch = !debouncedSearch || 
       animal.animal_id?.toLowerCase().includes(search) ||
       animal.breed?.toLowerCase().includes(search) ||
       animal.species?.toLowerCase().includes(search);
@@ -229,6 +239,7 @@ export default function AnimalList() {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin w-8 h-8 border-4 border-[#002819] border-t-transparent rounded-full" />
+        <span className="ml-3 text-[#404943]">Loading animals...</span>
       </div>
     );
   }

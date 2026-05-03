@@ -13,6 +13,7 @@ export default function DeviceEdit() {
   const { isOwner, isAdmin } = useRole();
   const canEditAdvanced = isOwner || isAdmin;
   const [loading, setLoading] = useState(true);
+  const [deleting, setDeleting] = useState(false);
   const [device, setDevice] = useState(null);
   const [animals, setAnimals] = useState([]);
   const [owners, setOwners] = useState([]);
@@ -24,6 +25,8 @@ export default function DeviceEdit() {
     advanced_tracking: true,
     owner_id: '',
   });
+  const [message, setMessage] = useState(null);
+  const [errors, setErrors] = useState({});
 
   useEffect(() => {
     fetchData();
@@ -69,22 +72,62 @@ export default function DeviceEdit() {
     }
   };
 
+  const validate = () => {
+    const newErrors = {};
+    if (!formData.name.trim()) newErrors.name = 'Device name is required';
+    if (!formData.type) newErrors.type = 'Device type is required';
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setMessage(null);
+    setErrors({});
+    
+    if (!validate()) {
+      setMessage({ type: 'error', text: 'Please fix the errors below' });
+      return;
+    }
+    
     try {
       const res = await apiFetch(`/api/devices/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ...formData,
+          name: formData.name,
+          type: formData.type,
+          update_interval: formData.update_interval,
+          advanced_tracking: formData.advanced_tracking,
           owner_id: formData.owner_id || null,
         }),
       });
+      const data = await res.json();
+      
+      if (res.ok) {
+        setMessage({ type: 'success', text: 'Device updated successfully!' });
+        setTimeout(() => navigate('/devices'), 1200);
+      } else {
+        if (data.errors) setErrors(data.errors);
+        setMessage({ type: 'error', text: data.message || 'Failed to update device' });
+      }
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Network error. Please try again.' });
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!window.confirm('Are you sure you want to delete this device? This action cannot be undone.')) return;
+    setDeleting(true);
+    try {
+      const res = await apiFetch(`/api/devices/${id}`, { method: 'DELETE' });
       if (res.ok) {
         navigate('/devices');
       }
     } catch (error) {
-      console.error('Failed to update device:', error);
+      setMessage({ type: 'error', text: 'Failed to delete device' });
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -92,6 +135,17 @@ export default function DeviceEdit() {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin w-8 h-8 border-4 border-[#002819] border-t-transparent rounded-full" />
+      </div>
+    );
+  }
+
+  if (!device) {
+    return (
+      <div className="p-8 text-center">
+        <p className="text-stone-500">Device not found</p>
+        <button onClick={() => navigate('/devices')} className="text-emerald-700 font-bold hover:underline mt-2">
+          Back to Devices
+        </button>
       </div>
     );
   }
@@ -262,21 +316,22 @@ export default function DeviceEdit() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase tracking-widest text-[#404943]/70 px-1">
-                    Update Interval
-                  </label>
-                  <select
-                    className="w-full bg-white border-none rounded-xl px-4 py-3 appearance-none focus:ring-2 focus:ring-[#06402b] shadow-sm"
-                    value={formData.update_interval}
-                    onChange={(e) => setFormData({ ...formData, update_interval: e.target.value })}
-                  >
-                    <option>5 Minutes</option>
-                    <option>15 Minutes</option>
-                    <option>30 Minutes</option>
-                    <option>60 Minutes</option>
-                  </select>
-                </div>
+               <div className="space-y-2">
+                <label className="text-xs font-bold uppercase tracking-widest text-[#404943]/70 px-1">
+                  Update Interval
+                </label>
+                <select
+                  className={`w-full bg-white border-none rounded-xl px-4 py-3 appearance-none focus:ring-2 focus:ring-[#06402b] shadow-sm ${errors.update_interval ? 'ring-2 ring-red-500' : ''}`}
+                  value={formData.update_interval}
+                  onChange={(e) => setFormData({ ...formData, update_interval: e.target.value })}
+                >
+                  <option value="5">5 Minutes</option>
+                  <option value="15">15 Minutes</option>
+                  <option value="30">30 Minutes</option>
+                  <option value="60">60 Minutes</option>
+                </select>
+                {errors.update_interval && <p className="text-red-600 text-xs">{errors.update_interval}</p>}
+              </div>
 
                 <div className="space-y-2">
                   <label className="text-xs font-bold uppercase tracking-widest text-[#404943]/70 px-1">
@@ -295,10 +350,21 @@ export default function DeviceEdit() {
           </section>
 
           {/* Actions */}
+          {message && (
+            <div className={`p-4 rounded-xl mb-4 ${message.type === 'success' ? 'bg-[#cfe5d6] text-[#002819]' : 'bg-[#ffdad6] text-[#93000a]'}`}>
+              {message.text}
+            </div>
+          )}
+
           <div className="flex flex-col sm:flex-row items-center justify-between pt-8 gap-4">
-            <button type="button" className="w-full sm:w-auto flex items-center justify-center gap-2 text-[#ba1a1a] font-bold px-6 py-3 rounded-xl hover:bg-[#ffdad6] transition-colors">
+            <button 
+              type="button" 
+              onClick={handleDelete}
+              disabled={deleting}
+              className="w-full sm:w-auto flex items-center justify-center gap-2 text-[#ba1a1a] font-bold px-6 py-3 rounded-xl hover:bg-[#ffdad6] transition-colors disabled:opacity-50"
+            >
               <MaterialSymbol icon="delete" size={20} />
-              Delete Device
+              {deleting ? 'Deleting...' : 'Delete Device'}
             </button>
             <div className="flex gap-4 w-full sm:w-auto">
               <button

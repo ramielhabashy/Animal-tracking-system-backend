@@ -1,5 +1,5 @@
 import React from 'react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { MaterialSymbol } from 'react-material-symbols';
 import { apiFetch } from '../utils/api';
@@ -16,24 +16,30 @@ export default function UserList() {
   const [users, setUsers] = useState([]);
   const [tiers, setTiers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [message, setMessage] = useState(null);
-  const [exporting, setExporting] = useState(false);
-  
-  const [currentPage, setCurrentPage] = useState(1);
-  const [perPage, setPerPage] = useState(10);
-  const [totalUsers, setTotalUsers] = useState(0);
+   const [searchQuery, setSearchQuery] = useState('');
+   const [debouncedSearch, setDebouncedSearch] = useState('');
+   const [message, setMessage] = useState(null);
+   const [exporting, setExporting] = useState(false);
+   
+   const [currentPage, setCurrentPage] = useState(1);
+   const [perPage, setPerPage] = useState(10);
+   const [totalUsers, setTotalUsers] = useState(0);
+   
+   useEffect(() => {
+     const timer = setTimeout(() => setDebouncedSearch(searchQuery), 300);
+     return () => clearTimeout(timer);
+   }, [searchQuery]);
+   
+   useEffect(() => {
+     setCurrentPage(1);
+   }, [debouncedSearch]);
   
   const isAdmin = user?.role === 'Admin';
   const isOwner = user?.role === 'Owner';
 
-  useEffect(() => {
-    fetchData();
-  }, [currentPage, perPage]);
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchQuery]);
+   useEffect(() => {
+     fetchData();
+   }, [currentPage, perPage, debouncedSearch]);
 
 const fetchData = async () => {
     setLoading(true);
@@ -63,19 +69,21 @@ const fetchData = async () => {
     }
   };
 
-  const filteredUsers = users.filter((u) => {
-    const search = searchQuery.toLowerCase();
-    
-    if (isOwner && u.role === 'Admin') {
-      return false;
-    }
-    
-    return (
-      u.name?.toLowerCase().includes(search) ||
-      u.email?.toLowerCase().includes(search) ||
-      u.phone?.includes(searchQuery)
-    );
-  });
+   const filteredUsers = users.filter((u) => {
+     const search = debouncedSearch.toLowerCase();
+     
+     if (isOwner && u.role === 'Admin') {
+       return false;
+     }
+     
+     if (!debouncedSearch) return true;
+     
+     return (
+       u.name?.toLowerCase().includes(search) ||
+       u.email?.toLowerCase().includes(search) ||
+       u.phone?.includes(debouncedSearch)
+     );
+   });
 
   const totalPages = Math.ceil(totalUsers / perPage);
 
@@ -88,16 +96,19 @@ const fetchData = async () => {
   const roleColors = { Admin: 'bg-[#002819]/5 text-[#002819]', Manager: 'bg-[#eeeee9] text-[#404943]', Owner: 'bg-[#D4AF37]/20 text-[#735c00]', Shepherd: 'bg-[#eeeee9] text-[#404943]' };
 
   const handleDelete = async (userId) => {
-    if (!confirm('Delete this user?')) return;
+    if (!window.confirm('Are you sure you want to delete this user? This action cannot be undone.')) return;
     try {
       const response = await apiFetch(`/api/users/${userId}`, { method: 'DELETE' });
+      const data = await response.json();
       if (response.ok) { 
-        setMessage({ type: 'success', text: 'User deleted!' }); 
+        setMessage({ type: 'success', text: data.message || 'User deleted successfully!' }); 
         fetchData(); 
         setTimeout(() => setMessage(null), 3000); 
+      } else {
+        setMessage({ type: 'error', text: data.message || 'Failed to delete user' }); 
       }
     } catch (error) { 
-      setMessage({ type: 'error', text: 'Failed to delete' }); 
+      setMessage({ type: 'error', text: 'Network error. Please try again.' }); 
     }
   };
 
@@ -115,7 +126,12 @@ const fetchData = async () => {
 
   const showSubscriptionColumn = filteredUsers.some(u => canHaveSubscription(u.role));
 
-  if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin w-8 h-8 border-4 border-[#002819] border-t-transparent rounded-full" /></div>;
+  if (loading) return (
+    <div className="flex items-center justify-center h-64">
+      <div className="animate-spin w-8 h-8 border-4 border-[#002819] border-t-transparent rounded-full" />
+      <span className="ml-3 text-[#404943]">Loading users...</span>
+    </div>
+  );
 
   return (
     <div className="space-y-8">

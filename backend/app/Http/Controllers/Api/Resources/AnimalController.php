@@ -52,7 +52,7 @@ class AnimalController extends Controller
                 return response()->json([
                     'message' => 'This device is already assigned to another animal',
                     'error' => 'device_already_assigned',
-                    'errors' => ['device_id' => ['This device is already assigned to animal ' . $device->animal->animal_id]]
+                    'errors' => ['device_id' => ['This device is already assigned to animal ' . ($device->animal->animal_id ?? $device->animal_id)]]
                 ], 422);
             }
         }
@@ -66,7 +66,7 @@ class AnimalController extends Controller
         }
         
         if ($authUser && $authUser->hasRole('Manager')) {
-            $user = $authUser ?: User::find($userId);
+            $user = $authUser ? User::find($userId) : null;
             if ($user && $user->managed_by) {
                 $data['owner_id'] = $user->managed_by;
             }
@@ -130,7 +130,7 @@ class AnimalController extends Controller
                     return response()->json([
                         'message' => 'This device is already assigned to another animal',
                         'error' => 'device_already_assigned',
-                        'errors' => ['device_id' => ['This device is already assigned to animal ' . $device->animal->animal_id]]
+                        'errors' => ['device_id' => ['This device is already assigned to animal ' . ($device->animal->animal_id ?? $device->animal_id)]]
                     ], 422);
                 }
                 if ($device) {
@@ -161,7 +161,7 @@ class AnimalController extends Controller
             $filename = 'animal_' . time() . '_' . uniqid() . '.png';
             $path = 'public/images/' . $filename;
             Storage::disk('local')->put($path, $imageData);
-            $data['identification_photo'] = '/storage/' . $path;
+            $data['identification_photo'] = '/storage/' . $filename;
         }
         
         $animal->update($data);

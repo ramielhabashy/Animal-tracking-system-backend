@@ -267,8 +267,14 @@ class UserController extends Controller
 
     public function destroy(Request $request, User $user): JsonResponse
     {
+        $authUser = $this->getAuthUser($request);
+        
         if (!$this->canAccessUser($request, $user)) {
             return response()->json(['message' => 'Unauthorized to delete this user', 'error' => 'unauthorized'], 403);
+        }
+        
+        if ($authUser && $authUser->id === $user->id) {
+            return response()->json(['message' => 'You cannot delete your own account', 'error' => 'cannot_delete_self'], 403);
         }
         
         if ($user->avatar_url && Storage::disk('local')->exists(str_replace('/storage/', '', $user->avatar_url))) {

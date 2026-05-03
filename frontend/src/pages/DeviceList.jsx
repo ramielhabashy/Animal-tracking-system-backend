@@ -1,5 +1,5 @@
 import React from 'react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { MaterialSymbol } from 'react-material-symbols';
 import { apiFetch } from '../utils/api';
@@ -22,8 +22,19 @@ export default function DeviceList() {
   const [animals, setAnimals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [exporting, setExporting] = useState(false);
   const [message, setMessage] = useState(null);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchQuery), 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+  
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filter, debouncedSearch]);
   
   const [currentPage, setCurrentPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
@@ -35,7 +46,7 @@ export default function DeviceList() {
   useEffect(() => {
     fetchData();
     fetchStats();
-  }, [currentPage, perPage]);
+  }, [currentPage, perPage, debouncedSearch]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -98,7 +109,14 @@ export default function DeviceList() {
   };
 
   const filteredDevices = devices.filter((device) => {
-    return filter === 'all' || device.status === filter;
+    const matchesFilter = filter === 'all' || device.status === filter;
+    if (!debouncedSearch) return matchesFilter;
+    const search = debouncedSearch.toLowerCase();
+    return matchesFilter && (
+      device.device_id?.toLowerCase().includes(search) ||
+      device.name?.toLowerCase().includes(search) ||
+      device.type?.toLowerCase().includes(search)
+    );
   });
 
   const totalPages = Math.ceil(totalDevices / perPage);
@@ -125,6 +143,7 @@ export default function DeviceList() {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin w-8 h-8 border-4 border-[#002819] border-t-transparent rounded-full" />
+        <span className="ml-3 text-[#404943]">Loading devices...</span>
       </div>
     );
   }
@@ -197,6 +216,16 @@ export default function DeviceList() {
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
+        <div className="flex-1 min-w-[200px] relative">
+          <MaterialSymbol icon="search" size={20} className={`absolute top-1/2 -translate-y-1/2 text-[#717973] ${isRtl ? 'right-4 left-auto' : 'left-4'}`} />
+          <input 
+            type="text" 
+            value={searchQuery} 
+            onChange={(e) => setSearchQuery(e.target.value)} 
+            placeholder={t('common.search')}
+            className={`w-full bg-white rounded-xl py-3 text-sm shadow-sm focus:ring-2 focus:ring-[#06402b]/10 ${isRtl ? 'pr-12 pl-4 text-right' : 'pl-12 pr-4 text-left'}`} 
+          />
+        </div>
         {['all', 'online', 'offline', 'low_signal'].map((status) => (
           <button
             key={status}
@@ -304,28 +333,34 @@ export default function DeviceList() {
                     <td className="px-8 py-5 text-sm text-[#404943] font-medium">
                       {device.updated_at ? new Date(device.updated_at).toLocaleString() : t('devicesPage.na')}
                     </td>
-                    <td className="px-8 py-5">
-                      <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Link
-                          to={`/devices/${device.id}/edit`}
-                          className="p-2 hover:bg-[#e8e8e3] rounded-lg text-[#404943] transition-all"
-                        >
-                          <MaterialSymbol icon="edit" size={20} />
-                        </Link>
-                        <button
-                          onClick={async () => {
-                            if (!confirm(t('devicesPage.deleteConfirm', { deviceId: device.device_id }))) return;
-                            try {
-                              const res = await fetch(`/api/devices/${device.id}`, { method: 'DELETE', headers: { Accept: 'application/json' } });
-                              if (res.ok) fetchData();
-                            } catch (err) { console.error(err); }
-                          }}
-                          className="p-2 hover:bg-red-100 rounded-lg text-red-600 transition-all"
-                        >
-                          <MaterialSymbol icon="delete" size={20} />
-                        </button>
-                      </div>
-                    </td>
+                <td className="px-8 py-5">
+                  <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Link
+                      to={`/devices/${device.id}/edit`}
+                      className="p-2 hover:bg-[#e8e8e3] rounded-lg text-[#404943] transition-all"
+                    >
+                      <MaterialSymbol icon="edit" size={20} />
+                    </Link>
+                    <button
+                      onClick={async () => {
+                        if (!window.confirm(`Are you sure you want to delete device ${device.device_id}?`)) return;
+                        try {
+                          const res = await apiFetch(`/api/devices/${device.id}`, { method: 'DELETE' });
+                          if (res.ok) {
+                            setMessage({ type: 'success', text: 'Device deleted successfully' });
+                            fetchData();
+                            setTimeout(() => setMessage(null), 3000);
+                          }
+                        } catch (err) { 
+                          setMessage({ type: 'error', text: 'Failed to delete device' }); 
+                        }
+                      }}
+                      className="p-2 hover:bg-red-100 rounded-lg text-red-600 transition-all"
+                    >
+                      <MaterialSymbol icon="delete" size={20} />
+                    </button>
+                  </div>
+                </td>
                   </tr>
                 );
               })}

@@ -100,10 +100,13 @@ const fetchData = async () => {
     return role === 'Owner' || role === 'Admin';
   };
 
+  const [errors, setErrors] = useState({});
+
   const submit = async (e) => {
     e.preventDefault();
     setSaving(true);
     setMsg(null);
+    setErrors({});
 
     const data = {
       name: form.name,
@@ -130,6 +133,9 @@ const fetchData = async () => {
         setMsg({ ok: true, text: 'User updated successfully!' });
         setTimeout(() => navigate('/users'), 1200);
       } else {
+        if (response.errors) {
+          setErrors(response.errors);
+        }
         setMsg({ ok: false, text: response.message || 'Failed to update user' });
       }
     } catch (err) {
@@ -176,24 +182,26 @@ const fetchData = async () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className={`block text-xs font-bold text-[#404943] uppercase tracking-wider mb-2 ${isRtl ? 'text-right' : ''}`}>{t('users.name')}</label>
+                <label className={`block text-xs font-bold text-[#404943] uppercase tracking-wider mb-2 ${isRtl ? 'text-right' : ''}`}>{t('users.name')} *</label>
                 <input
                   value={form.name}
                   onChange={e => set('name', e.target.value)}
-                  className="input-field"
+                  className={`input-field ${errors.name ? 'ring-2 ring-red-500' : ''}`}
                   required
                 />
+                {errors.name && <p className="text-red-600 text-xs mt-1">{errors.name}</p>}
               </div>
 
               <div>
-                <label className={`block text-xs font-bold text-[#404943] uppercase tracking-wider mb-2 ${isRtl ? 'text-right' : ''}`}>{t('users.email')}</label>
+                <label className={`block text-xs font-bold text-[#404943] uppercase tracking-wider mb-2 ${isRtl ? 'text-right' : ''}`}>{t('users.email')} *</label>
                 <input
                   type="email"
                   value={form.email}
                   onChange={e => set('email', e.target.value)}
-                  className="input-field"
+                  className={`input-field ${errors.email ? 'ring-2 ring-red-500' : ''}`}
                   required
                 />
+                {errors.email && <p className="text-red-600 text-xs mt-1">{errors.email}</p>}
               </div>
 
               <div>
@@ -298,16 +306,17 @@ const fetchData = async () => {
               </label>
             </div>
 
-            <div>
-              <label className={`block text-xs font-bold text-[#404943] uppercase tracking-wider mb-2 ${isRtl ? 'text-right' : ''}`}>New Password</label>
-              <input
-                type="password"
-                value={form.password}
-                onChange={e => set('password', e.target.value)}
-                className="input-field"
-                placeholder="Leave blank to keep current"
-              />
-            </div>
+              <div>
+                <label className={`block text-xs font-bold text-[#404943] uppercase tracking-wider mb-2 ${isRtl ? 'text-right' : ''}`}>New Password (optional)</label>
+                <input
+                  type="password"
+                  value={form.password}
+                  onChange={e => set('password', e.target.value)}
+                  className={`input-field ${errors.password ? 'ring-2 ring-red-500' : ''}`}
+                  placeholder="Leave blank to keep current (min 8 chars if changing)"
+                />
+                {errors.password && <p className="text-red-600 text-xs mt-1">{errors.password}</p>}
+              </div>
           </section>
 
           <div className="bg-gradient-to-br from-[#002819] to-[#06402B] p-6 rounded-2xl relative overflow-hidden">

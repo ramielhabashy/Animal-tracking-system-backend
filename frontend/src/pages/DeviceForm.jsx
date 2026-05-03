@@ -22,6 +22,7 @@ export default function DeviceForm() {
   const [owners, setOwners] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState(null);
+  const [errors, setErrors] = useState({});
 
   useEffect(() => {
     fetchData();
@@ -54,10 +55,25 @@ export default function DeviceForm() {
     }));
   };
 
+  const validate = () => {
+    const newErrors = {};
+    if (!formData.name.trim()) newErrors.name = 'Device name is required';
+    if (!formData.type) newErrors.type = 'Device type is required';
+    if (formData.battery_level < 0 || formData.battery_level > 100) newErrors.battery_level = 'Battery must be between 0 and 100';
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setIsSubmitting(true);
     setMessage(null);
+    
+    if (!validate()) {
+      setMessage({ type: 'error', text: 'Please fix the errors below' });
+      return;
+    }
+    
+    setIsSubmitting(true);
 
     try {
       const payload = {
@@ -85,6 +101,7 @@ export default function DeviceForm() {
         setMessage({ type: 'success', text: 'Device registered successfully!' });
         setTimeout(() => navigate('/devices'), 1500);
       } else {
+        if (data.errors) setErrors(data.errors);
         setMessage({ type: 'error', text: data.message || 'Failed to register device' });
       }
     } catch (error) {
@@ -154,24 +171,27 @@ export default function DeviceForm() {
                   onChange={handleChange}
                   required
                   placeholder="e.g., Front Gate Tracker"
-                  className="w-full bg-white border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#06402b] shadow-sm"
+                  className={`w-full bg-white border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#06402b] shadow-sm ${errors.name ? 'ring-2 ring-red-500' : ''}`}
                 />
+                {errors.name && <p className="text-red-600 text-xs">{errors.name}</p>}
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-bold uppercase tracking-widest text-[#404943]/70 px-1">
-                  Device Type
+                  Device Type *
                 </label>
                 <select
                   name="type"
                   value={formData.type}
                   onChange={handleChange}
-                  className="w-full bg-white border-none rounded-xl px-4 py-3 appearance-none focus:ring-2 focus:ring-[#06402b] shadow-sm"
+                  className={`w-full bg-white border-none rounded-xl px-4 py-3 appearance-none focus:ring-2 focus:ring-[#06402b] shadow-sm ${errors.type ? 'ring-2 ring-red-500' : ''}`}
+                  required
                 >
                   <option value="collar">Pro Tracking Collar v4</option>
                   <option value="ear_tag">Compact Ear Tag v2</option>
                   <option value="bolus">Internal Bolus v1</option>
                   <option value="halter">Halter Tracker v3</option>
                 </select>
+                {errors.type && <p className="text-red-600 text-xs">{errors.type}</p>}
               </div>
               <div className="space-y-2 md:col-span-2">
                 <label className="text-xs font-bold uppercase tracking-widest text-[#404943]/70 px-1">
@@ -202,7 +222,7 @@ export default function DeviceForm() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <label className="text-xs font-bold uppercase tracking-widest text-[#404943]/70 px-1">
-                  Battery Level (%)
+                  Battery Level (%) *
                 </label>
                 <input
                   name="battery_level"
@@ -211,8 +231,10 @@ export default function DeviceForm() {
                   type="number"
                   min="0"
                   max="100"
-                  className="w-full bg-white border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#06402b] shadow-sm"
+                  className={`w-full bg-white border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#06402b] shadow-sm ${errors.battery_level ? 'ring-2 ring-red-500' : ''}`}
+                  required
                 />
+                {errors.battery_level && <p className="text-red-600 text-xs">{errors.battery_level}</p>}
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-bold uppercase tracking-widest text-[#404943]/70 px-1">

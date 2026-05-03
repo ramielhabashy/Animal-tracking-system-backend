@@ -30,6 +30,8 @@ export default function AnimalEdit() {
     device_id: '',
     owner_id: '',
   });
+  const [message, setMessage] = useState(null);
+  const [errors, setErrors] = useState({});
 
   const breedOptions = {
     Camel: ['Majaheem', 'Wadhah', 'Suhail', 'Maqatir', 'Shalal', 'Bishah', 'Hawi', 'Other'],
@@ -40,9 +42,11 @@ export default function AnimalEdit() {
   };
 
   const getBreedOptions = () => {
-    const speciesObj = speciesList.find(s => s.name === formData.species);
-    if (speciesObj && speciesObj.breeds) {
-      return speciesObj.breeds.map(b => b.name);
+    if (speciesList.length > 0) {
+      const speciesObj = speciesList.find(s => s.name === formData.species);
+      if (speciesObj && speciesObj.breeds) {
+        return speciesObj.breeds.map(b => b.name);
+      }
     }
     return breedOptions[formData.species] || ['Other'];
   };
@@ -208,10 +212,26 @@ export default function AnimalEdit() {
     }
   };
 
+  const validate = () => {
+    const newErrors = {};
+    if (!formData.species && !formData.custom_species) newErrors.species = 'Species is required';
+    if (formData.species === 'Other' && !formData.custom_species) newErrors.custom_species = 'Custom species is required';
+    if (formData.breed === 'Other' && !formData.custom_breed) newErrors.custom_breed = 'Custom breed is required';
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
     setMessage(null);
+    setErrors({});
+
+    if (!validate()) {
+      setMessage({ type: 'error', text: 'Please fix the errors below' });
+      setIsSubmitting(false);
+      return;
+    }
 
     try {
       const url = isNewAnimal ? '/api/animals' : `/api/animals/${id}`;
@@ -246,11 +266,12 @@ export default function AnimalEdit() {
         setMessage({ type: 'success', text: isNewAnimal ? 'Animal created successfully!' : 'Animal updated successfully!' });
         setTimeout(() => navigate('/animals'), 1500);
       } else {
+        if (data.errors) setErrors(data.errors);
         setMessage({ type: 'error', text: data.message || `Error: ${response.status}` });
       }
     } catch (error) {
       console.error('Submit error:', error);
-      setMessage({ type: 'error', text: `Error: ${error.message}` });
+      setMessage({ type: 'error', text: 'Network error. Please try again.' });
     } finally {
       setIsSubmitting(false);
     }
@@ -270,6 +291,17 @@ export default function AnimalEdit() {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin w-8 h-8 border-4 border-[#002819] border-t-transparent rounded-full" />
+      </div>
+    );
+  }
+
+  if (!isNewAnimal && !formData.species && !loading) {
+    return (
+      <div className="p-8 text-center">
+        <p className="text-stone-500">Animal not found</p>
+        <button onClick={() => navigate('/animals')} className="text-emerald-700 font-bold hover:underline mt-2">
+          Back to Animals
+        </button>
       </div>
     );
   }
@@ -309,11 +341,17 @@ export default function AnimalEdit() {
 
       {/* Content */}
       <div className="p-8">
-        {message && (
-          <div className={`mb-6 p-4 rounded-xl ${message.type === 'success' ? 'bg-[#cfe5d6] text-[#002819]' : 'bg-[#ffdad6] text-[#93000a]'}`}>
-            {message.text}
-          </div>
-        )}
+      {message && (
+        <div
+          className={`mb-6 p-4 rounded-xl ${
+            message.type === 'success'
+              ? 'bg-[#cfe5d6] text-[#002819]'
+              : 'bg-[#ffdad6] text-[#93000a]'
+          }`}
+        >
+          {message.text}
+        </div>
+      )}
 
         {/* Bento Grid */}
         <div className="grid grid-cols-12 gap-8">
@@ -326,58 +364,65 @@ export default function AnimalEdit() {
                 <h3 className="text-xl font-bold text-emerald-900">{t('animals.animalDetails')}</h3>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold text-stone-500 uppercase tracking-widest px-1">{t('animals.name')}</label>
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold text-stone-500 uppercase tracking-widest px-1">{t('animals.name')} *</label>
+                <input 
+                  name="name" 
+                  value={formData.name} 
+                  onChange={handleChange} 
+                  placeholder={t('animals.namePlaceholder')}
+                  className={`w-full bg-[#f4f4ef] border-none rounded-xl px-4 py-3 text-emerald-900 font-semibold focus:ring-2 focus:ring-[#06402b]/10 ${errors.name ? 'ring-2 ring-red-500' : ''}`}
+                  required
+                />
+                {errors.name && <p className="text-red-600 text-xs">{errors.name}</p>}
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold text-stone-500 uppercase tracking-widest px-1">Species *</label>
+                <select name="species" value={formData.species} onChange={handleChange} disabled={isShepherd} className={`w-full bg-[#f4f4ef] border-none rounded-xl px-4 py-3 text-emerald-900 font-semibold focus:ring-2 focus:ring-[#06402b]/10 ${isShepherd ? 'opacity-50 cursor-not-allowed' : ''} ${errors.species ? 'ring-2 ring-red-500' : ''}`}>
+                  {getSpeciesOptions().map(species => (
+                    <option key={species} value={species}>{species}</option>
+                  ))}
+                  <option value="Other">Other</option>
+                </select>
+                {errors.species && <p className="text-red-600 text-xs">{errors.species}</p>}
+                {formData.species === 'Other' && !isShepherd && (
                   <input 
-                    name="name" 
-                    value={formData.name} 
+                    name="custom_species" 
+                    value={formData.custom_species} 
                     onChange={handleChange} 
-                    placeholder={t('animals.namePlaceholder')}
-                    className="w-full bg-[#f4f4ef] border-none rounded-xl px-4 py-3 text-emerald-900 font-semibold focus:ring-2 focus:ring-[#06402b]/10" 
+                    placeholder={t('animals.enterCustomSpecies')}
+                    className={`w-full bg-[#f4f4ef] border-none rounded-xl px-4 py-3 text-emerald-900 font-semibold focus:ring-2 focus:ring-[#06402b]/10 mt-2 ${errors.custom_species ? 'ring-2 ring-red-500' : ''}`}
+                    required
                   />
-                </div>
-<div className="space-y-1.5">
-                  <label className="text-[11px] font-bold text-stone-500 uppercase tracking-widest px-1">Species</label>
-                  <select name="species" value={formData.species} onChange={handleChange} disabled={isShepherd} className={`w-full bg-[#f4f4ef] border-none rounded-xl px-4 py-3 text-emerald-900 font-semibold focus:ring-2 focus:ring-[#06402b]/10 ${isShepherd ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                    {getSpeciesOptions().map(species => (
-                      <option key={species} value={species}>{species}</option>
-                    ))}
-                    <option value="Other">Other</option>
-                  </select>
-                  {formData.species === 'Other' && !isShepherd && (
-                    <input 
-                      name="custom_species" 
-                      value={formData.custom_species} 
-                      onChange={handleChange} 
-                      placeholder={t('animals.enterCustomSpecies')}
-                      className="w-full bg-[#f4f4ef] border-none rounded-xl px-4 py-3 text-emerald-900 font-semibold focus:ring-2 focus:ring-[#06402b]/10 mt-2" 
-                    />
-                  )}
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold text-stone-500 uppercase tracking-widest px-1">{t('animals.breed')}</label>
-                  <select 
-                    name="breed" 
-                    value={formData.breed} 
+                )}
+                {errors.custom_species && <p className="text-red-600 text-xs">{errors.custom_species}</p>}
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold text-stone-500 uppercase tracking-widest px-1">{t('animals.breed')}</label>
+                <select 
+                  name="breed" 
+                  value={formData.breed} 
+                  onChange={handleChange} 
+                  disabled={isShepherd}
+                  className={`w-full bg-[#f4f4ef] border-none rounded-xl px-4 py-3 text-emerald-900 font-semibold focus:ring-2 focus:ring-[#06402b]/10 ${isShepherd ? 'opacity-50 cursor-not-allowed' : ''} ${errors.breed ? 'ring-2 ring-red-500' : ''}`}
+                >
+                  <option value="">{t('common.select')} {t('animals.breed')}</option>
+                  {getBreedOptions().map(breed => (
+                    <option key={breed} value={breed}>{breed}</option>
+                  ))}
+                </select>
+                {errors.breed && <p className="text-red-600 text-xs">{errors.breed}</p>}
+                {formData.breed === 'Other' && !isShepherd && (
+                  <input 
+                    name="custom_breed" 
+                    value={formData.custom_breed} 
                     onChange={handleChange} 
-                    disabled={isShepherd}
-                    className={`w-full bg-[#f4f4ef] border-none rounded-xl px-4 py-3 text-emerald-900 font-semibold focus:ring-2 focus:ring-[#06402b]/10 ${isShepherd ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  >
-                    <option value="">{t('common.select')} {t('animals.breed')}</option>
-                    {getBreedOptions().map(breed => (
-                      <option key={breed} value={breed}>{breed}</option>
-                    ))}
-                  </select>
-                  {formData.breed === 'Other' && !isShepherd && (
-                    <input 
-                      name="custom_breed" 
-                      value={formData.custom_breed} 
-                      onChange={handleChange} 
-                      placeholder={t('animals.enterCustomBreed')} 
-                      className="w-full bg-[#f4f4ef] border-none rounded-xl px-4 py-3 text-emerald-900 font-semibold focus:ring-2 focus:ring-[#06402b]/10 mt-2" 
-                    />
-                  )}
-                </div>
+                    placeholder={t('animals.enterCustomBreed')} 
+                    className={`w-full bg-[#f4f4ef] border-none rounded-xl px-4 py-3 text-emerald-900 font-semibold focus:ring-2 focus:ring-[#06402b]/10 mt-2 ${errors.custom_breed ? 'ring-2 ring-red-500' : ''}`}
+                  />
+                )}
+                {errors.custom_breed && <p className="text-red-600 text-xs">{errors.custom_breed}</p>}
+              </div>
                 <div className="space-y-1.5">
                   <label className="text-[11px] font-bold text-stone-500 uppercase tracking-widest px-1">{t('animalDetailsPage.dateOfBirth')}</label>
                   <input name="date_of_birth" value={formData.date_of_birth} onChange={handleChange} type="date" className="w-full bg-[#f4f4ef] border-none rounded-xl px-4 py-3 text-emerald-900 font-semibold focus:ring-2 focus:ring-[#06402b]/10" />
