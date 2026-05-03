@@ -87,16 +87,19 @@ export default function AnimalEdit() {
       const devicesData = await devicesRes.json();
       const usersData = await usersRes.json();
       const animalResponse = !isNewAnimal && animalRes.ok ? await animalRes.json() : null;
-      const currentAnimal = animalResponse?.data || animalResponse || null;
       const speciesData = speciesRes.ok ? await speciesRes.json() : { data: [] };
-
+      
       setSpeciesList(speciesData.data || []);
-
-      const animals = animalsData.data || [];
-      const devices = devicesData.data || [];
-      const users = usersData.data || [];
-
-      const ownersList = users.filter(u => u.role === 'Owner');
+      
+      const animals = animalsData.data || animalsData || [];
+      const devices = devicesData.data || devicesData || [];
+      // API returns array directly for users (not {data: []} format)
+      const users = Array.isArray(usersData) ? usersData : (usersData.data || []);
+      
+      const ownersList = users.filter(u => {
+        const role = u.role || (u.roles && u.roles.name) || (Array.isArray(u.roles) && u.roles[0]?.name);
+        return role === 'Owner' || role === 'Admin';
+      });
       setOwners(ownersList);
 
       const currentDeviceId = currentAnimal?.device_id;
