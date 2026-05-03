@@ -60,7 +60,6 @@ export default function AnimalEdit() {
   const [imagePreview, setImagePreview] = useState(null);
   const [existingImage, setExistingImage] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [message, setMessage] = useState(null);
   const [loading, setLoading] = useState(!isNewAnimal);
 
   const [availableDevices, setAvailableDevices] = useState([]);
