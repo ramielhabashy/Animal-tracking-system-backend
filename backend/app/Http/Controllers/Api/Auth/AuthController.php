@@ -169,18 +169,23 @@ class AuthController extends Controller
 
     public function forgotPassword(Request $request): JsonResponse
     {
-        $request->validate([
-            'email' => 'required|email',
-        ]);
+        try {
+            $request->validate([
+                'email' => 'required|email',
+            ]);
 
-        $status = Password::sendResetLink(
-            $request->only('email')
-        );
+            $status = Password::sendResetLink(
+                $request->only('email')
+            );
 
-        if ($status === Password::RESET_LINK_SENT) {
-            return response()->json(['message' => 'Password reset link sent to your email.']);
+            if ($status === Password::RESET_LINK_SENT) {
+                return response()->json(['message' => 'Password reset link sent to your email.']);
+            }
+
+            return response()->json(['message' => 'Unable to send reset link.'], 400);
+        } catch (\Exception $e) {
+            \Log::error('Forgot password error: ' . $e->getMessage());
+            return response()->json(['message' => 'Server error. Please try again.'], 500);
         }
-
-        return response()->json(['message' => 'Unable to send reset link.'], 400);
     }
 }
