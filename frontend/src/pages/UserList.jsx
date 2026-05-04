@@ -179,14 +179,14 @@ const fetchData = async () => {
 
       <div className="card overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left">
+          <table className={`w-full ${isRtl ? 'text-right' : 'text-left'}`}>
             <thead>
               <tr className="bg-[#F4F4EF]/50">
                 <th className="px-6 py-4 text-xs font-bold uppercase tracking-widest text-[#404943]">{t('users.name')}</th>
                 <th className="px-6 py-4 text-xs font-bold uppercase tracking-widest text-[#404943]">{t('users.role')}</th>
                 {showSubscriptionColumn && <th className="px-6 py-4 text-xs font-bold uppercase tracking-widest text-[#404943]">{t('users.subscription')}</th>}
                 <th className="px-6 py-4 text-xs font-bold uppercase tracking-widest text-[#404943]">Status</th>
-                <th className={`px-6 py-4 text-xs font-bold uppercase tracking-widest text-[#404943] ${isRtl ? 'text-left' : 'text-right'}`}>Actions</th>
+                <th className={`px-6 py-4 text-xs font-bold uppercase tracking-widest text-[#404943] ${isRtl ? 'text-left' : 'text-right'}`}>{t('common.actions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#F4F4EF]">

@@ -315,7 +315,7 @@ export default function SubscriptionPage() {
                     <MaterialSymbol icon="check_circle" size={20} className="text-emerald-500" />
                     <span className="font-bold text-emerald-700">Free Plan Includes:</span>
                   </div>
-                  <ul className="text-sm text-emerald-700 space-y-1 ml-7">
+                  <ul className={`text-sm text-emerald-700 space-y-1 ${isRtl ? 'mr-7' : 'ml-7'}`}>
                     <li>{selectedTier.max_animals === 0 ? 'Unlimited' : selectedTier.max_animals} animals</li>
                     <li>{selectedTier.max_devices === 0 ? 'Unlimited' : selectedTier.max_devices} devices</li>
                     <li>{selectedTier.max_users === 0 ? 'Unlimited' : selectedTier.max_users} users</li>

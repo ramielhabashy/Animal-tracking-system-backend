@@ -5,6 +5,8 @@ import { MaterialSymbol } from 'react-material-symbols';
 import { apiFetch } from '../utils/api';
 
 export default function PaymentManagement() {
+  const { dir } = useI18n();
+  const isRtl = dir === 'rtl';
   const [auctions, setAuctions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('pending');
@@ -105,14 +107,14 @@ export default function PaymentManagement() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className={`flex items-center justify-between ${isRtl ? 'flex-row-reverse' : ''}`}>
         <div>
           <h2 className="text-3xl font-bold text-[#002819]">Payment Management</h2>
           <p className="text-[#404943] mt-1">Manage auction winner payments</p>
         </div>
       </div>
 
-      <div className="flex gap-3">
+      <div className={`flex gap-3 ${isRtl ? 'flex-row-reverse' : ''}`}>
         {['pending', 'submitted', 'verified'].map((status) => (
           <button
             key={status}

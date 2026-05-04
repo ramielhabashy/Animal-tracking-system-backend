@@ -9,6 +9,8 @@ export default function AuctionDetails() {
   const { id } = useParams();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { dir } = useI18n();
+  const isRtl = dir === 'rtl';
   const [auction, setAuction] = useState(null);
   const [loading, setLoading] = useState(true);
   const [bidAmount, setBidAmount] = useState('');
@@ -229,22 +231,22 @@ export default function AuctionDetails() {
   return (
     <div className="max-w-6xl mx-auto space-y-8">
       {/* Breadcrumb */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link to="/auctions" className="p-2 hover:bg-[#eeeee9] rounded-full transition-colors">
+      <div className={`flex items-center justify-between ${isRtl ? 'flex-row-reverse' : ''}`}>
+        <div className={`flex items-center gap-4 ${isRtl ? 'flex-row-reverse' : ''}`}>
+          <Link to="/auctions" className={`p-2 hover:bg-[#eeeee9] rounded-full transition-colors ${isRtl ? 'order-last' : ''}`}>
             <MaterialSymbol icon="arrow_back" />
           </Link>
-          <nav className="flex text-xs text-[#4f6357] uppercase tracking-widest font-bold">
+          <nav className={`flex text-xs text-[#4f6357] uppercase tracking-widest font-bold ${isRtl ? 'flex-row-reverse' : ''}`}>
             <span>Marketplace</span>
             <span className="mx-2">/</span>
             <span>Auction #{id}</span>
           </nav>
         </div>
-        <div className="flex items-center gap-3">
+        <div className={`flex items-center gap-3 ${isRtl ? 'flex-row-reverse' : ''}`}>
           {canManageAuction && (
             <Link
               to={`/auctions/${id}/edit`}
-              className="px-4 py-2 bg-[#002819] text-white rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-[#06402b] transition-colors"
+              className={`px-4 py-2 bg-[#002819] text-white rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-[#06402b] transition-colors ${isRtl ? 'flex-row-reverse' : ''}`}
             >
               <MaterialSymbol icon="edit" size={16} />
               Edit
@@ -254,7 +256,7 @@ export default function AuctionDetails() {
             <button
               onClick={endAuction}
               disabled={endingAuction}
-              className="px-4 py-2 bg-red-600 text-white rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-red-700 transition-colors disabled:opacity-50"
+              className={`px-4 py-2 bg-red-600 text-white rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-red-700 transition-colors disabled:opacity-50 ${isRtl ? 'flex-row-reverse' : ''}`}
             >
               <MaterialSymbol icon="stop" size={16} />
               {endingAuction ? 'Ending...' : 'End Auction'}
@@ -276,26 +278,26 @@ export default function AuctionDetails() {
       {/* Winner Section */}
       {(auction.status === 'sold' || auction.status === 'ended') && auction.winner && (
         <div className={`p-6 rounded-2xl ${auction.status === 'sold' ? 'bg-emerald-50 border border-emerald-200' : 'bg-gray-50 border border-gray-200'}`}>
-          <div className="flex items-center gap-4">
-            <div className={`w-16 h-16 rounded-full flex items-center justify-center ${
-              auction.status === 'sold' ? 'bg-emerald-500' : 'bg-gray-500'
-            }`}>
-              <MaterialSymbol icon={auction.status === 'sold' ? 'emoji_events' : 'gavel'} size={32} className="text-white" />
-            </div>
-            <div className="flex-1">
-              <h3 className="text-xl font-bold text-[#002819]">
-                {auction.status === 'sold' ? 'Winner!' : 'Auction Ended'}
-              </h3>
-              <p className="text-lg text-[#404943]">
-                <span className="font-bold">{auction.winner.name}</span> won with {formatPrice(auction.current_price)}
-              </p>
-              {auction.status === 'sold' && auction.secondWinner && (
-                <p className="text-sm text-[#717973]">
-                  Next in line: {auction.secondWinner.name}
-                </p>
-              )}
-            </div>
-          </div>
+              <div className={`flex items-center gap-4 ${isRtl ? 'flex-row-reverse' : ''}`}>
+                <div className={`w-16 h-16 rounded-full flex items-center justify-center ${
+                  auction.status === 'sold' ? 'bg-emerald-500' : 'bg-gray-500'
+                }`}>
+                  <MaterialSymbol icon={auction.status === 'sold' ? 'emoji_events' : 'gavel'} size={32} className="text-white" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-xl font-bold text-[#002819]">
+                    {auction.status === 'sold' ? 'Winner!' : 'Auction Ended'}
+                  </h3>
+                  <p className="text-lg text-[#404943]">
+                    <span className="font-bold">{auction.winner.name}</span> won with {formatPrice(auction.current_price)}
+                  </p>
+                  {auction.status === 'sold' && auction.secondWinner && (
+                    <p className="text-sm text-[#717973]">
+                      Next in line: {auction.secondWinner.name}
+                    </p>
+                  )}
+                </div>
+              </div>
 
           {/* Payment Status */}
           {auction.status === 'sold' && (
@@ -320,30 +322,30 @@ export default function AuctionDetails() {
                   <p className="text-sm font-bold text-amber-600">
                     Time remaining: {getPaymentTimeRemaining()}
                   </p>
-                  <div className="flex gap-3">
-                    <button
-                      onClick={() => navigate('/my-payments')}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-blue-700"
-                    >
-                      <MaterialSymbol icon="credit_card" size={16} />
-                      Pay Now
-                    </button>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept=".pdf"
-                      onChange={uploadPaymentProof}
-                      className="hidden"
-                    />
-                    <button
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={uploadingProof}
-                      className="px-4 py-2 bg-[#002819] text-white rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-[#06402b] disabled:opacity-50"
-                    >
-                      <MaterialSymbol icon="upload" size={16} />
-                      {uploadingProof ? 'Uploading...' : 'Upload Transfer Proof'}
-                    </button>
-                  </div>
+                <div className={`flex gap-3 ${isRtl ? 'flex-row-reverse' : ''}`}>
+                  <button
+                    onClick={() => navigate('/my-payments')}
+                    className={`px-4 py-2 bg-blue-600 text-white rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-blue-700 ${isRtl ? 'flex-row-reverse' : ''}`}
+                  >
+                    <MaterialSymbol icon="credit_card" size={16} />
+                    Pay Now
+                  </button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".pdf"
+                    onChange={uploadPaymentProof}
+                    className="hidden"
+                  />
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploadingProof}
+                    className={`px-4 py-2 bg-[#002819] text-white rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-[#06402b] disabled:opacity-50 ${isRtl ? 'flex-row-reverse' : ''}`}
+                  >
+                    <MaterialSymbol icon="upload" size={16} />
+                    {uploadingProof ? 'Uploading...' : 'Upload Transfer Proof'}
+                  </button>
+                </div>
                   <p className="text-xs text-[#717973]">
                     Or{' '}
                     <Link to="/my-payments" className="text-blue-600 hover:underline font-medium">

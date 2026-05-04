@@ -916,11 +916,11 @@ const tabs = [
             <table className="w-full">
               <thead className="bg-[#F4F4EF]">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-[#404943] uppercase">{t('common.code') || 'Code'}</th>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-[#404943] uppercase">{t('common.name') || 'Name'}</th>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-[#404943] uppercase">{t('common.nativeName') || 'Native'}</th>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-[#404943] uppercase">{t('common.direction') || 'Dir'}</th>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-[#404943] uppercase">{t('common.status') || 'Status'}</th>
+                  <th className="px-4 py-3 text-start text-xs font-bold text-[#404943] uppercase">{t('common.code') || 'Code'}</th>
+                  <th className="px-4 py-3 text-start text-xs font-bold text-[#404943] uppercase">{t('common.name') || 'Name'}</th>
+                  <th className="px-4 py-3 text-start text-xs font-bold text-[#404943] uppercase">{t('common.nativeName') || 'Native'}</th>
+                  <th className="px-4 py-3 text-start text-xs font-bold text-[#404943] uppercase">{t('common.direction') || 'Dir'}</th>
+                  <th className="px-4 py-3 text-start text-xs font-bold text-[#404943] uppercase">{t('common.status') || 'Status'}</th>
                   <th className="px-4 py-3 text-right text-xs font-bold text-[#404943] uppercase">{t('common.actions') || 'Actions'}</th>
                 </tr>
               </thead>
@@ -1031,8 +1031,8 @@ const tabs = [
             <table className="w-full">
               <thead className="bg-[#F4F4EF] sticky top-0">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-[#404943] uppercase w-1/3">Key</th>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-[#404943] uppercase">Value</th>
+                  <th className="px-4 py-3 text-start text-xs font-bold text-[#404943] uppercase w-1/3">Key</th>
+                  <th className="px-4 py-3 text-start text-xs font-bold text-[#404943] uppercase">Value</th>
                 </tr>
               </thead>
               <tbody>

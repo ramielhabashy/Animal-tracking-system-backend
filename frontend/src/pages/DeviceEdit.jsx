@@ -248,35 +248,35 @@ export default function DeviceEdit() {
               </span>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="bg-white p-6 rounded-2xl border-l-4 border-emerald-500 shadow-sm">
-                <span className="text-xs font-semibold text-[#404943]/60 flex items-center gap-2">
-                  <MaterialSymbol icon="battery_very_low" size={16} fill />
-                  Battery
-                </span>
-                <div className="flex items-baseline gap-2 mt-2">
-                  <span className="text-2xl font-bold text-[#002819]">{device?.battery_level ?? 0}%</span>
-                  <span className="text-[10px] font-bold text-emerald-600 uppercase">{device?.battery_level > 50 ? 'Optimal' : device?.battery_level > 20 ? 'Low' : 'Critical'}</span>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-white p-6 rounded-2xl border-s-4 border-emerald-500 shadow-sm">
+                  <span className="text-xs font-semibold text-[#404943]/60 flex items-center gap-2">
+                    <MaterialSymbol icon="battery_very_low" size={16} fill />
+                    Battery
+                  </span>
+                  <div className="flex items-baseline gap-2 mt-2">
+                    <span className="text-2xl font-bold text-[#002819]">{device?.battery_level ?? 0}%</span>
+                    <span className="text-[10px] font-bold text-emerald-600 uppercase">{device?.battery_level > 50 ? 'Optimal' : device?.battery_level > 20 ? 'Low' : 'Critical'}</span>
+                  </div>
                 </div>
-              </div>
 
-              <div className="bg-white p-6 rounded-2xl border-l-4 border-emerald-500 shadow-sm">
-                <span className="text-xs font-semibold text-[#404943]/60 flex items-center gap-2">
-                  <MaterialSymbol icon="signal_cellular_alt" size={16} />
-                  Signal
-                </span>
-                <div className="flex items-baseline gap-2 mt-2">
-                  <span className="text-2xl font-bold text-[#002819]">{device?.signal_strength ? `${device.signal_strength} dBm` : 'N/A'}</span>
-                  <span className="text-[10px] font-bold text-emerald-600 uppercase">{device?.signal_strength > -90 ? 'Stable' : 'Weak'}</span>
+                <div className="bg-white p-6 rounded-2xl border-s-4 border-emerald-500 shadow-sm">
+                  <span className="text-xs font-semibold text-[#404943]/60 flex items-center gap-2">
+                    <MaterialSymbol icon="signal_cellular_alt" size={16} />
+                    Signal
+                  </span>
+                  <div className="flex items-baseline gap-2 mt-2">
+                    <span className="text-2xl font-bold text-[#002819]">{device?.signal_strength ? `${device.signal_strength} dBm` : 'N/A'}</span>
+                    <span className="text-[10px] font-bold text-emerald-600 uppercase">{device?.signal_strength > -90 ? 'Stable' : 'Weak'}</span>
+                  </div>
                 </div>
-              </div>
 
-              <div className="bg-white p-6 rounded-2xl border-l-4 border-emerald-500 shadow-sm">
-                <span className="text-xs font-semibold text-[#404943]/60 flex items-center gap-2">
-                  <MaterialSymbol icon="update" size={16} />
-                  Last Ping
-                </span>
-                <div className="flex items-baseline gap-2 mt-2">
+                <div className="bg-white p-6 rounded-2xl border-s-4 border-emerald-500 shadow-sm">
+                  <span className="text-xs font-semibold text-[#404943]/60 flex items-center gap-2">
+                    <MaterialSymbol icon="update" size={16} />
+                    Last Ping
+                  </span>
+                  <div className="flex items-baseline gap-2 mt-2">
                   <span className="text-2xl font-bold text-[#002819]">{device?.last_ping ? new Date(device.last_ping).toLocaleDateString() : 'N/A'}</span>
                   <span className="text-[10px] font-bold text-emerald-600 uppercase">Active</span>
                 </div>

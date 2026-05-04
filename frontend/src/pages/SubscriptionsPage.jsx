@@ -4,9 +4,12 @@ import { Link } from 'react-router-dom';
 import { MaterialSymbol } from 'react-material-symbols';
 import { apiFetch } from '../utils/api';
 import { useAuth } from '../context/AuthContext';
+import { useI18n } from '../i18n';
 
 export default function SubscriptionsPage() {
   const { user } = useAuth();
+  const { t, dir } = useI18n();
+  const isRtl = dir === 'rtl';
   const [tiers, setTiers] = useState([]);
   const [currentSubscription, setCurrentSubscription] = useState(null);
   const [limits, setLimits] = useState(null);
@@ -289,7 +292,7 @@ export default function SubscriptionsPage() {
   return (
     <div className="p-6 space-y-8">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
+        <div className={isRtl ? 'text-right' : 'text-left'}>
           <h1 className="text-2xl font-bold text-gray-900">Subscription Plans</h1>
           <p className="text-gray-500 text-sm mt-1">Choose the perfect plan for your livestock management needs</p>
         </div>
@@ -420,10 +423,10 @@ export default function SubscriptionsPage() {
                   tier.has_advanced_reports && { label: 'Advanced Reports', icon: 'analytics' },
                   tier.has_api_access && { label: 'API Access', icon: 'api' },
                 ].filter(Boolean).map((feature, i) => (
-                  <li key={i} className="flex items-center gap-2 text-sm">
-                    <MaterialSymbol icon={feature.icon} size={16} className="text-emerald-500" />
-                    {feature.label}
-                  </li>
+                <li key={i} className={`flex items-center gap-2 text-sm ${isRtl ? 'flex-row-reverse' : ''}`}>
+                  <MaterialSymbol icon={feature.icon} size={16} className="text-emerald-500" />
+                  {feature.label}
+                </li>
                 ))}
               </ul>
 
@@ -483,12 +486,12 @@ export default function SubscriptionsPage() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-gray-200">
-                    <th className="text-left py-3 px-4 text-sm font-bold text-gray-600">Name</th>
-                    <th className="text-left py-3 px-4 text-sm font-bold text-gray-600">Slug</th>
-                    <th className="text-left py-3 px-4 text-sm font-bold text-gray-600">Price (Mo/Yr)</th>
-                    <th className="text-left py-3 px-4 text-sm font-bold text-gray-600">Limits</th>
-                    <th className="text-left py-3 px-4 text-sm font-bold text-gray-600">Features</th>
-                    <th className="text-left py-3 px-4 text-sm font-bold text-gray-600">Actions</th>
+                    <th className="text-start py-3 px-4 text-sm font-bold text-gray-600">Name</th>
+                    <th className="text-start py-3 px-4 text-sm font-bold text-gray-600">Slug</th>
+                    <th className="text-start py-3 px-4 text-sm font-bold text-gray-600">Price (Mo/Yr)</th>
+                    <th className="text-start py-3 px-4 text-sm font-bold text-gray-600">Limits</th>
+                    <th className="text-start py-3 px-4 text-sm font-bold text-gray-600">Features</th>
+                    <th className="text-start py-3 px-4 text-sm font-bold text-gray-600">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -544,10 +547,10 @@ export default function SubscriptionsPage() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-gray-200">
-                    <th className="text-left py-3 px-4 text-sm font-bold text-gray-600">User</th>
-                    <th className="text-left py-3 px-4 text-sm font-bold text-gray-600">Current Tier</th>
-                    <th className="text-left py-3 px-4 text-sm font-bold text-gray-600">Status</th>
-                    <th className="text-left py-3 px-4 text-sm font-bold text-gray-600">Change Tier</th>
+                    <th className="text-start py-3 px-4 text-sm font-bold text-gray-600">User</th>
+                    <th className="text-start py-3 px-4 text-sm font-bold text-gray-600">Current Tier</th>
+                    <th className="text-start py-3 px-4 text-sm font-bold text-gray-600">Status</th>
+                    <th className="text-start py-3 px-4 text-sm font-bold text-gray-600">Change Tier</th>
                   </tr>
                 </thead>
                 <tbody>

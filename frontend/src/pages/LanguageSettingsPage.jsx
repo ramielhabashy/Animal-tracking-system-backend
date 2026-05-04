@@ -7,7 +7,8 @@ import api from '../utils/api';
 
 export default function LanguageSettingsPage() {
   const navigate = useNavigate();
-  const { t, locale } = useI18n();
+  const { t, locale, dir } = useI18n();
+  const isRtl = dir === 'rtl';
   const [languages, setLanguages] = useState([]);
   const [translations, setTranslations] = useState([]);
   const [selectedLanguageForTranslation, setSelectedLanguageForTranslation] = useState(null);
@@ -183,7 +184,7 @@ const handleSaveLanguage = async () => {
       {/* Back Button */}
       <button
         onClick={() => navigate('/settings')}
-        className="flex items-center gap-1 text-gray-600 hover:text-gray-900 mb-4"
+        className={`flex items-center gap-1 text-gray-600 hover:text-gray-900 mb-4 ${isRtl ? 'flex-row-reverse' : ''}`}
       >
         <MaterialSymbol icon="arrow_back" size={20} />
         <span>{t('back') || 'Back to Settings'}</span>
@@ -202,13 +203,13 @@ const handleSaveLanguage = async () => {
       {showTranslations ? (
         <div className="bg-white rounded-lg shadow overflow-hidden">
           <div className="p-4 border-b bg-gray-50 flex gap-4 items-center">
-            <button
-              onClick={() => setShowTranslations(false)}
-              className="flex items-center gap-1 text-gray-600 hover:text-gray-900"
-            >
-              <MaterialSymbol icon="arrow_back" size={20} />
-              <span>Back to Languages</span>
-            </button>
+        <button
+          onClick={() => setShowTranslations(false)}
+          className={`flex items-center gap-1 text-gray-600 hover:text-gray-900 ${isRtl ? 'flex-row-reverse' : ''}`}
+        >
+          <MaterialSymbol icon="arrow_back" size={20} />
+          <span>Back to Languages</span>
+        </button>
             <span className="text-gray-400">|</span>
             <select
               value={selectedLanguageForTranslation}
@@ -238,10 +239,10 @@ const handleSaveLanguage = async () => {
           <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
             <table className="w-full">
               <thead className="bg-gray-50 sticky top-0">
-                <tr>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-600 w-1/3">Key</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Value</th>
-                </tr>
+              <tr>
+                <th className="px-4 py-3 text-start text-sm font-medium text-gray-600 w-1/3">Key</th>
+                <th className="px-4 py-3 text-start text-sm font-medium text-gray-600">Value</th>
+              </tr>
               </thead>
               <tbody>
                 {translations.length === 0 ? (
@@ -348,12 +349,12 @@ const handleSaveLanguage = async () => {
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">{t('common.code')}</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">{t('common.name')}</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">{t('common.status')}</th>
-                    <th className="px-4 py-3 text-right text-sm font-medium text-gray-600">{t('common.actions')}</th>
-                  </tr>
+                <tr>
+                  <th className="px-4 py-3 text-start text-sm font-medium text-gray-600">{t('common.code') || 'Code'}</th>
+                  <th className="px-4 py-3 text-start text-sm font-medium text-gray-600">{t('common.name') || 'Name'}</th>
+                  <th className="px-4 py-3 text-start text-sm font-medium text-gray-600">{t('common.status') || 'Status'}</th>
+                  <th className="px-4 py-3 text-start text-sm font-medium text-gray-600">{t('common.actions') || 'Actions'}</th>
+                </tr>
                 </thead>
                 <tbody>
                   {languages.length === 0 ? (

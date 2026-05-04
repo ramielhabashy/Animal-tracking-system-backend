@@ -6,7 +6,8 @@ import { apiFetch } from '../utils/api';
 import { useI18n } from '../i18n';
 
 export default function AuctionList() {
-  const { t } = useI18n();
+  const { t, dir } = useI18n();
+  const isRtl = dir === 'rtl';
   const [auctions, setAuctions] = useState([]);
   const [myAuctions, setMyAuctions] = useState([]);
   const [enrolledAuctions, setEnrolledAuctions] = useState([]);
@@ -133,7 +134,7 @@ export default function AuctionList() {
         </div>
         <Link
           to="/auctions/new"
-          className="px-6 py-3 bg-[#002819] text-white rounded-xl font-bold text-sm shadow-lg shadow-[#002819]/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2"
+          className={`px-6 py-3 bg-[#002819] text-white rounded-xl font-bold text-sm shadow-lg shadow-[#002819]/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2 ${isRtl ? 'flex-row-reverse' : ''}`}
         >
           <MaterialSymbol icon="add" size={20} />
           {t('auctionsPage.startAuction')}
@@ -177,7 +178,7 @@ export default function AuctionList() {
           )}
           {filter === 'all' && myAuctions.length > 0 && (
             <div>
-              <h3 className="text-xl font-bold text-[#002819] mb-4 flex items-center gap-2">
+              <h3 className={`text-xl font-bold text-[#002819] mb-4 flex items-center gap-2 ${isRtl ? 'flex-row-reverse' : ''}`}>
                 <MaterialSymbol icon="person" size={24} className="text-[#D4AF37]" />
                 {t('auctions.myAuctions')} ({myAuctions.length})
               </h3>
@@ -191,7 +192,7 @@ export default function AuctionList() {
           
           {filter === 'all' && enrolledAuctions.length > 0 && (
             <div>
-              <h3 className="text-xl font-bold text-[#002819] mb-4 flex items-center gap-2">
+              <h3 className={`text-xl font-bold text-[#002819] mb-4 flex items-center gap-2 ${isRtl ? 'flex-row-reverse' : ''}`}>
                 <MaterialSymbol icon="how_to_reg" size={24} className="text-[#06402B]" />
                 {t('auctionsPage.biddingOn')} ({enrolledAuctions.length})
               </h3>
@@ -271,7 +272,7 @@ export default function AuctionList() {
                 <button
                   onClick={placeBid}
                   disabled={placing || !bidAmount}
-                  className="flex-1 py-3 bg-[#002819] text-white rounded-xl font-bold text-sm hover:bg-[#06402b] disabled:opacity-50 flex items-center justify-center gap-2"
+                  className={`flex-1 py-3 bg-[#002819] text-white rounded-xl font-bold text-sm hover:bg-[#06402b] disabled:opacity-50 flex items-center justify-center gap-2 ${isRtl ? 'flex-row-reverse' : ''}`}
                 >
                   {placing ? (
                     <>
@@ -395,34 +396,27 @@ function AuctionCard({ auction, onBid }) {
           </div>
         )}
 
-        <div className="flex items-center gap-2 mb-6">
-          <MaterialSymbol icon="group" size={18} className="text-[#77ac90]" />
-          <span className="text-xs font-semibold text-[#404943]">
-            {auction.bid_count || 0} bids
-          </span>
-          <span className="mx-2 text-[#c0c9c1]">|</span>
-          <MaterialSymbol icon="health_and_safety" size={18} className="text-[#77ac90]" />
-          <span className="text-xs font-semibold text-[#404943]">
-            {auction.animal?.baseline_temperature || '38.5'}°C
-          </span>
-        </div>
+              <div className={`flex items-center gap-2 mb-6 ${isRtl ? 'flex-row-reverse' : ''}`}>
+                <MaterialSymbol icon="schedule" size={16} />
+                <span className="text-sm font-bold">{getTimeRemaining(auction)}</span>
+              </div>
 
-        <div className="flex items-center justify-between">
-          <Link
-            to={`/auctions/${auction.id}`}
-            className="px-4 py-2 text-[#002819] hover:bg-[#eeeee9] rounded-xl font-medium text-sm transition-colors"
-          >
-            View Details
-          </Link>
-          {auction.status === 'active' && (
-            <button
-              onClick={() => onBid(auction)}
-              className="px-6 py-2 bg-[#002819] text-white rounded-xl font-bold text-sm hover:bg-[#06402b] shadow-lg shadow-[#002819]/20 transition-all"
-            >
-              Place Bid
-            </button>
-          )}
-        </div>
+            <div className={`flex items-center justify-between ${isRtl ? 'flex-row-reverse' : ''}`}>
+              <Link
+                to={`/auctions/${auction.id}`}
+                className="px-4 py-2 text-[#002819] hover:bg-[#eeeee9] rounded-xl font-medium text-sm transition-colors"
+              >
+                View Details
+              </Link>
+              {auction.status === 'active' && (
+                <button
+                  onClick={() => onBid(auction)}
+                  className="px-6 py-2 bg-[#002819] text-white rounded-xl font-bold text-sm hover:bg-[#06402b] shadow-lg shadow-[#002819]/20 transition-all"
+                >
+                  Place Bid
+                </button>
+              )}
+            </div>
       </div>
     </div>
   );

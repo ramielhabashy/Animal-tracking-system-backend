@@ -110,7 +110,8 @@ const createAnimalIcon = (color, isSelected = false) => {
 };
 
 export default function MapView() {
-  const { t } = useI18n();
+  const { t, dir } = useI18n();
+  const isRtl = dir === 'rtl';
   const [animals, setAnimals] = useState([]);
   const [devices, setDevices] = useState([]);
   const [locationHistories, setLocationHistories] = useState({});
@@ -636,15 +637,15 @@ export default function MapView() {
           
           {/* Search */}
           <div className="relative hidden lg:block">
-            <input
-              ref={searchInputRef}
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={t('mapPage.search')}
-              className="w-48 bg-white/10 border-none rounded-lg pl-10 pr-4 py-1.5 text-white text-sm placeholder:text-white/50 focus:ring-2 focus:ring-[#D4AF37] focus:bg-white/15 transition-all"
-            />
-            <MaterialSymbol icon="search" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/50" />
+              <input
+                ref={searchInputRef}
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder={t('mapPage.search')}
+                className={`w-48 bg-white/10 border-none rounded-lg ${isRtl ? 'pr-10 pl-4' : 'pl-10 pr-4'} py-1.5 text-white text-sm placeholder:text-white/50 focus:ring-2 focus:ring-[#D4AF37] focus:bg-white/15 transition-all`}
+              />
+            <MaterialSymbol icon="search" size={16} className={`absolute top-1/2 -translate-y-1/2 text-white/50 ${isRtl ? 'right-3' : 'left-3'}`} />
           </div>
         </div>
         
@@ -698,7 +699,7 @@ export default function MapView() {
               </select>
 
               {/* Status Filters */}
-              <div className="hidden xl:flex items-center gap-1 ml-1">
+              <div className={`hidden xl:flex items-center gap-1 ${isRtl ? 'mr-1' : 'ml-1'}`}>
                 {[
                   { status: 'healthy', color: 'bg-green-500', count: statusCounts.healthy },
                   { status: 'warning', color: 'bg-amber-500', count: statusCounts.warning },
@@ -933,7 +934,7 @@ export default function MapView() {
 
       {/* Legend */}
       {showLegend && (
-        <div className="absolute top-24 right-6 z-[1000] bg-white rounded-xl shadow-xl p-4 min-w-[200px]">
+        <div className={`absolute top-24 z-[1000] bg-white rounded-xl shadow-xl p-4 min-w-[200px] ${isRtl ? 'left-24' : 'right-24'}`}>
           <h4 className="font-bold text-[#002819] text-sm mb-3 flex items-center gap-2">
             <MaterialSymbol icon="info" size={16} />
             {t('mapPage.legend')}
@@ -981,7 +982,7 @@ export default function MapView() {
       )}
 
       {/* Geofence Controls */}
-      <div className="absolute left-4 top-24 z-[1000] flex flex-col gap-2">
+      <div className={`absolute top-24 z-[1000] flex flex-col gap-2 ${isRtl ? 'right-4' : 'left-4'}`}>
         <button
           onClick={() => setIsDrawingGeofence(!isDrawingGeofence)}
           className={`p-3 rounded-full shadow-lg transition-all ${isDrawingGeofence ? 'bg-[#D4AF37] text-[#002819] ring-4 ring-[#D4AF37]/30' : 'bg-white text-[#002819] hover:shadow-xl'}`}
@@ -1049,16 +1050,16 @@ export default function MapView() {
       </div>
 
       {/* Animal Sidebar */}
-      <div className={`absolute top-24 right-4 bottom-20 bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden z-[1000] transition-all duration-300 ${sidebarCollapsed ? 'w-16' : 'w-80'}`}>
+      <div className={`absolute top-24 bottom-20 bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden z-[1000] transition-all duration-300 ${isRtl ? 'left-4' : 'right-4'} ${sidebarCollapsed ? 'w-16' : 'w-80'}`}>
         <div className="p-4 border-b border-[#eeeee9]">
           {!sidebarCollapsed && (
             <>
-              <div className="flex justify-between items-center">
-                <h3 className="font-bold text-[#002819]">Herd Status</h3>
-                <button onClick={() => setSidebarCollapsed(true)} className="p-1 hover:bg-gray-100 rounded">
-                  <MaterialSymbol icon="chevron_right" size={20} />
-                </button>
-              </div>
+                <div className="flex justify-between items-center">
+                  <h3 className="font-bold text-[#002819]">Herd Status</h3>
+                  <button onClick={() => setSidebarCollapsed(true)} className={`p-1 hover:bg-gray-100 rounded ${isRtl ? 'order-first' : ''}`}>
+                    <MaterialSymbol icon={isRtl ? 'chevron_left' : 'chevron_right'} size={20} />
+                  </button>
+                </div>
               <div className="mt-2 flex items-center gap-2">
                 <span className="flex items-center gap-1.5 text-xs text-green-600 bg-green-50 px-2 py-1 rounded-full">
                   <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
@@ -1110,11 +1111,11 @@ export default function MapView() {
               )}
             </>
           )}
-          {sidebarCollapsed && (
-            <button onClick={() => setSidebarCollapsed(false)} className="p-2 hover:bg-gray-100 rounded">
-              <MaterialSymbol icon="chevron_left" size={20} />
-            </button>
-          )}
+            {sidebarCollapsed && (
+              <button onClick={() => setSidebarCollapsed(false)} className="p-2 hover:bg-gray-100 rounded">
+                <MaterialSymbol icon={isRtl ? 'chevron_right' : 'chevron_left'} size={20} />
+              </button>
+            )}
         </div>
         
         {!sidebarCollapsed && (
@@ -1190,7 +1191,7 @@ export default function MapView() {
                       <div className="w-2.5 h-2.5 rounded-full bg-gray-300" />
                       <span className="font-medium text-sm text-[#404943]">{animal.animal_id}</span>
                     </div>
-                    <p className="text-xs text-[#717973] ml-4">{animal.species}</p>
+                        <p className={`text-xs text-[#717973] ${isRtl ? 'mr-4' : 'ml-4'}`}>{animal.species}</p>
                   </div>
                 ))}
               </div>
@@ -1209,7 +1210,7 @@ export default function MapView() {
 
       {/* Alerts Panel */}
       {showAlertsPanel && (
-        <div className="absolute top-24 left-4 w-80 bg-white rounded-2xl shadow-2xl overflow-hidden z-[1000] max-h-[50vh]">
+        <div className={`absolute top-24 w-80 bg-white rounded-2xl shadow-2xl overflow-hidden z-[1000] max-h-[50vh] ${isRtl ? 'right-4' : 'left-4'}`}>
           <div className="p-4 border-b border-[#eeeee9] bg-gradient-to-r from-amber-500 to-amber-600">
             <div className="flex justify-between items-center">
               <h3 className="font-bold text-white flex items-center gap-2">
@@ -1335,7 +1336,7 @@ export default function MapView() {
 
       {/* Bottom Stats Bar */}
       <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[1000]">
-        <div className="bg-white/95 backdrop-blur-md rounded-full px-5 py-2 shadow-xl flex items-center gap-5">
+        <div className={`bg-white/95 backdrop-blur-md rounded-full px-5 py-2 shadow-xl flex items-center gap-5 ${isRtl ? 'flex-row-reverse' : ''}`}>
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
             <span className="text-sm font-medium text-[#002819]">{filteredAnimalsWithPaths.length} tracked</span>

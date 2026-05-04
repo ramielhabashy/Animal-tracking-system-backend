@@ -194,14 +194,14 @@ export default function DeviceList() {
             <span className="text-3xl font-black text-white">{totalActive}</span>
           </div>
         </div>
-        <div className="bg-white p-5 rounded-2xl shadow-sm border-l-4 border-[#002819]">
+        <div className="bg-white p-5 rounded-2xl shadow-sm border-s-4 border-[#002819]">
           <span className="text-[#717973] text-xs font-bold uppercase">{t('devicesPage.onlineStatus')}</span>
           <div className="flex items-center gap-2 mt-1">
             <span className="text-3xl font-black text-[#002819]">{onlineCount}</span>
             <MaterialSymbol icon="wifi" size={18} className="text-[#002819]" />
           </div>
         </div>
-        <div className="bg-white p-5 rounded-2xl shadow-sm border-l-4 border-[#735c00]">
+        <div className="bg-white p-5 rounded-2xl shadow-sm border-s-4 border-[#735c00]">
           <span className="text-[#717973] text-xs font-bold uppercase">{t('devicesPage.lowBatteryAlerts')}</span>
           <div className="flex items-baseline gap-2 mt-1">
             <span className="text-3xl font-black text-[#735c00]">{lowBatteryCount}</span>
@@ -245,7 +245,7 @@ export default function DeviceList() {
       {/* Device Table */}
       <div className="bg-white rounded-3xl overflow-hidden shadow-sm border border-[#c0c9c1]/10">
         <div className="overflow-x-auto">
-          <table className="w-full text-left">
+          <table className={`w-full ${isRtl ? 'text-right' : 'text-left'}`}>
             <thead>
               <tr className="bg-[#eeeee9]/50 text-[#404943] text-xs uppercase tracking-widest font-bold">
                 <th className="px-8 py-5">{t('devices.deviceId')}</th>

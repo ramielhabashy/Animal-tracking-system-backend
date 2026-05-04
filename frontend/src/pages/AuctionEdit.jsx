@@ -9,6 +9,8 @@ export default function AuctionEdit() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { dir } = useI18n();
+  const isRtl = dir === 'rtl';
   const [auction, setAuction] = useState(null);
   const [formData, setFormData] = useState({
     title: '',
@@ -106,14 +108,14 @@ export default function AuctionEdit() {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
+      <div className={`flex items-center justify-between ${isRtl ? 'flex-row-reverse' : ''}`}>
         <div>
           <h2 className="text-3xl font-bold text-[#002819]">Edit Auction</h2>
           <p className="text-[#404943] mt-1">Update auction details and settings</p>
         </div>
         <button
           onClick={() => navigate(`/auctions/${id}`)}
-          className="px-4 py-2 border border-[#c0c9c1] rounded-xl text-[#404943] font-semibold hover:bg-[#eeeee9] transition-colors flex items-center gap-2"
+          className={`px-4 py-2 border border-[#c0c9c1] rounded-xl text-[#404943] font-semibold hover:bg-[#eeeee9] transition-colors flex items-center gap-2 ${isRtl ? 'flex-row-reverse' : ''}`}
         >
           <MaterialSymbol icon="arrow_back" size={18} />
           Back to Auction
@@ -205,29 +207,29 @@ export default function AuctionEdit() {
             />
           </div>
 
-          <div className="flex justify-end gap-4 pt-4">
-            <button
-              type="button"
-              onClick={() => navigate(`/auctions/${id}`)}
-              className="px-6 py-3 border border-[#c0c9c1] rounded-xl text-[#404943] font-bold hover:bg-[#eeeee9] transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={submitting}
-              className="px-6 py-3 bg-[#002819] text-white rounded-xl font-bold hover:bg-[#06402b] transition-colors disabled:opacity-50 flex items-center gap-2"
-            >
-              {submitting && <div className="animate-spin w-5 h-5 border-2 border-white border-t-transparent rounded-full" />}
-              Save Changes
-            </button>
-          </div>
+            <div className={`flex justify-end gap-4 pt-4 ${isRtl ? 'flex-row-reverse' : ''}`}>
+              <button
+                type="button"
+                onClick={() => navigate(`/auctions/${id}`)}
+                className="px-6 py-3 border border-[#c0c9c1] rounded-xl text-[#404943] font-bold hover:bg-[#eeeee9] transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={submitting}
+                className={`px-6 py-3 bg-[#002819] text-white rounded-xl font-bold hover:bg-[#06402b] transition-colors disabled:opacity-50 flex items-center gap-2 ${isRtl ? 'flex-row-reverse' : ''}`}
+              >
+                {submitting && <div className="animate-spin w-5 h-5 border-2 border-white border-t-transparent rounded-full" />}
+                Save Changes
+              </button>
+            </div>
         </form>
       </div>
 
       {user?.role === 'Admin' && (
         <div className="bg-red-50 border border-red-200 rounded-[2rem] p-8">
-          <h3 className="text-lg font-bold text-red-800 mb-4 flex items-center gap-2">
+          <h3 className={`text-lg font-bold text-red-800 mb-4 flex items-center gap-2 ${isRtl ? 'flex-row-reverse' : ''}`}>
             <MaterialSymbol icon="warning" size={20} />
             Admin Actions
           </h3>

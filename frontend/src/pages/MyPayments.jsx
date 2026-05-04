@@ -10,6 +10,8 @@ let elements = null;
 
 export default function MyPayments() {
   const { user } = useAuth();
+  const { dir } = useI18n();
+  const isRtl = dir === 'rtl';
   const [auctions, setAuctions] = useState([]);
   const [soldAuctions, setSoldAuctions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -221,7 +223,7 @@ export default function MyPayments() {
   return (
     <div className="space-y-8">
       <div>
-        <nav className="flex text-xs text-[#4f6357] mb-2 uppercase tracking-widest font-bold">
+        <nav className={`flex text-xs text-[#4f6357] mb-2 uppercase tracking-widest font-bold ${isRtl ? 'flex-row-reverse' : ''}`}>
           <span>Marketplace</span>
           <span className="mx-2">/</span>
           <span className="text-[#002819]">My Payments</span>

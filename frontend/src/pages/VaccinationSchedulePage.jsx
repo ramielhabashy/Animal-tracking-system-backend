@@ -406,7 +406,7 @@ export default function VaccinationSchedulePage() {
                   key={index}
                   className={`p-4 ${getCellHeight()} border-r border-b border-[#e8e8e3] ${
                     isCurrentMonth ? 'bg-white' : 'bg-[#f4f4ef] text-[#404943]/40'
-                  } ${isToday ? 'bg-[#D4AF37]/10' : ''} ${viewMode === 'day' ? 'border-l-0' : ''}`}
+                   } ${isToday ? 'bg-[#D4AF37]/10' : ''} ${viewMode === 'day' ? 'border-s-0' : ''}`}
                 >
                   {viewMode === 'day' && (
                     <div className="text-center mb-4">
@@ -445,7 +445,7 @@ export default function VaccinationSchedulePage() {
                       return (
                         <div
                           key={vacc.id}
-                          className={`${colors.bg} ${colors.text} text-[10px] p-1.5 rounded-lg border-l-4 ${colors.border} font-bold truncate cursor-pointer hover:opacity-80 ${viewMode === 'day' ? 'text-xs' : ''}`}
+                           className={`${colors.bg} ${colors.text} text-[10px] p-1.5 rounded-lg border-s-4 ${colors.border} font-bold truncate cursor-pointer hover:opacity-80 ${viewMode === 'day' ? 'text-xs' : ''}`}
                           onClick={() => openEditModal(vacc)}
                           title={vacc.vaccine_name}
                         >

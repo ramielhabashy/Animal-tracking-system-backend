@@ -98,13 +98,13 @@ export default function RolesPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-[#002819]">{t('roles.title') || 'Roles Management'}</h1>
-          <p className="text-[#404943] mt-1">{t('roles.description') || 'View and manage system roles and permissions'}</p>
+      <div className="p-6 space-y-6">
+        <div className="flex items-center justify-between">
+          <div className={isRtl ? 'text-right' : 'text-left'}>
+            <h1 className="text-3xl font-bold text-[#002819]">{t('roles.title') || 'Roles Management'}</h1>
+            <p className="text-[#404943] mt-1">{t('roles.description') || 'View and manage system roles and permissions'}</p>
+          </div>
         </div>
-      </div>
 
       {error && (
         <div className="p-4 bg-red-100 text-red-800 rounded-xl">

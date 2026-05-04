@@ -131,7 +131,8 @@ function GeofenceDrawer({ coordinates, onCoordinatesChange, animals, devices, ge
 }
 
 export default function GeofenceList() {
-  const { t } = useI18n();
+  const { t, dir } = useI18n();
+  const isRtl = dir === 'rtl';
   const { user } = useAuth();
   const [geofences, setGeofences] = useState([]);
   const [animals, setAnimals] = useState([]);
@@ -391,17 +392,17 @@ export default function GeofenceList() {
 
   return (
     <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
+      <div className={`flex items-center justify-between mb-6 ${isRtl ? 'flex-row-reverse' : ''}`}>
         <div>
           <h1 className="text-2xl font-bold text-gray-900">{t('geofences.title')}</h1>
           <p className="text-gray-500 text-sm mt-1">{t('geofencesPage.description')}</p>
         </div>
-        <div className="flex gap-3">
+        <div className={`flex gap-3 ${isRtl ? 'flex-row-reverse' : ''}`}>
           {isAdmin && (
             <button
               onClick={handleExport}
               disabled={exporting}
-              className="flex items-center gap-2 px-4 py-2 bg-[#D4AF37] text-white rounded-lg hover:bg-[#c9a030] transition-colors disabled:opacity-50"
+              className={`flex items-center gap-2 px-4 py-2 bg-[#D4AF37] text-white rounded-lg hover:bg-[#c9a030] transition-colors disabled:opacity-50 ${isRtl ? 'flex-row-reverse' : ''}`}
             >
               <MaterialSymbol icon="download" size={20} />
               {exporting ? t('common.exporting') : t('common.export')}
@@ -409,7 +410,7 @@ export default function GeofenceList() {
           )}
           <button
             onClick={openCreateModal}
-            className="flex items-center gap-2 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors"
+            className={`flex items-center gap-2 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors ${isRtl ? 'flex-row-reverse' : ''}`}
           >
             <MaterialSymbol icon="add" size={20} />
             {t('geofencesPage.createGeofence')}
@@ -439,8 +440,8 @@ export default function GeofenceList() {
                 !geofence.is_active ? 'opacity-60' : ''
               }`}
             >
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center gap-2">
+              <div className={`flex items-start justify-between mb-3 ${isRtl ? 'flex-row-reverse' : ''}`}>
+                <div className={`flex items-center gap-2 ${isRtl ? 'flex-row-reverse' : ''}`}>
                   <div
                     className="w-4 h-4 rounded"
                     style={{ backgroundColor: geofence.color }}
@@ -454,9 +455,9 @@ export default function GeofenceList() {
                 </span>
               </div>
 
-              <div className="flex gap-1 mb-3">
+              <div className={`flex gap-1 mb-3 ${isRtl ? 'flex-row-reverse' : ''}`}>
                 {alertTypeBadge(geofence.alert_type)}
-                <span className="text-xs text-gray-500 px-2 py-1">
+                <span className={`text-xs text-gray-500 px-2 py-1 ${isRtl ? 'text-right' : 'text-left'}`}>
                   {Array.isArray(geofence.coordinates) 
                     ? t('geofencesPage.points', { count: geofence.coordinates.length }) 
                     : t('devicesPage.na')}
@@ -510,16 +511,16 @@ export default function GeofenceList() {
                 </div>
               )}
 
-              <div className="flex gap-1 mt-4 pt-4 border-t border-gray-100">
+              <div className={`flex gap-1 mt-4 pt-4 border-t border-gray-100 ${isRtl ? 'flex-row-reverse' : ''}`}>
                 <button
                   onClick={() => openAssignModal(geofence)}
-                  className="flex items-center justify-center gap-1 px-2 py-2 text-xs border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                  className={`flex items-center justify-center gap-1 px-2 py-2 text-xs border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors ${isRtl ? 'flex-row-reverse' : ''}`}
                 >
                   <MaterialSymbol icon="pets" size={14} />
                 </button>
                 <button
                   onClick={() => openGroupAssignModal(geofence)}
-                  className="flex items-center justify-center gap-1 px-2 py-2 text-xs border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                  className={`flex items-center justify-center gap-1 px-2 py-2 text-xs border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors ${isRtl ? 'flex-row-reverse' : ''}`}
                 >
                   <MaterialSymbol icon="folder" size={14} />
                 </button>
@@ -527,19 +528,19 @@ export default function GeofenceList() {
                   <>
                     <button
                       onClick={() => toggleActive(geofence)}
-                      className="flex items-center justify-center gap-1 px-2 py-2 text-xs border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                      className={`flex items-center justify-center gap-1 px-2 py-2 text-xs border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors ${isRtl ? 'flex-row-reverse' : ''}`}
                     >
                       <MaterialSymbol icon={geofence.is_active ? 'pause' : 'play_arrow'} size={14} />
                     </button>
                     <button
                       onClick={() => openEditModal(geofence)}
-                      className="flex items-center justify-center px-2 py-2 text-xs border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                      className={`flex items-center justify-center px-2 py-2 text-xs border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors ${isRtl ? 'flex-row-reverse' : ''}`}
                     >
                       <MaterialSymbol icon="edit" size={14} />
                     </button>
                     <button
                       onClick={() => deleteGeofence(geofence)}
-                      className="flex items-center justify-center px-2 py-2 text-xs text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors"
+                      className={`flex items-center justify-center px-2 py-2 text-xs text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors ${isRtl ? 'flex-row-reverse' : ''}`}
                     >
                       <MaterialSymbol icon="delete" size={14} />
                     </button>
@@ -669,7 +670,7 @@ export default function GeofenceList() {
                 )}
               </div>
 
-              <div className="flex gap-3 pt-4">
+              <div className={`flex gap-3 pt-4 ${isRtl ? 'flex-row-reverse' : ''}`}>
                 <button
                   type="button"
                   onClick={() => setShowCreateModal(false)}

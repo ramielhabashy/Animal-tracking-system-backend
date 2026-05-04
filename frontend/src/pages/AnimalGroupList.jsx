@@ -6,7 +6,8 @@ import { useI18n } from '../i18n';
 import { useAuth } from '../context/AuthContext';
 
 export default function AnimalGroupList() {
-  const { t } = useI18n();
+  const { t, dir } = useI18n();
+  const isRtl = dir === 'rtl';
   const { user } = useAuth();
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -183,7 +184,7 @@ export default function AnimalGroupList() {
         </div>
         <button
           onClick={openCreateModal}
-          className="flex items-center gap-2 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors"
+          className={`flex items-center gap-2 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors ${isRtl ? 'flex-row-reverse' : ''}`}
         >
           <MaterialSymbol icon="add" size={20} />
           {t('groupsPage.createGroup')}
@@ -247,21 +248,21 @@ export default function AnimalGroupList() {
               <div className="flex gap-2 mt-4 pt-4 border-t border-gray-100">
                 <button
                   onClick={() => openAssignModal(group)}
-                  className="flex-1 flex items-center justify-center gap-1 px-3 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                  className={`flex-1 flex items-center justify-center gap-1 px-3 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors ${isRtl ? 'flex-row-reverse' : ''}`}
                 >
                   <MaterialSymbol icon="person_add" size={16} />
                   {t('groupsPage.assign')}
                 </button>
                 <button
                   onClick={() => openEditModal(group)}
-                  className="flex-1 flex items-center justify-center gap-1 px-3 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                  className={`flex-1 flex items-center justify-center gap-1 px-3 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors ${isRtl ? 'flex-row-reverse' : ''}`}
                 >
                   <MaterialSymbol icon="edit" size={16} />
                   {t('common.edit')}
                 </button>
                 <button
                   onClick={() => deleteGroup(group)}
-                  className="flex items-center justify-center px-3 py-2 text-sm text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors"
+                  className={`flex items-center justify-center px-3 py-2 text-sm text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors ${isRtl ? 'flex-row-reverse' : ''}`}
                 >
                   <MaterialSymbol icon="delete" size={16} />
                 </button>

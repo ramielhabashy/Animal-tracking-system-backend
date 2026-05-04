@@ -6,7 +6,8 @@ import { apiFetch } from '../utils/api';
 import { useI18n } from '../i18n';
 
 export default function ReportsPage() {
-  const { t } = useI18n();
+  const { t, dir } = useI18n();
+  const isRtl = dir === 'rtl';
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('activity');
   const [stats, setStats] = useState({
@@ -60,7 +61,7 @@ export default function ReportsPage() {
   return (
     <div className="space-y-8">
       {/* Header Section */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+      <div className={`flex flex-col md:flex-row md:items-end justify-between gap-6 ${isRtl ? 'text-right' : ''}`}>
         <div className="space-y-1">
           <h2 className="text-3xl font-black text-[#002819] tracking-tight font-['Manrope']">
             {t('reportsPage.fleetReports')}
@@ -77,7 +78,7 @@ export default function ReportsPage() {
           <div className="flex items-center bg-white px-4 py-2 rounded-xl border border-[#e8e8e3]/50 shadow-sm cursor-pointer">
             <MaterialSymbol icon="layers" className="text-[#717973] mr-2 text-xl" />
             <span className="text-sm font-semibold text-stone-700">All Herds</span>
-            <MaterialSymbol icon="expand_more" className="text-[#717973] ml-2" />
+            <MaterialSymbol icon="expand_more" className={`text-[#717973] ${isRtl ? 'mr-2' : 'ml-2'}`} />
           </div>
           <button className="bg-gradient-to-b from-[#e9c349] to-[#cba72f] text-[#241a00] px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-md hover:shadow-lg transition-shadow">
             <MaterialSymbol icon="ios_share" />

@@ -7,7 +7,8 @@ import { useI18n } from '../i18n';
 
 export default function AuctionCreate() {
   const navigate = useNavigate();
-  const { t } = useI18n();
+  const { t, dir } = useI18n();
+  const isRtl = dir === 'rtl';
   const [searchParams] = useSearchParams();
   const preselectedAnimalId = searchParams.get('animal');
   
@@ -97,8 +98,8 @@ export default function AuctionCreate() {
   return (
     <div className="max-w-3xl mx-auto space-y-8">
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <Link to="/auctions" className="p-2 hover:bg-[#eeeee9] rounded-full transition-colors">
+      <div className={`flex items-center gap-4 ${isRtl ? 'flex-row-reverse' : ''}`}>
+        <Link to="/auctions" className={`p-2 hover:bg-[#eeeee9] rounded-full transition-colors ${isRtl ? 'order-last' : ''}`}>
           <MaterialSymbol icon="arrow_back" />
         </Link>
         <div>
@@ -118,7 +119,7 @@ export default function AuctionCreate() {
       <form onSubmit={handleSubmit} className="space-y-8">
         {/* Select Animal */}
         <div className="bg-white rounded-[2rem] p-8 shadow-sm border border-[#c0c9c1]/10">
-          <div className="flex items-center gap-3 mb-6">
+          <div className={`flex items-center gap-3 mb-6 ${isRtl ? 'flex-row-reverse' : ''}`}>
             <span className="material-symbols-outlined text-[#002819] bg-[#f4f4ef] p-2 rounded-xl">pets</span>
             <h3 className="text-xl font-bold font-['Manrope'] text-[#002819]">{t('auctionsPage.selectAnimal')}</h3>
           </div>
@@ -179,7 +180,7 @@ export default function AuctionCreate() {
 
         {/* Auction Details */}
         <div className="bg-white rounded-[2rem] p-8 shadow-sm border border-[#c0c9c1]/10">
-          <div className="flex items-center gap-3 mb-6">
+          <div className={`flex items-center gap-3 mb-6 ${isRtl ? 'flex-row-reverse' : ''}`}>
             <span className="material-symbols-outlined text-[#002819] bg-[#f4f4ef] p-2 rounded-xl">gavel</span>
             <h3 className="text-xl font-bold font-['Manrope'] text-[#002819]">{t('auctionsPage.auctionDetails')}</h3>
           </div>
@@ -283,23 +284,23 @@ export default function AuctionCreate() {
           >
             {t('auctionsPage.cancel')}
           </Link>
-          <button
-            type="submit"
-            disabled={submitting || !formData.animal_id || !formData.title || !formData.starting_price}
-            className="flex-1 py-4 bg-[#002819] text-white rounded-xl font-bold shadow-xl shadow-[#002819]/20 hover:bg-[#06402b] active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-          >
-            {submitting ? (
-              <>
-                <div className="animate-spin w-5 h-5 border-2 border-white border-t-transparent rounded-full" />
-                {t('auctionsPage.creating')}
-              </>
-            ) : (
-              <>
-                <MaterialSymbol icon="gavel" />
-                {t('auctionsPage.startAuction')}
-              </>
-            )}
-          </button>
+            <button
+              type="submit"
+              disabled={submitting || !formData.animal_id || !formData.title || !formData.starting_price}
+              className={`flex-1 py-4 bg-[#002819] text-white rounded-xl font-bold shadow-xl shadow-[#002819]/20 hover:bg-[#06402b] active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 ${isRtl ? 'flex-row-reverse' : ''}`}
+            >
+              {submitting ? (
+                <>
+                  <div className="animate-spin w-5 h-5 border-2 border-white border-t-transparent rounded-full" />
+                  {t('auctionsPage.creating')}
+                </>
+              ) : (
+                <>
+                  <MaterialSymbol icon="gavel" />
+                  {t('auctionsPage.startAuction')}
+                </>
+              )}
+            </button>
         </div>
       </form>
     </div>

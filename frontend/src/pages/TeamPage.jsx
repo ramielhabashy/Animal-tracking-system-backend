@@ -6,7 +6,8 @@ import { useAuth } from '../context/AuthContext';
 import { useI18n } from '../i18n';
 
 export default function TeamPage() {
-  const { t } = useI18n();
+  const { t, dir } = useI18n();
+  const isRtl = dir === 'rtl';
   const { user } = useAuth();
   
   const [allUsers, setAllUsers] = useState([]);
@@ -234,13 +235,13 @@ const handleRemoveMember = async (memberId) => {
           <p className="text-[#404943] mt-1">{t('teamPage.viewManage')}</p>
         </div>
         {(isAdmin || user?.role === 'Owner') && (
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-2 px-5 py-3 bg-[#002819] text-white rounded-xl font-bold text-sm hover:bg-[#06402b] transition-all shadow-lg shadow-[#002819]/20"
-          >
-            <MaterialSymbol icon="person_add" size={20} />
-            {t('teamPage.addMember')}
-          </button>
+                <button
+                  onClick={() => setShowAddModal(true)}
+                  className={`flex items-center gap-2 px-5 py-3 bg-[#002819] text-white rounded-xl font-bold text-sm hover:bg-[#06402b] transition-all shadow-lg shadow-[#002819]/20 ${isRtl ? 'flex-row-reverse' : ''}`}
+                >
+                  <MaterialSymbol icon="person_add" size={20} />
+                  {t('teamPage.addMember')}
+                </button>
         )}
       </div>
 
@@ -302,7 +303,7 @@ const handleRemoveMember = async (memberId) => {
                   ) : (
                     <div className="divide-y divide-gray-100">
                       {members.map(member => (
-                        <div key={member.id} className="p-4 pl-20 flex items-center justify-between hover:bg-gray-50 transition-colors">
+                        <div key={member.id} className={`p-4 ${isRtl ? 'pr-20' : 'pl-20'} flex items-center justify-between hover:bg-gray-50 transition-colors`}>
                           <div className="flex items-center gap-4">
                             <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold ${
                               member.role === 'Manager' ? 'bg-purple-500' : 'bg-blue-500'
@@ -314,27 +315,27 @@ const handleRemoveMember = async (memberId) => {
                               <p className="text-xs text-[#717973]">{member.email}</p>
                             </div>
                           </div>
-<div className="flex items-center gap-4">
-                            {getRoleBadge(member.role)}
-                            {(isAdmin || isOwnTeam) && (
-                              <button
-                                onClick={(e) => { e.stopPropagation(); openRoleModal(member); }}
-                                className="p-2 text-[#06402B] hover:bg-[#F4F4EF] rounded-lg transition-colors"
-                                title="Change role"
-                              >
-                                <MaterialSymbol icon="swap_horiz" size={20} />
-                              </button>
-                            )}
-                            {(isAdmin || isOwnTeam) && (
-                              <button
-                                onClick={(e) => { e.stopPropagation(); handleRemoveMember(member.id); }}
-                                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                title="Remove from team"
-                              >
-                                <MaterialSymbol icon="person_remove" size={20} />
-                              </button>
-                            )}
-                          </div>
+                <div className={`flex items-center gap-4 ${isRtl ? 'flex-row-reverse' : ''}`}>
+                    {getRoleBadge(member.role)}
+                    {(isAdmin || isOwnTeam) && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); openRoleModal(member); }}
+                        className="p-2 text-[#06402B] hover:bg-[#F4F4EF] rounded-lg transition-colors"
+                        title="Change role"
+                      >
+                        <MaterialSymbol icon="swap_horiz" size={20} />
+                      </button>
+                    )}
+                    {(isAdmin || isOwnTeam) && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleRemoveMember(member.id); }}
+                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        title="Remove from team"
+                      >
+                        <MaterialSymbol icon="person_remove" size={20} />
+                      </button>
+                    )}
+                  </div>
                         </div>
                       ))}
                     </div>
@@ -378,15 +379,15 @@ const handleRemoveMember = async (memberId) => {
                     <p className="text-xs text-[#717973]">{u.email}</p>
                   </div>
                 </div>
-<div className="flex items-center gap-3">
-                  {getRoleBadge(u.role)}
-                  <button
-                    onClick={(e) => { e.stopPropagation(); openRoleModal(u); }}
-                    className="p-2 text-[#06402B] hover:bg-[#F4F4EF] rounded-lg transition-colors"
-                    title="Change role"
-                  >
-                    <MaterialSymbol icon="swap_horiz" size={20} />
-                  </button>
+              <div className={`flex items-center gap-3 ${isRtl ? 'flex-row-reverse' : ''}`}>
+                {getRoleBadge(u.role)}
+                <button
+                  onClick={(e) => { e.stopPropagation(); openRoleModal(u); }}
+                  className="p-2 text-[#06402B] hover:bg-[#F4F4EF] rounded-lg transition-colors"
+                  title="Change role"
+                >
+                  <MaterialSymbol icon="swap_horiz" size={20} />
+                </button>
                   <select
                     onChange={(e) => e.target.value && handleAssignOwner(u, parseInt(e.target.value))}
                     className="px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white"

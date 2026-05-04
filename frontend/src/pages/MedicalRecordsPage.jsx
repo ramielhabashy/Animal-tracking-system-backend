@@ -442,7 +442,7 @@ export default function MedicalRecordsPage() {
                   </button>
                   <button
                     onClick={goToToday}
-                    className="px-4 py-2 text-sm bg-[#002819] text-white rounded-lg font-medium hover:bg-[#06402b] transition-colors ml-2"
+            className={`px-4 py-2 text-sm bg-[#002819] text-white rounded-lg font-medium hover:bg-[#06402b] transition-colors ${isRtl ? 'mr-2' : 'ml-2'}`}
                   >
                     {t('vaccination.today')}
                   </button>
@@ -494,7 +494,7 @@ export default function MedicalRecordsPage() {
                             return (
                               <div
                                 key={vacc.id}
-                                className={`${colors.bg} ${colors.text} text-[10px] p-1 rounded border-l-2 ${colors.border} font-bold truncate cursor-pointer hover:opacity-80`}
+                    className={`${colors.bg} ${colors.text} text-[10px] p-1 rounded border-s-2 ${colors.border} font-bold truncate cursor-pointer hover:opacity-80`}
                                 onClick={() => openEditModal(vacc)}
                                 title={vacc.vaccine_name}
                               >
@@ -605,7 +605,7 @@ export default function MedicalRecordsPage() {
 
         {activeTab === 'records' ? (
         <div className="overflow-x-auto">
-          <table className="w-full text-left">
+          <table className={`w-full ${isRtl ? 'text-right' : 'text-left'}`}>
             <thead>
               <tr className="bg-[#F4F4EF]">
                 <th className="px-6 py-4 text-[#4f6357] font-bold text-sm">{t('common.date')}</th>
@@ -682,7 +682,7 @@ export default function MedicalRecordsPage() {
         </div>
         ) : (
         <div className="overflow-x-auto">
-          <table className="w-full text-left">
+          <table className={`w-full ${isRtl ? 'text-right' : 'text-left'}`}>
             <thead>
               <tr className="bg-[#F4F4EF]">
                 <th className="px-6 py-4 text-[#4f6357] font-bold text-sm">{t('common.date')}</th>
