@@ -31,7 +31,8 @@ function MapUpdater({ center, zoom }) {
 }
 
 export default function AnimalDetails() {
-  const { t } = useI18n();
+  const { t, dir } = useI18n();
+  const isRtl = dir === 'rtl';
   const { id } = useParams();
   const navigate = useNavigate();
   const [animal, setAnimal] = useState(null);
@@ -185,67 +186,67 @@ const fetchAnimal = async () => {
   return (
     <main className="p-8 min-h-screen">
       <div className="max-w-7xl mx-auto">
-      {/* Hero Header */}
-      <section className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-8 items-stretch">
-        {/* Main Hero Image */}
-        <div className="lg:col-span-8 relative rounded-[2rem] overflow-hidden shadow-2xl h-[400px] group">
-          {animal.identification_photo ? (
-            <img src={animal.identification_photo} alt={animal.animal_id} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
-          ) : (
-            <div className="w-full h-full bg-gradient-to-br from-emerald-100 to-emerald-200 flex items-center justify-center">
-              <MaterialSymbol icon="pets" size={120} className="text-emerald-300" />
-            </div>
-          )}
-          <div className="absolute inset-0 bg-gradient-to-t from-[#002819]/90 via-[#002819]/30 to-transparent"></div>
-          <div className="absolute bottom-0 right-0 left-0 p-10 flex flex-col md:flex-row justify-between items-end gap-6">
-            <div>
-              <div className="flex items-center gap-3 mb-2">
-                <span className="px-3 py-1 bg-amber-400 text-emerald-950 text-[10px] font-bold rounded-full uppercase tracking-widest shadow-lg shadow-amber-400/20">
-                  {animal.species}
-                </span>
-                <span className="text-emerald-100/70 text-sm font-medium">| ID: {animal.animal_id}</span>
+        {/* Hero Header */}
+        <section className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-8 items-stretch">
+          {/* Main Hero Image */}
+          <div className="lg:col-span-8 relative rounded-[2rem] overflow-hidden shadow-2xl h-[400px] group">
+            {animal.identification_photo ? (
+              <img src={animal.identification_photo} alt={animal.animal_id} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+            ) : (
+              <div className="w-full h-full bg-gradient-to-br from-emerald-100 to-emerald-200 flex items-center justify-center">
+                <MaterialSymbol icon="pets" size={120} className="text-emerald-300" />
               </div>
-              <h2 className="text-5xl font-extrabold text-white brand-font tracking-tight mb-2">
-                {animal.name || animal.breed || animal.species}
-              </h2>
-              <div className="flex items-center gap-2 text-emerald-100/80">
-                <MaterialSymbol icon="person" className="text-amber-400" />
-                <span className="font-medium">{owner?.name || t('animalDetailsPage.unassignedOwner')}</span>
+            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-[#002819]/90 via-[#002819]/30 to-transparent"></div>
+            <div className={`absolute bottom-0 right-0 left-0 p-10 flex flex-col md:flex-row justify-between items-end gap-6 ${isRtl ? 'flex-row-reverse' : ''}`}>
+              <div className={isRtl ? 'text-right' : ''}>
+                <div className={`flex items-center gap-3 mb-2 ${isRtl ? 'flex-row-reverse' : ''}`}>
+                  <span className="px-3 py-1 bg-amber-400 text-emerald-950 text-[10px] font-bold rounded-full uppercase tracking-widest shadow-lg shadow-amber-400/20">
+                    {animal.species}
+                  </span>
+                  <span className="text-emerald-100/70 text-sm font-medium">| ID: {animal.animal_id}</span>
+                </div>
+                <h2 className="text-5xl font-extrabold text-white brand-font tracking-tight mb-2">
+                  {animal.name || animal.breed || animal.species}
+                </h2>
+                <div className={`flex items-center gap-2 text-emerald-100/80 ${isRtl ? 'flex-row-reverse' : ''}`}>
+                  <MaterialSymbol icon="person" className="text-amber-400" />
+                  <span className="font-medium">{owner?.name || t('animalDetailsPage.unassignedOwner')}</span>
+                </div>
               </div>
-            </div>
-            <div className="flex gap-3">
-              <Link to={`/animals/${id}/edit`} className="bg-white/10 hover:bg-white/20 backdrop-blur-md text-white px-6 py-3 rounded-xl font-bold transition-all border border-white/10 flex items-center gap-2">
-                <MaterialSymbol icon="edit" />
-                {t('animals.editProfile')}
-              </Link>
-              <Link to={`/auctions/new?animal=${id}`} className="bg-amber-400 hover:bg-amber-500 text-emerald-950 px-8 py-3 rounded-xl font-bold transition-all shadow-xl shadow-amber-900/20 flex items-center gap-2">
-                <MaterialSymbol icon="gavel" />
-                {t('animalDetailsPage.sellAnimal')}
-              </Link>
+              <div className={`flex gap-3 ${isRtl ? 'flex-row-reverse' : ''}`}>
+                <Link to={`/animals/${id}/edit`} className={`bg-white/10 hover:bg-white/20 backdrop-blur-md text-white px-6 py-3 rounded-xl font-bold transition-all border border-white/10 flex items-center gap-2 ${isRtl ? 'flex-row-reverse' : ''}`}>
+                  <MaterialSymbol icon="edit" />
+                  {t('animals.editProfile')}
+                </Link>
+                <Link to={`/auctions/new?animal=${id}`} className={`bg-amber-400 hover:bg-amber-500 text-emerald-950 px-8 py-3 rounded-xl font-bold transition-all shadow-xl shadow-amber-900/20 flex items-center gap-2 ${isRtl ? 'flex-row-reverse' : ''}`}>
+                  <MaterialSymbol icon="gavel" />
+                  {t('animalDetailsPage.sellAnimal')}
+                </Link>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Right Cards */}
-        <div className="lg:col-span-4 flex flex-col gap-6">
-          {/* Ownership Card */}
-          <div className="bg-[#06402b] text-white p-8 rounded-[2rem] shadow-xl relative overflow-hidden flex-1 flex flex-col justify-between">
-            <div className="relative z-10">
-              <div className="flex justify-between items-start">
-                <h3 className="text-emerald-200 text-xs font-bold uppercase tracking-[0.2em] mb-4">{t('animalDetailsPage.verifiedOwnership')}</h3>
-                <MaterialSymbol icon="verified_user" className="text-emerald-200/50" />
+          {/* Right Cards */}
+          <div className="lg:col-span-4 flex flex-col gap-6">
+            {/* Ownership Card */}
+            <div className="bg-[#06402b] text-white p-8 rounded-[2rem] shadow-xl relative overflow-hidden flex-1 flex flex-col justify-between">
+              <div className="relative z-10">
+                <div className={`flex justify-between items-start ${isRtl ? 'flex-row-reverse' : ''}`}>
+                  <h3 className={`text-emerald-200 text-xs font-bold uppercase tracking-[0.2em] mb-4 ${isRtl ? 'text-right' : ''}`}>{t('animalDetailsPage.verifiedOwnership')}</h3>
+                  <MaterialSymbol icon="verified_user" className="text-emerald-200/50" />
+                </div>
+                <p className={`text-2xl font-bold brand-font mb-1 text-white ${isRtl ? 'text-right' : ''}`}>{t('animalDetailsPage.verifiedOwnership')}</p>
+                <p className={`text-emerald-100/60 text-sm leading-relaxed ${isRtl ? 'text-right' : ''}`}>
+                  {owner ? t('animalDetailsPage.legalCustody', { name: owner.name }) : t('animalDetailsPage.noOwner')}
+                </p>
               </div>
-              <p className="text-2xl font-bold brand-font mb-1 text-white">{t('animalDetailsPage.verifiedOwnership')}</p>
-              <p className="text-emerald-100/60 text-sm leading-relaxed">
-                {owner ? t('animalDetailsPage.legalCustody', { name: owner.name }) : t('animalDetailsPage.noOwner')}
-              </p>
+              <button onClick={handleTransferClick} className={`w-full bg-emerald-800 hover:bg-emerald-700 text-amber-400 py-4 rounded-2xl font-bold transition-all mt-6 flex items-center justify-center gap-3 ${isRtl ? 'flex-row-reverse' : ''}`}>
+                <MaterialSymbol icon="swap_horiz" />
+                {t('animalDetailsPage.transferOwnership')}
+              </button>
+              <div className={`absolute w-40 h-40 bg-emerald-800/30 rounded-full blur-3xl ${isRtl ? '-left-8 -top-8 right-auto' : '-right-8 -top-8'}`}></div>
             </div>
-            <button onClick={handleTransferClick} className="w-full bg-emerald-800 hover:bg-emerald-700 text-amber-400 py-4 rounded-2xl font-bold transition-all mt-6 flex items-center justify-center gap-3">
-              <MaterialSymbol icon="swap_horiz" />
-              {t('animalDetailsPage.transferOwnership')}
-            </button>
-            <div className="absolute -right-8 -top-8 w-40 h-40 bg-emerald-800/30 rounded-full blur-3xl"></div>
-          </div>
 
           {/* Quick Details Card */}
           <div className="bg-white p-6 rounded-[2rem] flex items-center gap-5 border border-[#c0c9c1]/10 shadow-sm">

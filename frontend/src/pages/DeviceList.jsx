@@ -15,7 +15,8 @@ const statusConfig = {
 };
 
 export default function DeviceList() {
-  const { t } = useI18n();
+  const { t, dir } = useI18n();
+  const isRtl = dir === 'rtl';
   const { user } = useAuth();
   const navigate = useNavigate();
   const [devices, setDevices] = useState([]);
@@ -254,7 +255,7 @@ export default function DeviceList() {
                 <th className="px-8 py-5">{t('devicesPage.batteryLevel')}</th>
                 <th className="px-8 py-5">{t('devicesPage.connection')}</th>
                 <th className="px-8 py-5">{t('devicesPage.lastUpdate')}</th>
-                <th className="px-8 py-5 text-right">{t('common.actions')}</th>
+                <th className={`px-8 py-5 ${isRtl ? 'text-left' : 'text-right'}`}>{t('common.actions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#c0c9c1]/10">
@@ -330,11 +331,11 @@ export default function DeviceList() {
                         {status.label}
                       </div>
                     </td>
-                    <td className="px-8 py-5 text-sm text-[#404943] font-medium">
-                      {device.updated_at ? new Date(device.updated_at).toLocaleString() : t('devicesPage.na')}
-                    </td>
-                <td className="px-8 py-5">
-                  <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+      <td className="px-8 py-5 text-sm text-[#404943] font-medium">
+                       {device.updated_at ? new Date(device.updated_at).toLocaleString() : t('devicesPage.na')}
+                     </td>
+                 <td className="px-8 py-5">
+                   <div className={`flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity ${isRtl ? 'justify-start' : 'justify-end'}`}>
                     <Link
                       to={`/devices/${device.id}/edit`}
                       className="p-2 hover:bg-[#e8e8e3] rounded-lg text-[#404943] transition-all"
@@ -382,6 +383,7 @@ export default function DeviceList() {
             totalPages={totalPages}
             perPage={perPage}
             total={totalDevices}
+            dir={dir}
             onPageChange={setCurrentPage}
             onPerPageChange={(value) => { setPerPage(value); setCurrentPage(1); }}
           />

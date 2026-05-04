@@ -263,6 +263,7 @@ const fetchData = async () => {
             totalPages={totalPages}
             perPage={perPage}
             total={totalUsers}
+            dir={dir}
             onPageChange={setCurrentPage}
             onPerPageChange={(value) => { setPerPage(value); setCurrentPage(1); }}
           />

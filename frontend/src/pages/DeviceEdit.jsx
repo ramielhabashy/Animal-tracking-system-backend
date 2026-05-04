@@ -9,7 +9,8 @@ import { useRole } from '../hooks/useRole';
 export default function DeviceEdit() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { t } = useI18n();
+  const { t, dir } = useI18n();
+  const isRtl = dir === 'rtl';
   const { isOwner, isAdmin } = useRole();
   const canEditAdvanced = isOwner || isAdmin;
   const [loading, setLoading] = useState(true);

@@ -7,7 +7,8 @@ import { useI18n } from '../i18n';
 import Pagination from '../components/Pagination';
 
 export default function AlertsPage() {
-  const { t } = useI18n();
+  const { t, dir } = useI18n();
+  const isRtl = dir === 'rtl';
   const [alerts, setAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [typeFilter, setTypeFilter] = useState('all');
@@ -153,19 +154,19 @@ return true;
   return (
     <div className="space-y-8">
       {/* Header Section */}
-      <div className="flex justify-between items-end">
-        <div>
+      <div className={`flex justify-between items-end ${isRtl ? 'flex-row-reverse' : ''}`}>
+        <div className={isRtl ? 'text-right' : ''}>
           <h2 className="text-3xl font-black text-[#002819] tracking-tight font-['Manrope']">
             {t('alertsPage.title')}
           </h2>
-          <p className="text-[#404943] mt-1 flex items-center gap-2">
+          <p className={`text-[#404943] mt-1 flex items-center gap-2 ${isRtl ? 'flex-row-reverse' : ''}`}>
             <span className="inline-flex items-center justify-center bg-[#D4AF37]/20 text-[#735c00] px-2 py-0.5 rounded-full text-xs font-bold">
               {totalAlerts} {t('alertsPage.totalAlerts')}
             </span>
             {t('alertsPage.sendNotifications')}
           </p>
         </div>
-        <div className="flex gap-3">
+        <div className={`flex gap-3 ${isRtl ? 'flex-row-reverse' : ''}`}>
           {unresolvedCount > 0 && (
             <button 
               onClick={deactivateAllAlerts}
@@ -194,46 +195,46 @@ return true;
       {/* Quick Actions */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-[#002819]/5">
-          <div className="flex items-center gap-3 mb-3">
+          <div className={`flex items-center gap-3 mb-3 ${isRtl ? 'flex-row-reverse' : ''}`}>
             <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center">
               <MaterialSymbol icon="notifications_active" className="text-blue-600" size={20} />
             </div>
             <span className="font-bold text-[#002819]">{t('alertsPage.notify')}</span>
           </div>
-          <p className="text-xs text-[#404943]">{t('alertsPage.notifyDesc')}</p>
+          <p className={`text-xs text-[#404943] ${isRtl ? 'text-right' : ''}`}>{t('alertsPage.notifyDesc')}</p>
         </div>
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-[#002819]/5">
-          <div className="flex items-center gap-3 mb-3">
+          <div className={`flex items-center gap-3 mb-3 ${isRtl ? 'flex-row-reverse' : ''}`}>
             <div className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center">
               <MaterialSymbol icon="check_circle" className="text-green-600" size={20} />
             </div>
             <span className="font-bold text-[#002819]">{t('alertsPage.resolve')}</span>
           </div>
-          <p className="text-xs text-[#404943]">{t('alertsPage.resolveDesc')}</p>
+          <p className={`text-xs text-[#404943] ${isRtl ? 'text-right' : ''}`}>{t('alertsPage.resolveDesc')}</p>
         </div>
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-[#002819]/5">
-          <div className="flex items-center gap-3 mb-3">
+          <div className={`flex items-center gap-3 mb-3 ${isRtl ? 'flex-row-reverse' : ''}`}>
             <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center">
               <MaterialSymbol icon="notifications_off" className="text-amber-600" size={20} />
             </div>
             <span className="font-bold text-[#002819]">{t('alertsPage.deactivateAllDesc')}</span>
           </div>
-          <p className="text-xs text-[#404943]">{t('alertsPage.deactivateAllDescText')}</p>
+          <p className={`text-xs text-[#404943] ${isRtl ? 'text-right' : ''}`}>{t('alertsPage.deactivateAllDescText')}</p>
         </div>
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-[#002819]/5">
-          <div className="flex items-center gap-3 mb-3">
+          <div className={`flex items-center gap-3 mb-3 ${isRtl ? 'flex-row-reverse' : ''}`}>
             <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center">
               <MaterialSymbol icon="delete" className="text-red-600" size={20} />
             </div>
             <span className="font-bold text-[#002819]">{t('common.delete')}</span>
           </div>
-          <p className="text-xs text-[#404943]">{t('alertsPage.deleteDesc')}</p>
+          <p className={`text-xs text-[#404943] ${isRtl ? 'text-right' : ''}`}>{t('alertsPage.deleteDesc')}</p>
         </div>
       </div>
 
       {/* Bento Filter Bar */}
-      <div className="bg-[#f4f4ef] p-2 rounded-2xl flex flex-wrap items-center gap-4">
-        <div className="flex items-center gap-1 bg-white p-1 rounded-xl shadow-sm">
+      <div className={`bg-[#f4f4ef] p-2 rounded-2xl flex flex-wrap items-center gap-4 ${isRtl ? 'flex-row-reverse' : ''}`}>
+        <div className={`flex items-center gap-1 bg-white p-1 rounded-xl shadow-sm ${isRtl ? 'flex-row-reverse' : ''}`}>
           <span className="text-xs font-bold text-stone-400 px-3 uppercase tracking-tighter">{t('alertsPage.alertType')}</span>
           <button 
             onClick={() => setTypeFilter('all')}
@@ -260,7 +261,7 @@ return true;
             {t('alertsPage.offline')}
           </button>
         </div>
-        <div className="flex items-center gap-1 bg-white p-1 rounded-xl shadow-sm">
+        <div className={`flex items-center gap-1 bg-white p-1 rounded-xl shadow-sm ${isRtl ? 'flex-row-reverse' : ''}`}>
           <span className="text-xs font-bold text-stone-400 px-3 uppercase tracking-tighter">{t('common.status')}</span>
           <button 
             onClick={() => setStatusFilter('all')}
@@ -281,7 +282,7 @@ return true;
             {t('alertsPage.resolved')}
           </button>
         </div>
-        <div className="ml-auto flex items-center gap-3">
+        <div className={`${isRtl ? 'mr-auto ml-0' : 'ml-auto'} flex items-center gap-3 ${isRtl ? 'flex-row-reverse' : ''}`}>
           <button className="p-2 text-stone-400 hover:text-[#002819] transition-colors">
             <MaterialSymbol icon="filter_list" />
           </button>
@@ -294,7 +295,7 @@ return true;
 
       {/* Alerts Table */}
       <div className="bg-white rounded-3xl overflow-hidden shadow-sm">
-        <table className="w-full text-left">
+        <table className={`w-full ${isRtl ? 'text-right' : 'text-left'}`}>
           <thead className="bg-[#f4f4ef]/50 border-b border-[#eeeee9]">
             <tr>
               <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-[#404943]">{t('alertsPage.alertType')}</th>
@@ -303,19 +304,19 @@ return true;
               <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-[#404943]">{t('alertsPage.timestamp')}</th>
               <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-[#404943]">{t('alertsPage.severity')}</th>
               <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-[#404943]">{t('common.status')}</th>
-              <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-[#404943] text-right">{t('common.actions')}</th>
+              <th className={`px-6 py-4 text-xs font-black uppercase tracking-widest text-[#404943] ${isRtl ? 'text-left' : 'text-right'}`}>{t('common.actions')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#eeeee9]/50">
-            {loading ? (
-              <tr>
-                <td colSpan="7" className="px-6 py-12 text-center">
-                  <div className="flex items-center justify-center">
-                    <div className="animate-spin w-8 h-8 border-4 border-[#002819] border-t-transparent rounded-full" />
-                  </div>
-                </td>
-              </tr>
-            ) : filteredAlerts.length === 0 ? (
+              {loading ? (
+                <tr>
+                  <td colSpan="7" className="px-6 py-12 text-center">
+                    <div className={`flex items-center justify-center ${isRtl ? 'flex-row-reverse' : ''}`}>
+                      <div className="animate-spin w-8 h-8 border-4 border-[#002819] border-t-transparent rounded-full" />
+                    </div>
+                  </td>
+                </tr>
+              ) : filteredAlerts.length === 0 ? (
               <tr>
                 <td colSpan={8} className="px-6 py-12 text-center text-[#717973]">
                   <MaterialSymbol icon="notifications_off" size={48} className="mx-auto mb-4 opacity-50" />
@@ -326,13 +327,13 @@ return true;
               const colors = getAlertColors(alert.type, alert.is_acknowledged);
               const severity = getAlertSeverity(alert.type);
               return (
-                <tr key={alert.id} className="group hover:bg-[#f4f4ef]/30 transition-colors">
-                  <td className="px-6 py-5">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-xl ${colors.bg} flex items-center justify-center ${colors.icon}`}>
+                  <tr key={alert.id} className="group hover:bg-[#f4f4ef]/30 transition-colors">
+                    <td className="px-6 py-5">
+                      <div className={`flex items-center gap-3 ${isRtl ? 'flex-row-reverse' : ''}`}>
+                        <div className={`w-10 h-10 rounded-xl ${colors.bg} flex items-center justify-center ${colors.icon}`}>
                         <MaterialSymbol icon={getAlertIcon(alert.type)} />
                       </div>
-                      <div>
+                      <div className={isRtl ? 'text-right' : ''}>
                         <p className="text-sm font-bold text-[#002819]">
                           {alert.type === 'entry' ? t('alerts.geofenceEntry') : 
                            alert.type === 'exit' ? t('alerts.geofenceExit') : 
@@ -366,25 +367,25 @@ return true;
                       {new Date(alert.triggered_at).toLocaleTimeString()}
                     </p>
                   </td>
-                  <td className="px-6 py-5">
-                    <div className="flex items-center gap-2">
-                      <span className={`w-2 h-2 rounded-full ${colors.dot} ${!alert.is_acknowledged && alert.type === 'exit' ? 'animate-pulse' : ''}`}></span>
-                      <span className={`text-xs font-bold uppercase ${severity.color}`}>
-                        {severity.label}
+                    <td className="px-6 py-5">
+                      <div className={`flex items-center gap-2 ${isRtl ? 'flex-row-reverse' : ''}`}>
+                        <span className={`w-2 h-2 rounded-full ${colors.dot} ${!alert.is_acknowledged && alert.type === 'exit' ? 'animate-pulse' : ''}`}></span>
+                        <span className={`text-xs font-bold uppercase ${severity.color}`}>
+                          {severity.label}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-5">
+                      <span className={`text-[10px] font-black uppercase px-2 py-1 rounded-md ${
+                        alert.is_acknowledged 
+                          ? 'bg-[#cfe5d6] text-[#002819]' 
+                          : 'bg-red-100 text-red-700'
+                      }`}>
+                        {alert.is_acknowledged ? t('alertsPage.resolved') : t('alertsPage.unresolved')}
                       </span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-5">
-                    <span className={`text-[10px] font-black uppercase px-2 py-1 rounded-md ${
-                      alert.is_acknowledged 
-                        ? 'bg-[#cfe5d6] text-[#002819]' 
-                        : 'bg-red-100 text-red-700'
-                    }`}>
-                      {alert.is_acknowledged ? t('alertsPage.resolved') : t('alertsPage.unresolved')}
-                    </span>
-                  </td>
-                  <td className="px-6 py-5">
-                    <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    </td>
+                    <td className="px-6 py-5">
+                      <div className={`flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity ${isRtl ? 'justify-start' : 'justify-end'}`}>
                       {!alert.is_acknowledged && (
                         <>
                           <button 
@@ -430,6 +431,7 @@ return true;
             totalPages={totalPages}
             perPage={perPage}
             total={totalAlerts}
+            dir={dir}
             onPageChange={setCurrentPage}
             onPerPageChange={(value) => { setPerPage(value); setCurrentPage(1); }}
           />

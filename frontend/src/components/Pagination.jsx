@@ -1,20 +1,22 @@
 import React from 'react';
 import { MaterialSymbol } from 'react-material-symbols';
 
-export default function Pagination({ 
-  currentPage, 
-  totalPages, 
-  perPage, 
-  total, 
-  onPageChange, 
+export default function Pagination({
+  currentPage,
+  totalPages,
+  perPage,
+  total,
+  onPageChange,
   onPerPageChange,
+  dir = 'ltr',
   perPageOptions = [10, 25, 50, 100]
 }) {
+  const isRtl = dir === 'rtl';
   const showNav = totalPages > 1;
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-4 py-4 px-2">
-      <div className="flex items-center gap-3">
+    <div className={`flex flex-wrap items-center justify-between gap-4 py-4 px-2 ${isRtl ? 'flex-row-reverse' : ''}`}>
+      <div className={`flex items-center gap-3 ${isRtl ? 'flex-row-reverse' : ''}`}>
         <span className="text-sm text-[#717973]">Show</span>
         <select
           value={perPage}
@@ -29,20 +31,20 @@ export default function Pagination({
       </div>
 
       {showNav && (
-        <div className="flex items-center gap-1">
+        <div className={`flex items-center gap-1 ${isRtl ? 'flex-row-reverse' : ''}`}>
           <button
             onClick={() => onPageChange(1)}
             disabled={currentPage === 1}
             className="p-2 rounded-lg hover:bg-[#f4f4ef] disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <MaterialSymbol icon="first_page" size={20} />
+            <MaterialSymbol icon={isRtl ? "last_page" : "first_page"} size={20} />
           </button>
           <button
             onClick={() => onPageChange(currentPage - 1)}
             disabled={currentPage === 1}
             className="p-2 rounded-lg hover:bg-[#f4f4ef] disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <MaterialSymbol icon="chevron_left" size={20} />
+            <MaterialSymbol icon={isRtl ? "chevron_right" : "chevron_left"} size={20} />
           </button>
 
           <div className="flex items-center gap-1 mx-2">
@@ -78,14 +80,14 @@ export default function Pagination({
             disabled={currentPage === totalPages}
             className="p-2 rounded-lg hover:bg-[#f4f4ef] disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <MaterialSymbol icon="chevron_right" size={20} />
+            <MaterialSymbol icon={isRtl ? "chevron_left" : "chevron_right"} size={20} />
           </button>
           <button
             onClick={() => onPageChange(totalPages)}
             disabled={currentPage === totalPages}
             className="p-2 rounded-lg hover:bg-[#f4f4ef] disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <MaterialSymbol icon="last_page" size={20} />
+            <MaterialSymbol icon={isRtl ? "first_page" : "last_page"} size={20} />
           </button>
         </div>
       )}

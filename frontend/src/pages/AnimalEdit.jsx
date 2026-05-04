@@ -313,16 +313,16 @@ export default function AnimalEdit() {
   return (
     <form onSubmit={handleSubmit} className="min-h-screen pb-24">
       {/* Top Bar */}
-      <header className="w-full sticky top-0 z-40 bg-stone-50/80 backdrop-blur-xl flex justify-between items-center px-8 py-4 shadow-[0px_12px_32px_rgba(6,64,43,0.06)]">
-        <div className="flex items-center gap-6">
+      <header className={`w-full sticky top-0 z-40 bg-stone-50/80 backdrop-blur-xl flex justify-between items-center px-8 py-4 shadow-[0px_12px_32px_rgba(6,64,43,0.06)] ${isRtl ? 'flex-row-reverse' : ''}`}>
+        <div className={`flex items-center gap-6 ${isRtl ? 'flex-row-reverse' : ''}`}>
           <button type="button" onClick={() => navigate('/animals')} className="p-2 text-stone-500 hover:bg-stone-200/50 rounded-full transition-colors">
-            <MaterialSymbol icon="arrow_back" />
+            <MaterialSymbol icon={isRtl ? "arrow_forward" : "arrow_back"} />
           </button>
-          <div className="flex items-center gap-3">
+          <div className={`flex items-center gap-3 ${isRtl ? 'flex-row-reverse' : ''}`}>
             <div className="w-10 h-10 bg-[#06402b] rounded-xl flex items-center justify-center">
               <MaterialSymbol icon="pets" className="text-white" />
             </div>
-            <div>
+            <div className={isRtl ? 'text-right' : ''}>
               <p className="text-[10px] font-semibold text-stone-500 uppercase tracking-widest">{t('nav.animals')}</p>
               <h1 className="text-lg font-extrabold text-emerald-900">
                 {isNewAnimal ? t('animals.addAnimal') : `${t('common.edit')}: ${formData.breed || formData.species}`}
@@ -330,11 +330,11 @@ export default function AnimalEdit() {
             </div>
           </div>
         </div>
-        <div className="flex gap-3">
+        <div className={`flex gap-3 ${isRtl ? 'flex-row-reverse' : ''}`}>
           <button type="button" onClick={() => navigate('/animals')} className="px-6 py-2.5 rounded-xl border border-stone-200 text-stone-600 font-bold hover:bg-stone-100 transition-colors text-sm">
             {t('common.cancel')}
           </button>
-          <button type="submit" disabled={isSubmitting} className="px-8 py-2.5 rounded-xl bg-[#002819] text-white font-bold hover:bg-[#06402b] shadow-lg shadow-[#002819]/20 transition-all text-sm flex items-center gap-2 disabled:opacity-50">
+          <button type="submit" disabled={isSubmitting} className={`px-8 py-2.5 rounded-xl bg-[#002819] text-white font-bold hover:bg-[#06402b] shadow-lg shadow-[#002819]/20 transition-all text-sm flex items-center gap-2 disabled:opacity-50 ${isRtl ? 'flex-row-reverse' : ''}`}>
             <MaterialSymbol icon="save" size={18} />
             {isSubmitting ? t('common.loading') : t('common.save')}
           </button>
@@ -349,7 +349,7 @@ export default function AnimalEdit() {
             message.type === 'success'
               ? 'bg-[#cfe5d6] text-[#002819]'
               : 'bg-[#ffdad6] text-[#93000a]'
-          }`}
+          } ${isRtl ? 'text-right' : ''}`}
         >
           {message.text}
         </div>
@@ -359,9 +359,9 @@ export default function AnimalEdit() {
         <div className="grid grid-cols-12 gap-8">
           {/* Left Column */}
           <div className="col-span-12 lg:col-span-8 space-y-8">
-            {/* Animal Information */}
+             {/* Animal Information */}
             <section className="bg-white p-8 rounded-xl shadow-sm">
-              <div className="flex items-center gap-3 mb-6">
+              <div className={`flex items-center gap-3 mb-6 ${isRtl ? 'flex-row-reverse' : ''}`}>
                 <MaterialSymbol icon="info" className="text-[#735c00]" />
                 <h3 className="text-xl font-bold text-emerald-900">{t('animals.animalDetails')}</h3>
               </div>
@@ -445,7 +445,7 @@ export default function AnimalEdit() {
 
             {/* Physical Characteristics */}
             <section className="bg-white p-8 rounded-xl shadow-sm">
-              <div className="flex items-center gap-3 mb-6">
+              <div className={`flex items-center gap-3 mb-6 ${isRtl ? 'flex-row-reverse' : ''}`}>
                 <MaterialSymbol icon="photo_camera" className="text-[#735c00]" />
                 <h3 className="text-xl font-bold text-emerald-900">{t('animals.physicalCharacteristics')}</h3>
               </div>
@@ -488,8 +488,8 @@ export default function AnimalEdit() {
 
             {/* Health Benchmarks */}
             <section className="bg-white p-8 rounded-xl shadow-sm">
-              <div className="flex justify-between items-center mb-6">
-                <div className="flex items-center gap-3">
+              <div className={`flex justify-between items-center mb-6 ${isRtl ? 'flex-row-reverse' : ''}`}>
+                <div className={`flex items-center gap-3 ${isRtl ? 'flex-row-reverse' : ''}`}>
                   <MaterialSymbol icon="monitor_heart" className="text-[#735c00]" />
                   <h3 className="text-xl font-bold text-emerald-900">{t('animals.healthBenchmarks')}</h3>
                 </div>
@@ -535,8 +535,8 @@ export default function AnimalEdit() {
             {/* Danger Zone */}
             {!isNewAnimal && (
               <div className="bg-red-50/50 p-8 rounded-xl border border-red-100/50">
-                <div className="flex items-center justify-between">
-                  <div>
+                <div className={`flex items-center justify-between ${isRtl ? 'flex-row-reverse' : ''}`}>
+                  <div className={isRtl ? 'text-right' : ''}>
                     <h4 className="text-red-800 font-bold">{t('animals.lifecycleManagement')}</h4>
                     <p className="text-xs text-red-600/70 mt-1 font-medium">{t('animals.deleteAnimalConfirm').split('?')[0]}.</p>
                   </div>
@@ -548,19 +548,19 @@ export default function AnimalEdit() {
             )}
           </div>
 
-          {/* Right Column */}
+           {/* Right Column */}
           <div className="col-span-12 lg:col-span-4 space-y-8">
             {/* Animal Assignment - Matching Device Edit Design */}
             {!isNewAnimal && (
               <section className="bg-[#eeeee9] rounded-[1.5rem] p-6 transition-all hover:shadow-md">
-                <div className="flex items-center gap-3 mb-6">
+                <div className={`flex items-center gap-3 mb-6 ${isRtl ? 'flex-row-reverse' : ''}`}>
                   <span className="material-symbols-outlined text-[#002819] bg-white p-2 rounded-xl">link</span>
                   <h4 className="text-lg font-bold font-['Manrope'] text-[#002819]">{t('animals.deviceAssignment')}</h4>
                 </div>
                 <div className="flex flex-col items-center gap-4 p-5 bg-white rounded-2xl shadow-sm border border-[#cfe5d6]/30">
-                  {currentDevice ? (
+                   {currentDevice ? (
                     <>
-                      <div className="w-20 h-20 rounded-2xl overflow-hidden shadow-lg border-2 border-white flex-shrink-0">
+                      <div className={`w-20 h-20 rounded-2xl overflow-hidden shadow-lg border-2 border-white flex-shrink-0 ${isRtl ? 'ml-4 mr-0' : 'mr-4 ml-0'}`}>
                         {existingImage || imagePreview ? (
                           <img src={imagePreview || existingImage} alt="Animal" className="w-full h-full object-cover" />
                         ) : (
@@ -569,10 +569,10 @@ export default function AnimalEdit() {
                           </div>
                         )}
                       </div>
-                      <div className="flex-grow text-center">
+                      <div className={`flex-grow ${isRtl ? 'text-right' : 'text-left'}`}>
                         <h5 className="text-base font-bold text-[#002819]">{formData.breed || formData.species} {formData.animal_id || ''}</h5>
                         <p className="text-xs text-[#404943] mb-1">{formData.species} {formData.breed && `• ${formData.breed}`} {formData.gender && `• ${formData.gender}`}</p>
-                        <div className="flex items-center justify-center gap-2">
+                        <div className={`flex items-center gap-2 ${isRtl ? 'justify-end flex-row-reverse' : 'justify-center'}`}>
                           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                           <span className="text-[10px] font-bold uppercase text-emerald-600 tracking-wider">{t('animals.currentlyLinked')}</span>
                         </div>
@@ -620,10 +620,10 @@ export default function AnimalEdit() {
               </section>
             )}
 
-            {/* Device Connectivity */}
-            <section className="bg-white p-6 rounded-xl shadow-sm">
-              <h4 className="text-sm font-bold text-emerald-900 uppercase tracking-widest mb-4">{t('animals.deviceConnectivity')}</h4>
-              {devicesLoading ? (
+              {/* Device Connectivity */}
+          <section className="bg-white p-6 rounded-xl shadow-sm">
+            <h4 className={`text-sm font-bold text-emerald-900 uppercase tracking-widest mb-4 ${isRtl ? 'text-right' : ''}`}>{t('animals.deviceConnectivity')}</h4>
+            {devicesLoading ? (
                 <div className="flex items-center justify-center py-4">
                   <div className="animate-spin w-6 h-6 border-2 border-[#002819] border-t-transparent rounded-full" />
                 </div>
@@ -638,11 +638,11 @@ export default function AnimalEdit() {
                     ))}
                   </select>
                   {currentDevice && (
-                    <div className="bg-stone-50 rounded-xl p-4 flex items-center gap-4 mb-4">
+                    <div className={`bg-stone-50 rounded-xl p-4 flex items-center gap-4 mb-4 ${isRtl ? 'flex-row-reverse' : ''}`}>
                       <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center">
                         <MaterialSymbol icon="router" className="text-emerald-900" />
                       </div>
-                      <div className="flex-1">
+                      <div className={`flex-1 ${isRtl ? 'text-right' : ''}`}>
                         <p className="text-sm font-black text-emerald-900">{currentDevice.name || 'Oasis Tracker'}</p>
                         <p className="text-[10px] text-emerald-600 font-bold">
                           {currentDevice.status === 'online' ? t('devices.online') : t('devices.offline')} • Battery {currentDevice.battery_level}%
@@ -654,9 +654,9 @@ export default function AnimalEdit() {
               )}
             </section>
 
-            {/* Ownership */}
+              {/* Ownership */}
             <section className="bg-white p-6 rounded-xl shadow-sm">
-              <h4 className="text-sm font-bold text-emerald-900 uppercase tracking-widest mb-4">{t('animals.ownership')}</h4>
+              <h4 className={`text-sm font-bold text-emerald-900 uppercase tracking-widest mb-4 ${isRtl ? 'text-right' : ''}`}>{t('animals.ownership')}</h4>
               {devicesLoading ? (
                 <div className="flex items-center justify-center py-4">
                   <div className="animate-spin w-6 h-6 border-2 border-[#002819] border-t-transparent rounded-full" />
@@ -672,7 +672,7 @@ export default function AnimalEdit() {
                     ))}
                   </select>
                   {currentOwner && (
-                    <div className="flex items-center gap-3">
+                    <div className={`flex items-center gap-3 ${isRtl ? 'flex-row-reverse' : ''}`}>
                       <div className="w-10 h-10 rounded-full bg-[#06402b]/10 overflow-hidden">
                         {currentOwner.avatar_url ? (
                           <img src={currentOwner.avatar_url} alt={currentOwner.name} className="w-full h-full object-cover" />
@@ -680,7 +680,7 @@ export default function AnimalEdit() {
                           <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(currentOwner.name)}&background=002819&color=D4AF37`} alt={currentOwner.name} className="w-full h-full object-cover" />
                         )}
                       </div>
-                      <div>
+                      <div className={isRtl ? 'text-right' : ''}>
                         <p className="text-xs font-bold text-emerald-900">{currentOwner.name}</p>
                         <p className="text-[10px] text-stone-500">{t('animals.primaryOwner')}</p>
                       </div>
@@ -690,11 +690,11 @@ export default function AnimalEdit() {
               )}
             </section>
 
-            {/* Quick Tips */}
+              {/* Quick Tips */}
             <section className="bg-stone-900 p-6 rounded-xl text-stone-300 relative overflow-hidden">
-              <MaterialSymbol icon="lightbulb" className="absolute -right-4 -bottom-4 text-white/5 text-8xl rotate-12" />
-              <h4 className="text-xs font-bold text-amber-400 uppercase tracking-widest mb-2">{t('animals.systemInsight')}</h4>
-              <p className="text-xs leading-relaxed font-medium">
+              <MaterialSymbol icon="lightbulb" className={`absolute text-white/5 text-8xl rotate-12 ${isRtl ? '-left-4 -bottom-4 right-auto' : '-right-4 -bottom-4'}`} />
+              <h4 className={`text-xs font-bold text-amber-400 uppercase tracking-widest mb-2 ${isRtl ? 'text-right' : ''}`}>{t('animals.systemInsight')}</h4>
+              <p className={`text-xs leading-relaxed font-medium ${isRtl ? 'text-right' : ''}`}>
                 Regular updates to animal health benchmarks ensure AI anomaly detection remains accurate. We recommend auditing these fields every 3 months.
               </p>
             </section>
@@ -703,18 +703,18 @@ export default function AnimalEdit() {
       </div>
 
       {/* Sticky Footer */}
-      <div className="fixed bottom-6 right-8 left-[calc(16rem+2rem)] pointer-events-none md:flex hidden">
-        <div className="bg-white/80 backdrop-blur-md border border-stone-200/50 p-4 rounded-2xl shadow-2xl flex-1 flex items-center justify-between pointer-events-auto">
-          <div className="flex items-center gap-4">
+      <div className={`fixed bottom-6 right-8 left-[calc(16rem+2rem)] pointer-events-none md:flex hidden ${isRtl ? 'left-8 right-[calc(16rem+2rem)]' : ''}`}>
+        <div className={`bg-white/80 backdrop-blur-md border border-stone-200/50 p-4 rounded-2xl shadow-2xl flex-1 flex items-center justify-between pointer-events-auto ${isRtl ? 'flex-row-reverse' : ''}`}>
+          <div className={`flex items-center gap-4 ${isRtl ? 'flex-row-reverse' : ''}`}>
             <div className="w-10 h-10 bg-[#002819]/10 rounded-lg flex items-center justify-center">
               <MaterialSymbol icon="history" className="text-[#002819]" style={{ fontVariationSettings: "'FILL' 1" }} />
             </div>
-            <div>
+            <div className={isRtl ? 'text-right' : ''}>
               <p className="text-[10px] font-bold text-stone-500 uppercase tracking-widest">{t('animals.unsavedChanges')}</p>
               <p className="text-xs font-black text-emerald-900">{t('animals.fieldsModified')}</p>
             </div>
           </div>
-          <div className="flex gap-3">
+          <div className={`flex gap-3 ${isRtl ? 'flex-row-reverse' : ''}`}>
             <button type="button" onClick={() => navigate('/animals')} className="px-6 py-2 text-xs font-black text-stone-500 uppercase tracking-widest hover:text-emerald-900 transition-colors">
               {t('animals.discard')}
             </button>

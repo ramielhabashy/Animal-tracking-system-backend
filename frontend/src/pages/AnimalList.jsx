@@ -472,6 +472,7 @@ return (
           totalPages={totalPages}
           perPage={perPage}
           total={totalAnimals}
+          dir={dir}
           onPageChange={setCurrentPage}
           onPerPageChange={(value) => { setPerPage(value); setCurrentPage(1); }}
         />

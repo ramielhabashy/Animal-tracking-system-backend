@@ -7,7 +7,8 @@ import { useI18n } from '../i18n';
 
 export default function DeviceForm() {
   const navigate = useNavigate();
-  const { t } = useI18n();
+  const { t, dir } = useI18n();
+  const isRtl = dir === 'rtl';
   const [formData, setFormData] = useState({
     name: '',
     type: 'collar',
@@ -118,15 +119,15 @@ export default function DeviceForm() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <div className={`flex items-center justify-between ${isRtl ? 'flex-row-reverse' : ''}`}>
+        <div className={`flex items-center gap-4 ${isRtl ? 'flex-row-reverse' : ''}`}>
           <button
             onClick={handleCancel}
             className="p-2 hover:bg-[#eeeee9] rounded-lg transition-colors"
           >
-            <MaterialSymbol icon="arrow_back" size={24} className="text-[#404943]" />
+            <MaterialSymbol icon={isRtl ? "arrow_forward" : "arrow_back"} size={24} className="text-[#404943]" />
           </button>
-          <div>
+          <div className={isRtl ? 'text-right' : ''}>
             <h2 className="text-3xl font-extrabold font-['Manrope'] text-[#002819] tracking-tight">
               {t('devices.registerNew') || 'Register New Device'}
             </h2>
@@ -154,7 +155,7 @@ export default function DeviceForm() {
         <div className="lg:col-span-2 space-y-6">
           {/* Device Identification */}
           <div className="bg-[#eeeee9] rounded-3xl p-8 transition-all hover:shadow-md">
-            <div className="flex items-center gap-3 mb-6">
+            <div className={`flex items-center gap-3 mb-6 ${isRtl ? 'flex-row-reverse' : ''}`}>
               <span className="bg-white p-2 rounded-xl text-[#002819]">
                 <MaterialSymbol icon="fingerprint" size={20} />
               </span>
@@ -213,7 +214,7 @@ export default function DeviceForm() {
 
           {/* Hardware Configuration */}
           <div className="bg-[#eeeee9] rounded-3xl p-8 transition-all hover:shadow-md">
-            <div className="flex items-center gap-3 mb-6">
+            <div className={`flex items-center gap-3 mb-6 ${isRtl ? 'flex-row-reverse' : ''}`}>
               <span className="bg-white p-2 rounded-xl text-[#002819]">
                 <MaterialSymbol icon="settings_suggest" size={20} />
               </span>
@@ -272,7 +273,7 @@ export default function DeviceForm() {
                 <label className="text-xs font-bold uppercase tracking-widest text-[#404943]/70 px-1">
                   Advanced Tracking
                 </label>
-                <div className="flex items-center gap-3 py-3">
+                <div className={`flex items-center gap-3 py-3 ${isRtl ? 'flex-row-reverse' : ''}`}>
                   <label className="relative inline-flex items-center cursor-pointer">
                     <input
                       type="checkbox"
@@ -291,7 +292,7 @@ export default function DeviceForm() {
 
           {/* Ownership */}
           <div className="bg-[#eeeee9] rounded-3xl p-8 transition-all hover:shadow-md">
-            <div className="flex items-center gap-3 mb-6">
+            <div className={`flex items-center gap-3 mb-6 ${isRtl ? 'flex-row-reverse' : ''}`}>
               <span className="bg-white p-2 rounded-xl text-[#002819]">
                 <MaterialSymbol icon="person" size={20} />
               </span>
@@ -318,20 +319,20 @@ export default function DeviceForm() {
           </div>
         </div>
 
-        {/* Sidebar */}
+          {/* Sidebar */}
         <div className="space-y-6">
           <div className="bg-[#002819] rounded-3xl p-6 text-white">
             <h3 className="text-lg font-bold mb-4">Quick Tips</h3>
-            <ul className="space-y-4 text-sm text-white/80">
-              <li className="flex gap-3">
+            <ul className={`space-y-4 text-sm text-white/80 ${isRtl ? 'text-right' : ''}`}>
+              <li className={`flex gap-3 ${isRtl ? 'flex-row-reverse' : ''}`}>
                 <MaterialSymbol icon="check_circle" size={20} className="text-[#D4AF37]" />
                 Ensure device is powered on before registration
               </li>
-              <li className="flex gap-3">
+              <li className={`flex gap-3 ${isRtl ? 'flex-row-reverse' : ''}`}>
                 <MaterialSymbol icon="check_circle" size={20} className="text-[#D4AF37]" />
                 Verify gateway signal strength at location
               </li>
-              <li className="flex gap-3">
+              <li className={`flex gap-3 ${isRtl ? 'flex-row-reverse' : ''}`}>
                 <MaterialSymbol icon="check_circle" size={20} className="text-[#D4AF37]" />
                 Update firmware before first use
               </li>
@@ -340,11 +341,11 @@ export default function DeviceForm() {
 
           <div className="bg-white rounded-3xl p-6 shadow-sm">
             <h3 className="text-lg font-bold text-[#002819] mb-4">Actions</h3>
-            <div className="space-y-3">
+            <div className={`space-y-3 ${isRtl ? 'text-right' : ''}`}>
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full py-3 bg-[#002819] text-white rounded-xl font-bold text-sm hover:bg-[#06402b] transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                className={`w-full py-3 bg-[#002819] text-white rounded-xl font-bold text-sm hover:bg-[#06402b] transition-colors flex items-center justify-center gap-2 disabled:opacity-50 ${isRtl ? 'flex-row-reverse' : ''}`}
               >
                 <MaterialSymbol icon="save" size={18} />
                 {isSubmitting ? 'Registering...' : 'Register Device'}

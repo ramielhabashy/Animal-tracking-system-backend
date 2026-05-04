@@ -8,7 +8,8 @@ import { useI18n } from '../i18n';
 export default function UserCreate() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { t } = useI18n();
+  const { t, dir } = useI18n();
+  const isRtl = dir === 'rtl';
   const isAdmin = user?.role === 'Admin';
   
   const [form, setForm] = useState({
@@ -107,11 +108,11 @@ export default function UserCreate() {
 
   return (
     <div className="max-w-2xl mx-auto p-8">
-      <div className="flex items-center gap-4 mb-8">
+      <div className={`flex items-center gap-4 mb-8 ${isRtl ? 'flex-row-reverse' : ''}`}>
         <button onClick={() => navigate('/users')} className="p-2 hover:bg-gray-100 rounded-full transition">
-          <MaterialSymbol icon="arrow_back" className="text-[#06402B]" />
+          <MaterialSymbol icon={isRtl ? "arrow_forward" : "arrow_back"} className="text-[#06402B]" />
         </button>
-        <div>
+        <div className={isRtl ? 'text-right' : ''}>
           <h1 className="text-2xl font-bold text-[#002819]">{t('users.addUser')}</h1>
           <p className="text-sm text-[#717973] mt-1">{t('users.createTeamMember')}</p>
         </div>
@@ -130,48 +131,48 @@ export default function UserCreate() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label className="block text-xs font-bold text-[#404943] uppercase tracking-wider mb-2 ml-1">{t('users.name')} *</label>
+            <label className={`block text-xs font-bold text-[#404943] uppercase tracking-wider mb-2 ${isRtl ? 'mr-1 ml-0 text-right' : 'ml-1'}`}>{t('users.name')} *</label>
             <input
               value={form.name}
               onChange={e => set('name', e.target.value)}
-              className={`w-full bg-[#e8e8e3] border-none rounded-xl p-4 focus:ring-2 focus:ring-[#06402B]/20 focus:bg-white transition outline-none ${errors.name ? 'ring-2 ring-red-500' : ''}`}
+              className={`w-full bg-[#e8e8e3] border-none rounded-xl p-4 focus:ring-2 focus:ring-[#06402B]/20 focus:bg-white transition outline-none ${errors.name ? 'ring-2 ring-red-500' : ''} ${isRtl ? 'text-right' : ''}`}
               placeholder="Ahmed Al-Khalidi"
               required
             />
-            {errors.name && <p className="text-red-600 text-xs mt-1 ml-1">{errors.name}</p>}
+            {errors.name && <p className={`text-red-600 text-xs mt-1 ${isRtl ? 'mr-1 ml-0 text-right' : 'ml-1'}`}>{errors.name}</p>}
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-[#404943] uppercase tracking-wider mb-2 ml-1">{t('auth.email')} *</label>
+            <label className={`block text-xs font-bold text-[#404943] uppercase tracking-wider mb-2 ${isRtl ? 'mr-1 ml-0 text-right' : 'ml-1'}`}>{t('auth.email')} *</label>
             <input
               type="email"
               value={form.email}
               onChange={e => set('email', e.target.value)}
-              className={`w-full bg-[#e8e8e3] border-none rounded-xl p-4 focus:ring-2 focus:ring-[#06402B]/20 focus:bg-white transition outline-none ${errors.email ? 'ring-2 ring-red-500' : ''}`}
+              className={`w-full bg-[#e8e8e3] border-none rounded-xl p-4 focus:ring-2 focus:ring-[#06402B]/20 focus:bg-white transition outline-none ${errors.email ? 'ring-2 ring-red-500' : ''} ${isRtl ? 'text-right' : ''}`}
               placeholder="ahmed@oasis.com"
               required
             />
-            {errors.email && <p className="text-red-600 text-xs mt-1 ml-1">{errors.email}</p>}
+            {errors.email && <p className={`text-red-600 text-xs mt-1 ${isRtl ? 'mr-1 ml-0 text-right' : 'ml-1'}`}>{errors.email}</p>}
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-[#404943] uppercase tracking-wider mb-2 ml-1">{t('users.phone')}</label>
+            <label className={`block text-xs font-bold text-[#404943] uppercase tracking-wider mb-2 ${isRtl ? 'mr-1 ml-0 text-right' : 'ml-1'}`}>{t('users.phone')}</label>
             <input
               type="tel"
               value={form.phone}
               onChange={e => set('phone', e.target.value)}
-              className="w-full bg-[#e8e8e3] border-none rounded-xl p-4 focus:ring-2 focus:ring-[#06402B]/20 focus:bg-white transition outline-none"
+              className={`w-full bg-[#e8e8e3] border-none rounded-xl p-4 focus:ring-2 focus:ring-[#06402B]/20 focus:bg-white transition outline-none ${isRtl ? 'text-right' : ''}`}
               placeholder="+971 50 123 4567"
             />
           </div>
 
 <div>
-            <label className="block text-xs font-bold text-[#404943] uppercase tracking-wider mb-2 ml-1">{t('users.role')}</label>
+            <label className={`block text-xs font-bold text-[#404943] uppercase tracking-wider mb-2 ${isRtl ? 'mr-1 ml-0 text-right' : 'ml-1'}`}>{t('users.role')}</label>
             <div className="relative">
               <select
                 value={form.role}
                 onChange={e => set('role', e.target.value)}
-                className="w-full appearance-none bg-[#e8e8e3] border-none rounded-xl p-4 focus:ring-2 focus:ring-[#06402B]/20 transition outline-none pr-10"
+                className={`w-full appearance-none bg-[#e8e8e3] border-none rounded-xl p-4 focus:ring-2 focus:ring-[#06402B]/20 transition outline-none ${isRtl ? 'pl-10 pr-4 text-right' : 'pr-10 pl-4'}`}
               >
                 {availableRoles.length > 0 ? (
                   availableRoles.map(roleName => (
@@ -186,34 +187,34 @@ export default function UserCreate() {
                   </>
                 )}
               </select>
-              <MaterialSymbol icon="expand_more" className="absolute right-4 top-1/2 -translate-y-1/2 text-[#002819]/40 pointer-events-none" />
+              <MaterialSymbol icon="expand_more" className={`absolute top-1/2 -translate-y-1/2 text-[#002819]/40 pointer-events-none ${isRtl ? 'left-4 right-auto' : 'right-4'}`} />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-[#404943] uppercase tracking-wider mb-2 ml-1">{t('auth.password')} *</label>
+            <label className={`block text-xs font-bold text-[#404943] uppercase tracking-wider mb-2 ${isRtl ? 'mr-1 ml-0 text-right' : 'ml-1'}`}>{t('auth.password')} *</label>
             <input
               type="password"
               value={form.password}
               onChange={e => set('password', e.target.value)}
-              className={`w-full bg-[#e8e8e3] border-none rounded-xl p-4 focus:ring-2 focus:ring-[#06402B]/20 focus:bg-white transition outline-none ${errors.password ? 'ring-2 ring-red-500' : ''}`}
+              className={`w-full bg-[#e8e8e3] border-none rounded-xl p-4 focus:ring-2 focus:ring-[#06402B]/20 focus:bg-white transition outline-none ${errors.password ? 'ring-2 ring-red-500' : ''} ${isRtl ? 'text-right' : ''}`}
               placeholder="Min 8 characters"
               required
             />
-            {errors.password && <p className="text-red-600 text-xs mt-1 ml-1">{errors.password}</p>}
+            {errors.password && <p className={`text-red-600 text-xs mt-1 ${isRtl ? 'mr-1 ml-0 text-right' : 'ml-1'}`}>{errors.password}</p>}
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-[#404943] uppercase tracking-wider mb-2 ml-1">Confirm Password *</label>
+            <label className={`block text-xs font-bold text-[#404943] uppercase tracking-wider mb-2 ${isRtl ? 'mr-1 ml-0 text-right' : 'ml-1'}`}>Confirm Password *</label>
             <input
               type="password"
               value={form.password_confirmation}
               onChange={e => set('password_confirmation', e.target.value)}
-              className={`w-full bg-[#e8e8e3] border-none rounded-xl p-4 focus:ring-2 focus:ring-[#06402B]/20 focus:bg-white transition outline-none ${errors.password_confirmation ? 'ring-2 ring-red-500' : ''}`}
+              className={`w-full bg-[#e8e8e3] border-none rounded-xl p-4 focus:ring-2 focus:ring-[#06402B]/20 focus:bg-white transition outline-none ${errors.password_confirmation ? 'ring-2 ring-red-500' : ''} ${isRtl ? 'text-right' : ''}`}
               placeholder="Confirm password"
               required
             />
-            {errors.password_confirmation && <p className="text-red-600 text-xs mt-1 ml-1">{errors.password_confirmation}</p>}
+            {errors.password_confirmation && <p className={`text-red-600 text-xs mt-1 ${isRtl ? 'mr-1 ml-0 text-right' : 'ml-1'}`}>{errors.password_confirmation}</p>}
           </div>
         </div>
 
@@ -223,7 +224,7 @@ export default function UserCreate() {
           </div>
         )}
 
-        <div className="flex gap-4 pt-4">
+        <div className={`flex gap-4 pt-4 ${isRtl ? 'flex-row-reverse' : ''}`}>
           <button
             type="button"
             onClick={() => navigate('/users')}

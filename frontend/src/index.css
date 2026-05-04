@@ -198,6 +198,112 @@ select:hover {
 [dir="rtl"] .text-end { text-align: left; }
 [dir="rtl"] .text-start { text-align: right; }
 
+/* Layout specific RTL rules */
+[dir="rtl"] .left-0 { left: auto; right: 0; }
+[dir="rtl"] .right-0 { right: auto; left: 0; }
+[dir="rtl"] .left-4 { left: auto; right: 1rem; }
+[dir="rtl"] .right-4 { right: auto; left: 1rem; }
+[dir="rtl"] .left-8 { left: auto; right: 2rem; }
+[dir="rtl"] .right-8 { right: auto; left: 2rem; }
+[dir="rtl"] .left-3 { left: auto; right: 0.75rem; }
+[dir="rtl"] .right-3 { right: auto; left: 0.75rem; }
+[dir="rtl"] .left-6 { left: auto; right: 1.5rem; }
+[dir="rtl"] .right-6 { right: auto; left: 1.5rem; }
+
+/* Border width RTL rules */
+[dir="rtl"] .border-l-4 { border-left: 0; border-right: 4px solid; }
+[dir="rtl"] .border-r-4 { border-right: 0; border-left: 4px solid; }
+[dir="rtl"] .border-l { border-left: 0; border-right: 1px solid; }
+[dir="rtl"] .border-r { border-right: 0; border-left: 1px solid; }
+
+/* Margin RTL rules */
+[dir="rtl"] .ml-3 { margin-left: 0; margin-right: 0.75rem; }
+[dir="rtl"] .mr-3 { margin-right: 0; margin-left: 0.75rem; }
+[dir="rtl"] .ml-6 { margin-left: 0; margin-right: 1.5rem; }
+[dir="rtl"] .mr-6 { margin-right: 0; margin-left: 1.5rem; }
+[dir="rtl"] .ml-1 { margin-left: 0; margin-right: 0.25rem; }
+[dir="rtl"] .mr-1 { margin-right: 0; margin-left: 0.25rem; }
+[dir="rtl"] .ml-2 { margin-left: 0; margin-right: 0.5rem; }
+[dir="rtl"] .mr-2 { margin-right: 0; margin-left: 0.5rem; }
+[dir="rtl"] .ml-4 { margin-left: 0; margin-right: 1rem; }
+[dir="rtl"] .mr-4 { margin-right: 0; margin-left: 1rem; }
+[dir="rtl"] .ml-8 { margin-left: 0; margin-right: 2rem; }
+[dir="rtl"] .mr-8 { margin-right: 0; margin-left: 2rem; }
+
+/* Padding RTL rules */
+[dir="rtl"] .pl-3 { padding-left: 0; padding-right: 0.75rem; }
+[dir="rtl"] .pr-3 { padding-right: 0; padding-left: 0.75rem; }
+[dir="rtl"] .pl-4 { padding-left: 0; padding-right: 1rem; }
+[dir="rtl"] .pr-4 { padding-right: 0; padding-left: 1rem; }
+[dir="rtl"] .pl-5 { padding-left: 0; padding-right: 1.25rem; }
+[dir="rtl"] .pr-5 { padding-right: 0; padding-left: 1.25rem; }
+[dir="rtl"] .pl-6 { padding-left: 0; padding-right: 1.5rem; }
+[dir="rtl"] .pr-6 { padding-right: 0; padding-left: 1.5rem; }
+[dir="rtl"] .pl-8 { padding-left: 0; padding-right: 2rem; }
+[dir="rtl"] .pr-8 { padding-right: 0; padding-left: 2rem; }
+[dir="rtl"] .pl-10 { padding-left: 0; padding-right: 2.5rem; }
+[dir="rtl"] .pr-10 { padding-right: 0; padding-left: 2.5rem; }
+[dir="rtl"] .pl-12 { padding-left: 0; padding-right: 3rem; }
+[dir="rtl"] .pr-12 { padding-right: 0; padding-left: 3rem; }
+[dir="rtl"] .pl-14 { padding-left: 0; padding-right: 3.5rem; }
+[dir="rtl"] .pr-14 { padding-right: 0; padding-left: 3.5rem; }
+
+/* Responsive margin RTL rules */
+[dir="rtl"] .md\:ml-72 { margin-left: 0; margin-right: 18rem; }
+[dir="rtl"] .md\:mr-72 { margin-right: 0; margin-left: 18rem; }
+[dir="rtl"] .md\:ml-20 { margin-left: 0; margin-right: 5rem; }
+[dir="rtl"] .md\:mr-20 { margin-right: 0; margin-left: 5rem; }
+
+/* Rotate RTL adjustments */
+[dir="rtl"] .rotate-180 { transform: rotate(0deg); }
+[dir="rtl"] .-rotate-180 { transform: rotate(180deg); }
+
+/* Toggle switch RTL adjustments */
+[dir="rtl"] .peer-checked\:after\:translate-x-full:checked ~ .peer-checked\:after\:translate-x-full::after,
+[dir="rtl"] .peer:checked ~ .peer-checked\:after\:translate-x-full::after {
+  transform: translateX(-100%);
+}
+[dir="rtl"] .peer-checked\:after\:translate-x-full::after {
+  left: auto;
+  right: 2px;
+}
+
+/* Dropdown/select RTL improvements */
+[dir="rtl"] select {
+  background-position: left 12px center !important;
+  padding: 12px 12px 12px 42px !important;
+}
+
+/* Text alignment utilities */
+[dir="rtl"] .text-left { text-align: right; }
+[dir="rtl"] .text-right { text-align: left; }
+
+/* Rounded corners RTL swap */
+[dir="rtl"] .rounded-tl-2xl { border-top-left-radius: 0 !important; border-top-right-radius: 1rem !important; }
+[dir="rtl"] .rounded-tr-2xl { border-top-right-radius: 0 !important; border-top-left-radius: 1rem !important; }
+[dir="rtl"] .rounded-bl-2xl { border-bottom-left-radius: 0 !important; border-bottom-right-radius: 1rem !important; }
+[dir="rtl"] .rounded-br-2xl { border-bottom-right-radius: 0 !important; border-bottom-left-radius: 1rem !important; }
+
+/* Card/section specific RTL */
+[dir="rtl"] .card { text-align: right; }
+[dir="rtl"] .stat-card { text-align: right; }
+
+/* Ensure proper text alignment for form elements in RTL */
+[dir="rtl"] input[type="text"],
+[dir="rtl"] input[type="email"],
+[dir="rtl"] input[type="password"],
+[dir="rtl"] input[type="tel"],
+[dir="rtl"] input[type="number"],
+[dir="rtl"] textarea,
+[dir="rtl"] select {
+  text-align: right;
+}
+
+/* Material Symbols direction in RTL */
+[dir="rtl"] .material-symbols-rounded {
+  direction: rtl;
+}
+
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
