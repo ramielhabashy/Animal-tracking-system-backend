@@ -945,4 +945,10 @@ export default {
     twilioAuthToken: 'رمز المصادقة',
     twilioPhoneNumber: 'رقم الهاتف',
   },
+  languages: {
+    en: 'English',
+    ar: 'العربية',
+    ur: 'اردو',
+    eu: 'Euskara',
+  },
 };

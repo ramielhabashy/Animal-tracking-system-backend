@@ -954,4 +954,10 @@ export default {
     manageTranslations: 'Manage Translations',
     existingRoles: 'Existing Roles',
   },
+  languages: {
+    en: 'English',
+    ar: 'العربية',
+    ur: 'اردو',
+    eu: 'Euskara',
+  },
 };

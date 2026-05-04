@@ -4,7 +4,7 @@ import { useI18n } from './index';
 import { setStoredLocale } from '../utils/api';
 
 export default function LanguageSwitcher() {
-  const { locale, setLocale, languages } = useI18n();
+  const { locale, setLocale, languages, t } = useI18n();
 
   const handleChange = (e) => {
     const newLocale = e.target.value;
@@ -13,6 +13,22 @@ export default function LanguageSwitcher() {
   };
 
   const currentLang = languages.find(l => l.code === locale);
+
+  const getDisplayName = (lang) => {
+    // Use local translation for language names
+    const localName = t(`languages.${lang.code}`);
+    if (localName && localName !== `languages.${lang.code}`) {
+      return localName;
+    }
+    // Fallback to API data if not corrupted
+    const name = lang.native_name || lang.name;
+    if (typeof name === 'string' && /^[\s?]*$/.test(name)) {
+      // Return hardcoded fallback if API returns corrupted text
+      const fallbacks = { en: 'English', ar: 'العربية', ur: 'اردو', eu: 'Euskara' };
+      return fallbacks[lang.code] || lang.code;
+    }
+    return name || lang.code;
+  };
 
   return (
     <div className="flex items-center gap-2">
@@ -24,7 +40,7 @@ export default function LanguageSwitcher() {
       >
         {languages.map(lang => (
           <option key={lang.code} value={lang.code}>
-            {lang.native_name || lang.name}
+            {getDisplayName(lang)}
           </option>
         ))}
       </select>

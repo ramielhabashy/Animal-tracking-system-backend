@@ -939,4 +939,10 @@ export default {
     twilioAuthToken: 'تصدیق ٹوکن',
     twilioPhoneNumber: 'فون نمبر',
   },
+  languages: {
+    en: 'English',
+    ar: 'العربية',
+    ur: 'اردو',
+    eu: 'Euskara',
+  },
 };
