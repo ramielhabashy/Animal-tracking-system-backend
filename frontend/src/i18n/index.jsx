@@ -121,8 +121,15 @@ export function I18nProvider({ children }) {
     const getShortKey = (k) => k.includes('.') ? k.split('.').pop() : k;
     const shortKey = getShortKey(key);
 
-    // Check if value is corrupted (contains "?" which indicates bad encoding)
-    const isCorrupted = (val) => typeof val === 'string' && /^[\s?]*$/.test(val);
+    // Check if value is corrupted (contains "?" or replacement characters indicating bad encoding)
+    const isCorrupted = (val) => {
+      if (typeof val !== 'string') return false;
+      // Check for only ?, spaces, or replacement characters
+      if (/^[\s?\uFFFD]*$/.test(val)) return true;
+      // Check for corrupted encoding replacement character
+      if (/[\uFFFD]/.test(val)) return true;
+      return false;
+    };
 
     // Try full key in API translations (e.g., common.edit)
     let value = getNestedValue(apiTranslations[locale], key);
