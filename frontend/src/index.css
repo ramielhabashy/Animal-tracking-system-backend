@@ -30,6 +30,12 @@ body {
 [dir="rtl"] body {
   font-family: 'Tajawal', 'Inter', sans-serif;
 }
+
+/* Fix main content margin for RTL sidebar */
+[dir="rtl"] main {
+  margin-right: 0;
+  margin-left: auto;
+}
 [lang="ur"] body, [dir="rtl"][lang="ur"] body {
   font-family: 'Noto Sans Urdu', 'Tajawal', 'Inter', sans-serif;
 }
