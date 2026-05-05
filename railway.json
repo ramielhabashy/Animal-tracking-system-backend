@@ -1,0 +1,18 @@
+{
+  "$schema": "https://railway.app/railway-schema.json",
+  "build": {
+    "builder": "NIX",
+    "buildCommand": "cd backend && composer install --no-dev --optimize-autoloader && cd ../frontend && npm install && npm run build",
+    "nixpacks": ["php", "nodejs"]
+  },
+  "deploy": {
+    "startCommand": "cd backend && php artisan serve --host=0.0.0.0 --port=${PORT:-8000}",
+    "healthcheckPath": "/",
+    "restartPolicy": {
+      "maxRetryCount": 3
+    }
+  },
+  "environments": {
+    "PHP_VERSION": "8.2"
+  }
+}
