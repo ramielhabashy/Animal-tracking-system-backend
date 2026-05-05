@@ -25,32 +25,49 @@ RUN apt-get update && apt-get install -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
+# Install Node.js 22 for frontend build
+RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
+    apt-get install -y nodejs
+
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 # Set working directory
 WORKDIR /app
 
-# Copy project files
-COPY . .
+# Copy backend files
+COPY backend/ .
 
 # Install backend dependencies
 RUN composer install --no-dev --optimize-autoloader --no-scripts --ignore-platform-reqs && \
     php artisan package:discover --ansi || true
 
-# Install frontend dependencies and build
-RUN cd ../frontend && \
-    curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
-    apt-get install -y nodejs && \
+# Copy frontend files and build
+COPY frontend/ /tmp/frontend/
+RUN cd /tmp/frontend && \
     npm install && \
-    npm run build
+    npm run build && \
+    cp -r dist/* /app/public/ && \
+    rm -rf /tmp/frontend
 
 # Set environment variable to allow superuser
 ENV COMPOSER_ALLOW_SUPERUSER=1
 
-# Start Apache with Laravel
-RUN mv public /var/www/html/public && \
-    ln -s /app /var/www/html/laravel
+# Configure Apache for Laravel
+RUN mv /app/public /var/www/html/public && \
+    ln -s /app /var/www/html/laravel && \
+    a2enmod rewrite
+
+# Apache .htaccess for Laravel + SPA routing
+RUN echo '<IfModule mod_rewrite.c>\n' \
+    'Options -MultiViews -Indexes\n' \
+    'RewriteEngine On\n' \
+    'RewriteCond %{HTTP:Authorization} .\n' \
+    'RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]\n' \
+    'RewriteCond %{REQUEST_FILENAME} !-d\n' \
+    'RewriteCond %{REQUEST_FILENAME} !-f\n' \
+    'RewriteRule ^ index.php [L]\n' \
+    '</IfModule>' > /var/www/html/public/.htaccess
 
 EXPOSE 80
 
