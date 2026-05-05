@@ -1,0 +1,8 @@
+[build]
+builder = "nixpacks"
+
+[deploy]
+startCommand = "cd backend && php artisan serve --host=0.0.0.0 --port=$PORT"
+buildCommand = "cd backend && composer install --no-dev --optimize-autoloader && cd ../frontend && npm install && npm run build && cp -r dist/* ../backend/public/"
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3
