@@ -1,14 +1,5 @@
-[build]
-builder = "railpack"
-
-[phases.setup]
-nixPkgs = ["php82", "composer"]
-
-[phases.build]
-cmds = [
-    "composer install --no-dev --optimize-autoloader --no-scripts --ignore-platform-reqs",
-    "php artisan package:discover --ansi || true"
-]
+[builder]
+use = "railpack"
 
 [deploy]
 startCommand = "php artisan serve --host=0.0.0.0 --port=$PORT"
