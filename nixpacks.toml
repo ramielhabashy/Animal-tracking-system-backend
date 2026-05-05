@@ -1,0 +1,12 @@
+[phases.setup]
+nixPkgs = ["php82", "composer", "nodejs_22", "nodePackages.npm"]
+
+[phases.build]
+cmds = [
+    "cd backend && composer install --no-dev --optimize-autoloader --no-scripts",
+    "cd frontend && npm install && npm run build",
+    "cp -r frontend/dist/* backend/public/"
+]
+
+[start]
+cmd = "cd backend && php artisan serve --host=0.0.0.0 --port=$PORT"

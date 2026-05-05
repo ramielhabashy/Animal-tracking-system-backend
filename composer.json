@@ -1,0 +1,15 @@
+{
+  "name": "animal-tracking-system",
+  "description": "Monorepo - see backend/composer.json for PHP dependencies",
+  "require": {
+    "php": ">=8.2"
+  },
+  "scripts": {
+    "post-install-cmd": [
+      "echo 'Root composer.json - skipping install'"
+    ]
+  },
+  "config": {
+    "vendor-dir": "vendor-root"
+  }
+}
