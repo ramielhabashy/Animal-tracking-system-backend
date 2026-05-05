@@ -36,7 +36,8 @@ COPY . .
 
 # Install backend dependencies
 RUN cd backend && \
-    COMPOSER_ALLOW_SUPERUSER=1 composer install --no-dev --optimize-autoloader --no-scripts --ignore-platform-reqs
+    COMPOSER_ALLOW_SUPERUSER=1 composer install --no-dev --optimize-autoloader --no-scripts --ignore-platform-reqs && \
+    php artisan package:discover --ansi || true
 
 # Install frontend dependencies and build
 RUN cd frontend && \
