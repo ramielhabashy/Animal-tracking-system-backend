@@ -1,7 +1,16 @@
 [build]
-builder = "nixpacks"
+builder = "railpack"
+
+[phases.setup]
+nixPkgs = ["nodejs_22", "nodePackages.npm"]
+
+[phases.build]
+cmds = [
+    "npm install",
+    "npm run build"
+]
 
 [deploy]
-startCommand = "npm run preview -- --host 0.0.0.0 --port $PORT"
+startCommand = "npx vite preview --host 0.0.0.0 --port $PORT"
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 3
