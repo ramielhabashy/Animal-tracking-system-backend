@@ -59,15 +59,7 @@ RUN mv /app/public /var/www/html/public && \
     a2enmod rewrite
 
 # Apache .htaccess for Laravel + SPA routing
-RUN echo '<IfModule mod_rewrite.c>\n' \
-    'Options -MultiViews -Indexes\n' \
-    'RewriteEngine On\n' \
-    'RewriteCond %{HTTP:Authorization} .\n' \
-    'RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]\n' \
-    'RewriteCond %{REQUEST_FILENAME} !-d\n' \
-    'RewriteCond %{REQUEST_FILENAME} !-f\n' \
-    'RewriteRule ^ index.php [L]\n' \
-    '</IfModule>' > /var/www/html/public/.htaccess
+RUN printf '<IfModule mod_rewrite.c>\nOptions -MultiViews -Indexes\nRewriteEngine On\nRewriteCond %%{HTTP:Authorization} .\nRewriteRule .* - [E=HTTP_AUTHORIZATION:%%{HTTP:Authorization}]\nRewriteCond %%{REQUEST_FILENAME} !-d\nRewriteCond %%{REQUEST_FILENAME} !-f\nRewriteRule ^ index.php [L]\n</IfModule>\n' > /var/www/html/public/.htaccess
 
 EXPOSE 80
 
