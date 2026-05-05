@@ -2,7 +2,7 @@
 builder = "nixpacks"
 
 [phases.setup]
-nixPkgs = ["php82", "composer", "nodejs_22", "nodePackages.npm"]
+nixPkgs = ["php84", "composer", "nodejs_22", "nodePackages.npm"]
 
 [phases.build]
 cmds = [
