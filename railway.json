@@ -13,6 +13,8 @@
     }
   },
   "environments": {
-    "PHP_VERSION": "8.2"
+    "production": {
+      "PHP_VERSION": "8.2"
+    }
   }
 }
