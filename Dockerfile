@@ -41,7 +41,7 @@ ENV COMPOSER_NO_INTERACTION=1
 WORKDIR /app
 
 # Copy backend files
-COPY . .
+COPY backend/ .
 
 # Install composer dependencies with --no-scripts to avoid segfault
 RUN composer install --no-dev --optimize-autoloader --no-scripts --ignore-platform-reqs
@@ -49,8 +49,8 @@ RUN composer install --no-dev --optimize-autoloader --no-scripts --ignore-platfo
 # Run artisan discover separately (with error handling)
 RUN php artisan package:discover --ansi || echo "package:discover failed, continuing..."
 
-# Build frontend and copy to public
-COPY ../frontend /tmp/frontend
+# Copy frontend files and build
+COPY frontend/ /tmp/frontend/
 RUN cd /tmp/frontend && \
     curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
     apt-get update && apt-get install -y nodejs && \

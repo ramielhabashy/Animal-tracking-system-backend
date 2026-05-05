@@ -3,7 +3,7 @@
   "build": {
     "builder": "DOCKERFILE",
     "dockerfilePath": "Dockerfile",
-    "buildContext": ".."
+    "buildContext": "."
   },
   "deploy": {
     "startCommand": "apache2-foreground",
