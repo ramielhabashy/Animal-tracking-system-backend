@@ -9,11 +9,11 @@ RUN apt-get update && apt-get install -y \
     fileinfo pdo_mysql intl \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Install Node.js 18 (LTS, stable)
-RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
-    apt-get install -y nodejs
+# Disable opcache to prevent segfaults
+RUN echo 'opcache.enable=0' > /usr/local/etc/php/conf.d/opcache.ini \
+    && echo 'memory_limit=512M' > /usr/local/etc/php/conf.d/memory.ini
 
-# Install Composer
+# Install Composer (older version to avoid issues)
 COPY --from=composer:2.6 /usr/bin/composer /usr/bin/composer
 
 ENV COMPOSER_ALLOW_SUPERUSER=1
@@ -24,17 +24,23 @@ WORKDIR /app
 # Copy backend files
 COPY backend/ .
 
-# Install composer deps with scripts disabled
+# Install composer deps with --no-scripts to avoid segfault
 RUN composer install --no-dev --optimize-autoloader --no-scripts --ignore-platform-reqs
 
-# Copy frontend and build
+# Copy frontend files and build
 COPY frontend/ /tmp/frontend/
-RUN cd /tmp/frontend && npm install && npm run build && \
-    cp -r dist/* /app/public/ && rm -rf /tmp/frontend
+RUN cd /tmp/frontend && \
+    curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
+    apt-get update && apt-get install -y nodejs && \
+    npm install && \
+    npm run build && \
+    cp -r dist/* /app/public/ && \
+    rm -rf /tmp/frontend
 
 # Configure Apache
 RUN mv /app/public /var/www/html/public && \
-    ln -s /app /var/www/html/laravel && a2enmod rewrite
+    ln -s /app /var/www/html/laravel && \
+    a2enmod rewrite
 
 EXPOSE 80
 CMD ["apache2-foreground"]
