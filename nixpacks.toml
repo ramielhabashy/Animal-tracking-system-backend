@@ -1,0 +1,11 @@
+# NIXPACKS configuration to override default Node.js build
+# Prevent NIXPACKS from running 'npm ci' automatically
+
+[phases.build]
+cmds = ["cd backend && composer install --no-dev --optimize-autoloader && cd ../frontend && npm install && npm run build"]
+
+[phases.install]
+dependsOn = []
+
+[start]
+cmd = "cd backend && php artisan serve --host=0.0.0.0 --port=${PORT:-8000}"
