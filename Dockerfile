@@ -4,7 +4,7 @@ FROM php:8.1-apache
 RUN apt-get update && apt-get install -y \
     git unzip zip curl libxml2-dev libcurl4-openssl-dev \
     libzip-dev libgd-dev libpng-dev libjpeg-dev \
-    libfreetype6-dev libicu-dev \
+    libfreetype6-dev libicu-dev libonig-dev \
     && docker-php-ext-install mbstring xml curl zip gd tokenizer \
     fileinfo pdo_mysql intl \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
