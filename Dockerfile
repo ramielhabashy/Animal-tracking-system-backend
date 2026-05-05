@@ -1,3 +1,4 @@
+# VERSION: 1.0.3 - Fixed: removed tokenizer (already in PHP 8.1), added libonig-dev
 FROM php:8.1-apache
 
 # Install system dependencies
