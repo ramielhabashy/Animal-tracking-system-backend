@@ -1,7 +1,17 @@
 [build]
 builder = "nixpacks"
 
-[deploy]
-startCommand = "php artisan serve --host=0.0.0.0 --port=$PORT"
-restartPolicyType = "on_failure"
-restartPolicyMaxRetries = 3
+[phases.setup]
+nixPkgs = ["php82", "composer", "nodejs_22", "nodePackages.npm"]
+
+[phases.build]
+dependsOn = ["setup"]
+cmds = [
+    "cd backend && COMPOSER_ALLOW_SUPERUSER=1 composer install --no-dev --optimize-autoloader --no-scripts --ignore-platform-reqs",
+    "cd backend && php artisan package:discover --ansi || true",
+    "cd frontend && npm install && npm run build",
+    "cp -r frontend/dist/* backend/public/"
+]
+
+[start]
+cmd = "cd backend && php artisan serve --host=0.0.0.0 --port=$PORT"
