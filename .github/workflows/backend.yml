@@ -1,0 +1,67 @@
+name: Backend CI
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: password
+          MYSQL_DATABASE: oasis_test
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.2'
+        extensions: mbstring, pdo, pdo_mysql
+
+    - name: Copy .env
+      run: cd backend && cp .env.example .env
+
+    - name: Install Composer dependencies
+      working-directory: ./backend
+      run: composer install --no-interaction --prefer-dist
+
+    - name: Generate APP_KEY
+      working-directory: ./backend
+      run: php artisan key:generate
+
+    - name: Run migrations
+      working-directory: ./backend
+      env:
+        DB_HOST: 127.0.0.1
+        DB_PORT: 3306
+        DB_DATABASE: oasis_test
+        DB_USERNAME: root
+        DB_PASSWORD: password
+      run: php artisan migrate --env=testing --force
+
+    - name: Run tests
+      working-directory: ./backend
+      env:
+        DB_HOST: 127.0.0.1
+        DB_PORT: 3306
+        DB_DATABASE: oasis_test
+        DB_USERNAME: root
+        DB_PASSWORD: password
+      run: php artisan test
