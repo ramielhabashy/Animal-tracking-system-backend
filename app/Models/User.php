@@ -38,9 +38,16 @@ class User extends Authenticatable
         'password',
     ];
 
+    protected $appends = ['role'];
+
     protected $casts = [
         'is_active' => 'boolean',
     ];
+
+    public function getRoleAttribute()
+    {
+        return $this->getPrimaryRoleName();
+    }
 
     public function animals()
     {

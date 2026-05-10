@@ -1,19 +1,38 @@
 <?php
-require __DIR__.'/vendor/autoload.php';
-$app = require __DIR__.'/bootstrap/app.php';
+require __DIR__.'/../vendor/autoload.php';
+$app = require __DIR__.'/../bootstrap/app.php';
 $app->make('Illuminate\Contracts\Console\Kernel')->bootstrap();
 
-// Check current charset
-$charset = DB::select("SHOW VARIABLES LIKE 'character_set%'");
-print_r($charset);
+use Illuminate\Support\Facades\DB;
 
-// Update with explicit UTF-8
-DB::statement('ALTER DATABASE oasis_staging CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci');
-DB::statement('UPDATE languages SET native_name = _utf8mb4\'العربية\' WHERE code = "ar"');
-DB::statement('UPDATE languages SET native_name = _utf8mb4\'اردو\' WHERE code = "ur"');
+echo "Setting UTF-8 charset...\n";
+DB::statement("SET NAMES 'utf8mb4'");
+DB::statement("SET CHARACTER SET utf8mb4");
 
-// Verify
-$languages = DB::table('languages')->get();
-foreach ($languages as $lang) {
-    echo "{$lang->code}: {$lang->native_name}\n";
+$languages = [
+    'en' => ['name' => 'English', 'native_name' => 'English', 'direction' => 'ltr'],
+    'ar' => ['name' => 'Arabic', 'native_name' => 'العربية', 'direction' => 'rtl'],
+    'ur' => ['name' => 'Urdu', 'native_name' => 'اردو', 'direction' => 'rtl'],
+    'eu' => ['name' => 'Basque', 'native_name' => 'Euskara', 'direction' => 'ltr'],
+];
+
+echo "Updating languages...\n";
+foreach ($languages as $code => $data) {
+    $existing = DB::table('languages')->where('code', $code)->first();
+    if ($existing) {
+        DB::table('languages')->where('code', $code)->update($data);
+        echo "  Updated {$code}: {$data['native_name']}\n";
+    } else {
+        DB::table('languages')->insert(array_merge(['code' => $code], $data));
+        echo "  Inserted {$code}: {$data['native_name']}\n";
+    }
 }
+
+echo "\nVerification (with hex dump):\n";
+$all = DB::table('languages')->orderBy('code')->get();
+foreach ($all as $l) {
+    $hex = bin2hex($l->native_name);
+    echo "  {$l->code}: {$l->native_name} (direction: {$l->direction}) [hex: {$hex}]\n";
+}
+
+echo "\nDone!\n";

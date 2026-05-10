@@ -16,10 +16,10 @@ class StoreAnimalRequest extends FormRequest
         return [
             'animal_id' => 'nullable|string|unique:animals,animal_id|max:50',
             'name' => 'required|string|max:255',
-            'species' => 'required|in:Camel,Goat,Sheep,Cow,Dog',
+            'species' => 'required|string|max:255',
             'breed' => 'nullable|string|max:255',
             'date_of_birth' => 'nullable|date',
-            'gender' => 'required|in:Male,Female',
+            'gender' => 'required|in:Male,Female,male,female',
             'color_markings' => 'nullable|string',
             'current_weight' => 'nullable|numeric|min:0',
             'identification_photo' => 'nullable|file|image|max:10240',

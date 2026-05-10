@@ -10,6 +10,7 @@ RUN apt-get update && apt-get install -y \
     libzip-dev \
     libfreetype6-dev \
     libjpeg62-turbo-dev \
+    zip \
     && docker-php-ext-install pdo pdo_mysql gd mbstring exif pcntl zip bcmath sockets \
     && pecl install redis && docker-php-ext-enable redis
 
@@ -22,13 +23,6 @@ RUN composer install --no-dev --optimize-autoloader --no-interaction
 
 COPY backend/ ./
 RUN php artisan config:cache && php artisan route:cache && php artisan view:cache
-
-FROM nginx:alpine as frontend-builder
-WORKDIR /app
-COPY frontend/package.json frontend/package-lock.json* ./
-RUN npm ci --production
-COPY frontend/ ./
-RUN npm run build
 
 FROM php:8.2-fpm
 
@@ -43,10 +37,10 @@ RUN apt-get update && apt-get install -y \
     libfreetype6-dev \
     libjpeg62-turbo-dev \
     && docker-php-ext-install pdo pdo_mysql gd mbstring exif pcntl zip bcmath sockets \
-    && pecl install redis && docker-php-ext-enable redis
+    && pecl install redis && docker-php-ext-enable redis \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 COPY --from=php-builder /var/www/html /var/www/html
-COPY --from=frontend-builder /app/dist /var/www/html/public
 
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 

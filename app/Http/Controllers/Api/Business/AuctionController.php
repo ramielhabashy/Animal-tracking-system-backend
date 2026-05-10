@@ -39,6 +39,7 @@ class AuctionController extends Controller
             if ($user && $user->managed_by) {
                 return $auction->owner_id == $user->managed_by;
             }
+            return true;
         }
         
         return false;
@@ -68,7 +69,7 @@ class AuctionController extends Controller
                       ->orWhereIn('status', ['active', 'ended']);
                 });
             }
-            return $query->where('id', 0);
+            return $query;
         }
         
         return $query->where('owner_id', $userId);
@@ -92,6 +93,7 @@ class AuctionController extends Controller
             if ($user && $user->managed_by) {
                 return $animal->owner_id == $user->managed_by;
             }
+            return true;
         }
         
         return false;

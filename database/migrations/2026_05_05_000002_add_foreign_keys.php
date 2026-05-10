@@ -68,19 +68,33 @@ return new class extends Migration
     private function hasForeignKey(string $table, string $column): bool
     {
         $connection = Schema::getConnection();
-        $databaseName = $connection->getDatabaseName();
+        $driverName = $connection->getDriverName();
         
-        $keyName = "{$table}_{$column}_foreign";
-        
-        $result = $connection->select("
-            SELECT COUNT(*) as count 
-            FROM information_schema.TABLE_CONSTRAINTS 
-            WHERE CONSTRAINT_SCHEMA = ? 
-            AND TABLE_NAME = ? 
-            AND CONSTRAINT_NAME = ?
-            AND CONSTRAINT_TYPE = 'FOREIGN KEY'
-        ", [$databaseName, $table, $keyName]);
-        
-        return $result[0]->count > 0;
+        if ($driverName === 'sqlite') {
+            // SQLite: check foreign keys using PRAGMA
+            $keyName = "{$table}_{$column}_foreign";
+            $foreignKeys = $connection->select("PRAGMA foreign_key_list({$table})");
+            foreach ($foreignKeys as $fk) {
+                if ($fk->from === $column) {
+                    return true;
+                }
+            }
+            return false;
+        } else {
+            // MySQL/Others: use information_schema
+            $databaseName = $connection->getDatabaseName();
+            $keyName = "{$table}_{$column}_foreign";
+            
+            $result = $connection->select("
+                SELECT COUNT(*) as count 
+                FROM information_schema.TABLE_CONSTRAINTS 
+                WHERE CONSTRAINT_SCHEMA = ? 
+                AND TABLE_NAME = ? 
+                AND CONSTRAINT_NAME = ?
+                AND CONSTRAINT_TYPE = 'FOREIGN KEY'
+            ", [$databaseName, $table, $keyName]);
+            
+            return $result[0]->count > 0;
+        }
     }
 };

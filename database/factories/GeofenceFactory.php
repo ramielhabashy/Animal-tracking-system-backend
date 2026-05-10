@@ -2,22 +2,20 @@
 
 namespace Database\Factories;
 
+use App\Models\Geofence;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
-/**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Geofence>
- */
 class GeofenceFactory extends Factory
 {
-    /**
-     * Define the model's default state.
-     *
-     * @return array<string, mixed>
-     */
+    protected $model = Geofence::class;
+    
     public function definition(): array
     {
         return [
-            //
+            'owner_id' => null,
+            'name' => $this->faker->word(),
+            'coordinates' => json_encode([['lat' => 25.0, 'lng' => 55.0]]),
+            'is_active' => true,
         ];
     }
 }

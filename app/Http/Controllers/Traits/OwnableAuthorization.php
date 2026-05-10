@@ -66,7 +66,10 @@ trait OwnableAuthorization
         if ($user->hasRole('Owner') && $ownerId == $user->id) {
             return true;
         }
-        if ($user->hasRole('Doctor') && $ownerId == $user->id) {
+        if ($user->hasRole('Doctor')) {
+            if ($user->managed_by) {
+                return $ownerId == $user->managed_by;
+            }
             return true;
         }
 
@@ -74,6 +77,7 @@ trait OwnableAuthorization
             if ($user->managed_by) {
                 return $ownerId == $user->managed_by;
             }
+            return true;
         }
 
         return false;
@@ -101,7 +105,10 @@ trait OwnableAuthorization
         if ($user->hasRole('Owner') && $ownerId == $user->id) {
             return true;
         }
-        if ($user->hasRole('Doctor') && $ownerId == $user->id) {
+        if ($user->hasRole('Doctor')) {
+            if ($user->managed_by) {
+                return $ownerId == $user->managed_by;
+            }
             return true;
         }
 
@@ -109,6 +116,7 @@ trait OwnableAuthorization
             if ($user->managed_by) {
                 return $ownerId == $user->managed_by;
             }
+            return true;
         }
 
         return false;
@@ -138,14 +146,17 @@ trait OwnableAuthorization
             return $query->where('owner_id', $userId);
         }
         if ($user->hasRole('Doctor')) {
-            return $query->where('owner_id', $userId);
+            if ($user->managed_by) {
+                return $query->where('owner_id', $user->managed_by);
+            }
+            return $query;
         }
 
         if ($user->hasAnyRole(['Manager', 'Shepherd'])) {
             if ($user->managed_by) {
                 return $query->where('owner_id', $user->managed_by);
             }
-            return $query->where('id', 0);
+            return $query;
         }
 
         return $query;

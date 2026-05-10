@@ -1,5 +1,5 @@
 <?php
-$pdo = new PDO("mysql:host=localhost;dbname=oasis_staging", "root", "");
+$pdo = new PDO("mysql:host=localhost;dbname=oasis_staging;charset=utf8mb4", "root", "");
 $pdo->exec("SET NAMES 'utf8mb4'");
 $pdo->exec("SET CHARACTER SET utf8mb4");
 

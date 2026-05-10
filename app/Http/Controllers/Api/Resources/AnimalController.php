@@ -76,13 +76,13 @@ class AnimalController extends Controller
         
         // Check permission using Sanctum or fallback to header
         if ($authUser) {
-            if (!$authUser->hasPermissionTo('manage_animals')) {
+            if (!$authUser->can('animal_create')) {
                 return response()->json(['message' => 'Unauthorized to create animals', 'error' => 'unauthorized'], 403);
             }
         } else {
             // Flutter mobile uses header-based auth
             $userRole = $request->header('X-User-Role');
-            if (!in_array($userRole, ['Admin', 'Owner', 'Manager', 'Veterinarian'])) {
+            if (!in_array($userRole, ['Admin', 'Owner', 'Manager', 'Doctor'])) {
                 return response()->json(['message' => 'Unauthorized to create animals', 'error' => 'unauthorized'], 403);
             }
         }
@@ -105,12 +105,9 @@ class AnimalController extends Controller
         // Auto-generate unique animal ID (OA = Ovine Animal)
         $data['animal_id'] = 'OA-' . date('Y') . '-' . str_pad(Animal::count() + 1, 4, '0', STR_PAD_LEFT);
         
-        $userRole = $authUser ? $authUser->getPrimaryRoleName() : $request->header('X-User-Role');
-        
         // Role-based owner assignment logic
-        if ($authUser && $authUser->hasRole('Owner') && $userId && empty($data['owner_id'])) {
-            // Owner creating animal: set themselves as owner
-            $data['owner_id'] = $userId;
+        if ($authUser && $authUser->hasRole('Owner') && empty($data['owner_id'])) {
+            $data['owner_id'] = $authUser->id;
         }
         
         if ($authUser && $authUser->hasRole('Manager')) {
@@ -124,6 +121,13 @@ class AnimalController extends Controller
         if ($authUser && $authUser->hasRole('Admin') && empty($data['owner_id'])) {
             // Admin creating animal without owner: set to null (unassigned)
             $data['owner_id'] = null;
+        }
+
+        if ($authUser && $authUser->hasRole('Doctor')) {
+            // Doctor creating animal: set owner to their managed_by owner
+            if ($authUser->managed_by && empty($data['owner_id'])) {
+                $data['owner_id'] = $authUser->managed_by;
+            }
         }
         
         // Handle photo upload (file upload)

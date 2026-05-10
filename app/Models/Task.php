@@ -11,6 +11,7 @@ class Task extends Model
     public $translatable = ['title', 'description'];
 
     protected $fillable = [
+        'task_id',
         'owner_id',
         'assigned_to',
         'animal_id',
@@ -39,6 +40,28 @@ class Task extends Model
         'is_predefined' => 'boolean',
         'recurrence_days' => 'array',
     ];
+
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($task) {
+            if (empty($task->task_id)) {
+                $year = date('Y');
+                $latest = static::where('task_id', 'like', "TSK-{$year}-%")
+                    ->orderByDesc('task_id')
+                    ->first();
+
+                $nextNum = 1;
+                if ($latest) {
+                    $parts = explode('-', $latest->task_id);
+                    $nextNum = intval($parts[2] ?? 0) + 1;
+                }
+
+                $task->task_id = "TSK-{$year}-" . str_pad($nextNum, 4, '0', STR_PAD_LEFT);
+            }
+        });
+    }
 
     public function owner(): BelongsTo
     {

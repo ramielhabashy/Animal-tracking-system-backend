@@ -40,7 +40,7 @@ class DeviceTest extends TestCase
         $response = $this->getJson("/api/devices/{$device->id}");
 
         $response->assertStatus(200)
-            ->assertJson(['id' => $device->id]);
+            ->assertJson(['data' => ['id' => $device->id]]);
     }
 
     public function test_user_can_update_device()

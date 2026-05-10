@@ -88,7 +88,7 @@ class AuthController extends Controller
             'email' => 'required|email|unique:users,email',  // Ensure unique email
             'password' => 'required|min:8|confirmed',         // Require password confirmation
             'phone' => 'nullable|string',
-            'language' => 'nullable|string|in:en,ar',         // Only allow supported languages
+            'language' => 'nullable|string',
         ]);
 
         // Get Free tier for new users (default subscription)
@@ -138,11 +138,10 @@ class AuthController extends Controller
     {
         try {
             $user = $request->user();
-            if ($user) {
-                // Delete only the current token, not all tokens
+            if ($user && $user->currentAccessToken()) {
                 $user->currentAccessToken()->delete();
             }
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             // Ignore errors (token might already be invalid)
         }
 
@@ -197,7 +196,7 @@ class AuthController extends Controller
             'name' => 'sometimes|string|max:255',
             'phone' => 'nullable|string',
             'location' => 'nullable|string',
-            'language' => 'sometimes|in:en,ar',  // Restrict to supported languages
+            'language' => 'sometimes|string',
         ]);
 
         // Update only validated fields

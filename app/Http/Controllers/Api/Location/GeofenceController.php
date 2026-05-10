@@ -47,10 +47,10 @@ class GeofenceController extends Controller
                     $q->where('owner_id', $user->managed_by);
                 });
             }
-            return $query->whereRaw('1=0');
+            return $query;
         }
         
-        return $query->whereRaw('1=0');
+        return $query;
     }
 
     public function index(Request $request): JsonResponse

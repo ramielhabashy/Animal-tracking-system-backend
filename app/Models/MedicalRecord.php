@@ -10,6 +10,7 @@ class MedicalRecord extends Model
     public $translatable = ['title', 'description', 'notes'];
 
     protected $fillable = [
+        'record_id',
         'animal_id',
         'owner_id',
         'record_type',
@@ -29,6 +30,28 @@ class MedicalRecord extends Model
         'record_date' => 'date',
         'next_follow_up' => 'date',
     ];
+
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($record) {
+            if (empty($record->record_id)) {
+                $year = date('Y');
+                $latest = static::where('record_id', 'like', "MR-{$year}-%")
+                    ->orderByDesc('record_id')
+                    ->first();
+
+                $nextNum = 1;
+                if ($latest) {
+                    $parts = explode('-', $latest->record_id);
+                    $nextNum = intval($parts[2] ?? 0) + 1;
+                }
+
+                $record->record_id = "MR-{$year}-" . str_pad($nextNum, 4, '0', STR_PAD_LEFT);
+            }
+        });
+    }
 
     public function animal(): BelongsTo
     {

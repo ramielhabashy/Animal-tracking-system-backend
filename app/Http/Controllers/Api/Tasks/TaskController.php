@@ -37,6 +37,10 @@ class TaskController extends Controller
             return true;
         }
 
+        if ($role === 'Doctor') {
+            return $user->managed_by && $task->owner_id == $user->managed_by;
+        }
+
         if (in_array($role, ['Manager', 'Owner'])) {
             $managedUsers = User::where('managed_by', $user->id)->pluck('id')->toArray();
             return in_array($task->owner_id, $managedUsers) || in_array($task->assigned_to, $managedUsers);
@@ -72,6 +76,16 @@ class TaskController extends Controller
         }
 
         if ($role === 'Shepherd') {
+            return $query->where('assigned_to', $user->id);
+        }
+
+        if ($role === 'Doctor') {
+            if ($user->managed_by) {
+                return $query->where(function ($q) use ($user) {
+                    $q->where('owner_id', $user->managed_by)
+                      ->orWhere('assigned_to', $user->id);
+                });
+            }
             return $query->where('assigned_to', $user->id);
         }
 
@@ -299,6 +313,15 @@ class TaskController extends Controller
                 $q->whereIn('owner_id', $managedUserIds)
                   ->orWhereIn('assigned_to', $managedUserIds);
             });
+        } elseif ($role === 'Doctor') {
+            if ($user->managed_by) {
+                $query->where(function ($q) use ($user) {
+                    $q->where('owner_id', $user->managed_by)
+                      ->orWhere('assigned_to', $user->id);
+                });
+            } else {
+                $query->where('assigned_to', $user->id);
+            }
         } else {
             $query->where('assigned_to', $user->id);
         }

@@ -152,20 +152,34 @@ class ExportController extends Controller
     public function exportDatabase(Request $request)
     {
         $userRole = $request->header('X-User-Role');
-        
+
         if ($userRole !== 'Admin') {
             return response()->json(['message' => 'Unauthorized', 'error' => 'unauthorized'], 403);
         }
 
-        $dbPath = database_path('database.sqlite');
-        
-        if (!file_exists($dbPath)) {
-            return response()->json(['message' => 'Database file not found'], 404);
+        $dbName = config('database.connections.mysql.database');
+        $dbUser = config('database.connections.mysql.username');
+        $dbPass = config('database.connections.mysql.password');
+        $dbHost = config('database.connections.mysql.host');
+
+        $fileName = 'oasis_database_' . date('Y-m-d') . '.sql';
+        $tempFile = storage_path('app/' . $fileName);
+
+        $command = "mysqldump --user={$dbUser} --password={$dbPass} --host={$dbHost} {$dbName} > {$tempFile}";
+
+        if (PHP_OS_FAMILY === 'Windows') {
+            $command = "mysqldump --user={$dbUser} --password={$dbPass} --host={$dbHost} {$dbName} > \"{$tempFile}\"";
         }
 
-        return response()->download($dbPath, 'oasis_database_' . date('Y-m-d') . '.sqlite', [
-            'Content-Type' => 'application/vnd.sqlite3',
-        ]);
+        exec($command, $output, $returnVar);
+
+        if ($returnVar !== 0 || !file_exists($tempFile)) {
+            return response()->json(['message' => 'Failed to export MySQL database'], 500);
+        }
+
+        return response()->download($tempFile, $fileName, [
+            'Content-Type' => 'application/sql',
+        ])->deleteFileAfterSend(true);
     }
 
     private function generateCsv(array $rows): string

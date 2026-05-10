@@ -21,6 +21,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'limits' => CheckSubscriptionLimits::class,
             'feature' => CheckFeatureAccess::class,
             'auth' => CustomAuthenticate::class,
+            'role' => \App\Http\Middleware\CheckRole::class,
             'encrypt_cookies' => \App\Http\Middleware\EncryptCookies::class,
         ]);
         $middleware->api(prepend: [

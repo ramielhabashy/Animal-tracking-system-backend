@@ -62,6 +62,24 @@ class UserSeeder extends Seeder
                 'subscription_tier_id' => $freeTier?->id,
             ],
             [
+                'name' => 'Zeno Doctor',
+                'email' => 'zeno@oasis.com',
+                'password' => Hash::make('12345678'),
+                'role' => 'Doctor',
+                'is_active' => true,
+                'phone' => '+201066746009',
+                'subscription_tier_id' => $freeTier?->id,
+            ],
+            [
+                'name' => 'Zeno Doctor',
+                'email' => 'zeno@oasis.com',
+                'password' => Hash::make('12345678'),
+                'role' => 'Doctor',
+                'is_active' => true,
+                'phone' => '+201066746009',
+                'subscription_tier_id' => $freeTier?->id,
+            ],
+            [
                 'name' => 'Omar Shepherd',
                 'email' => 'omar@oasis.com',
                 'password' => Hash::make('password'),
@@ -79,6 +97,42 @@ class UserSeeder extends Seeder
                 'phone' => '+201066746004',
                 'managed_by' => null,
             ],
+            [
+                'name' => 'Zeko Shepherd',
+                'email' => 'zeko@oasis.com',
+                'password' => Hash::make('password'),
+                'role' => 'Shepherd',
+                'is_active' => true,
+                'phone' => '+201066746005',
+                'managed_by' => null,
+            ],
+            [
+                'name' => 'Mohsen Al-Owner',
+                'email' => 'mohsen@oasis.com',
+                'password' => Hash::make('password'),
+                'role' => 'Owner',
+                'is_active' => true,
+                'phone' => '+201066746006',
+                'subscription_tier_id' => $starterTier?->id,
+            ],
+            [
+                'name' => 'Zekas Shepherd',
+                'email' => 'zekas@oasis.com',
+                'password' => Hash::make('password'),
+                'role' => 'Shepherd',
+                'is_active' => true,
+                'phone' => '+201066746007',
+                'managed_by' => null,
+            ],
+            [
+                'name' => 'Fokas Shepherd',
+                'email' => 'fokas@oasis.com',
+                'password' => Hash::make('password'),
+                'role' => 'Shepherd',
+                'is_active' => true,
+                'phone' => '+201066746008',
+                'managed_by' => null,
+            ],
         ];
 
         foreach ($users as $userData) {
@@ -92,11 +146,14 @@ class UserSeeder extends Seeder
             }
         }
         
-        // Now assign shepherds to the first Owner
+        // Now assign shepherds/vets to the first Owner
         $owner = User::role('Owner')->first();
         if ($owner) {
-            User::where('email', 'omar@oasis.com')->update(['managed_by' => $owner->id]);
-            User::where('email', 'ali@oasis.com')->update(['managed_by' => $owner->id]);
+            User::whereIn('email', [
+                'omar@oasis.com', 'ali@oasis.com', 'zeko@oasis.com',
+                'zekas@oasis.com', 'fokas@oasis.com', 'fatima@oasis.com',
+                'zeno@oasis.com',
+            ])->update(['managed_by' => $owner->id]);
         }
     }
 }

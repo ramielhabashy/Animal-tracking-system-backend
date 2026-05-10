@@ -8,6 +8,11 @@ use Illuminate\Support\Facades\DB;
 
 class LanguageController extends Controller
 {
+    private function ensureUtf8Connection(): void
+    {
+        DB::statement("SET NAMES 'utf8mb4'");
+        DB::statement("SET CHARACTER SET utf8mb4");
+    }
     public function index()
     {
         $languages = DB::table('languages')
@@ -222,6 +227,7 @@ class LanguageController extends Controller
 
     public function storeTranslation(Request $request)
     {
+        $this->ensureUtf8Connection();
         $validated = $request->validate([
             'language_code' => 'required|exists:languages,code',
             'group' => 'required|string|max:50',
@@ -258,6 +264,7 @@ class LanguageController extends Controller
 
     public function updateTranslation(Request $request, int $id)
     {
+        $this->ensureUtf8Connection();
         $validated = $request->validate([
             'value' => 'required|string',
         ]);
@@ -293,6 +300,7 @@ class LanguageController extends Controller
 
     public function importTranslations(Request $request)
     {
+        $this->ensureUtf8Connection();
         $validated = $request->validate([
             'translations' => 'required|array',
         ]);

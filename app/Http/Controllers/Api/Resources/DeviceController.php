@@ -40,7 +40,7 @@ class DeviceController extends Controller
     {
         $authUser = $request->user();
 
-        if ($authUser && !$authUser->can('manage_devices')) {
+        if ($authUser && !$authUser->can('device_create')) {
             return $this->forbidden('Unauthorized to create devices');
         }
 
@@ -87,7 +87,7 @@ class DeviceController extends Controller
     {
         $authUser = $request->user();
 
-        if ($authUser && !$authUser->can('manage_devices')) {
+        if ($authUser && !$authUser->can('device_edit')) {
             return $this->forbidden('Unauthorized');
         }
 
@@ -116,8 +116,8 @@ class DeviceController extends Controller
     {
         $authUser = $request->user();
 
-        if ($authUser && !$authUser->can('manage_devices')) {
-            return $this->forbidden('Unauthorized');
+        if ($authUser && !$authUser->can('device_delete')) {
+            return $this->forbidden('Unauthorized to delete device');
         }
 
         if (!$this->canAccessOwner($request, $device->owner_id)) {

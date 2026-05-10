@@ -23,14 +23,11 @@ class AnimalTest extends TestCase
     {
         $user = $this->authenticateUser();
 
-        $species = Species::first() ?: Species::factory()->create();
-
         $response = $this->postJson('/api/animals', [
             'name' => 'Bessie',
-            'species_id' => $species->id,
-            'breed_id' => null,
-            'gender' => 'female',
-            'birth_date' => '2020-01-01',
+            'species' => 'Camel',
+            'gender' => 'Female',
+            'date_of_birth' => '2020-01-01',
         ]);
 
         $response->assertStatus(201);
@@ -45,7 +42,7 @@ class AnimalTest extends TestCase
         $response = $this->getJson("/api/animals/{$animal->id}");
 
         $response->assertStatus(200)
-            ->assertJson(['id' => $animal->id]);
+            ->assertJson(['data' => ['id' => $animal->id]]);
     }
 
     public function test_user_can_update_animal()

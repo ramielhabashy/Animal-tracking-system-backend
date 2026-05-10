@@ -201,6 +201,12 @@ return [
          * file. Using 'default' here means to use the `default` set in cache.php.
          */
 
-        'store' => 'default',
+         'store' => 'default',
+
+        /*
+         * When set to true, SQLite testing compatibility is enabled.
+         * This disables index checks that don't work on SQLite.
+         */
+        'testing' => env('PERMISSION_TESTING', false),
     ],
 ];

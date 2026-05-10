@@ -3,7 +3,6 @@
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Api\Auth\AuthController;
-use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\Resources\AnimalController;
 use App\Http\Controllers\Api\Resources\DeviceController;
 use App\Http\Controllers\Api\Users\UserController;
@@ -27,12 +26,14 @@ use App\Http\Controllers\Api\Users\RoleManagementController;
 use App\Http\Controllers\Api\Resources\SpeciesController;
 use App\Http\Controllers\Api\Health\HealthCheckController;
 use App\Http\Controllers\Api\Webhook\StripeWebhookController;
+use App\Http\Controllers\DashboardController;
 
 // Public routes
-Route::post('/auth/login', [AuthController::class, 'login'])->name('login')->middleware('throttle:5,1');
-Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
-Route::post('/auth/register', [AuthController::class, 'register'])->middleware('throttle:5,1');
-Route::post('/auth/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:5,1');
+Route::post('/auth/login', [AuthController::class, 'login'])->name('login')->middleware('throttle:30,1');
+Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:30,1');
+Route::post('/auth/register', [AuthController::class, 'register'])->middleware('throttle:30,1');
+Route::post('/auth/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:30,1');
+Route::post('/auth/reset-password', [AuthController::class, 'resetPassword'])->middleware('throttle:30,1');
 
 Route::get('/subscription/tiers', [SubscriptionController::class, 'tiers']);
 Route::get('/subscription/tiers/{tier}', [SubscriptionController::class, 'showTier']);
@@ -75,8 +76,13 @@ Route::middleware('auth:sanctum')->group(function () {
     // Devices
     Route::apiResource('devices', DeviceController::class)->middleware(['limits:devices', 'throttle:60,1']);
 
-    // Users
-    Route::apiResource('users', UserController::class)->middleware(['limits:users', 'throttle:60,1']);
+    // Users - explicit routes instead of apiResource for debugging
+    Route::get('/users', [UserController::class, 'index']);
+    Route::post('/users', [UserController::class, 'store'])->middleware(['limits:users', 'throttle:60,1']);
+    Route::get('/users/{user}', [UserController::class, 'show'])->middleware(['limits:users', 'throttle:60,1']);
+    Route::put('/users/{user}', [UserController::class, 'update'])->middleware(['limits:users', 'throttle:60,1']);
+    Route::patch('/users/{user}', [UserController::class, 'update'])->middleware(['limits:users', 'throttle:60,1']);
+    Route::delete('/users/{user}', [UserController::class, 'destroy'])->middleware(['limits:users', 'throttle:60,1']);
     Route::patch('/users/{user}/toggle-status', [UserController::class, 'toggleStatus'])->middleware('throttle:60,1');
 
     // Geofences
@@ -212,44 +218,44 @@ Route::middleware('auth:sanctum')->group(function () {
 // Admin-only routes
 Route::middleware(['auth:sanctum', 'role:Admin'])->group(function () {
     // Subscription Admin
-    Route::post('/subscription/admin/set-tier/{user}/{tier}', [SubscriptionController::class, 'adminSetTier'])->middleware('throttle:30,1');
-    Route::get('/subscription/admin/subscriptions', [SubscriptionController::class, 'adminListSubscriptions'])->middleware('throttle:30,1');
-    Route::get('/subscription/admin/pending-payments', [SubscriptionController::class, 'adminListPendingPayments'])->middleware('throttle:30,1');
-    Route::post('/subscription/admin/approve-payment/{subscription}', [SubscriptionController::class, 'adminApprovePayment'])->middleware('throttle:30,1');
-    Route::post('/subscription/admin/reject-payment/{subscription}', [SubscriptionController::class, 'adminRejectPayment'])->middleware('throttle:30,1');
-    Route::post('/subscription/admin/tiers', [SubscriptionController::class, 'createTier'])->middleware('throttle:30,1');
-    Route::put('/subscription/admin/tiers/{tier}', [SubscriptionController::class, 'updateTier'])->middleware('throttle:30,1');
-    Route::delete('/subscription/admin/tiers/{tier}', [SubscriptionController::class, 'deleteTier'])->middleware('throttle:30,1');
+    Route::post('/subscription/admin/set-tier/{user}/{tier}', [SubscriptionController::class, 'adminSetTier'])->middleware('throttle:60,1');
+    Route::get('/subscription/admin/subscriptions', [SubscriptionController::class, 'adminListSubscriptions'])->middleware('throttle:60,1');
+    Route::get('/subscription/admin/pending-payments', [SubscriptionController::class, 'adminListPendingPayments'])->middleware('throttle:60,1');
+    Route::post('/subscription/admin/approve-payment/{subscription}', [SubscriptionController::class, 'adminApprovePayment'])->middleware('throttle:60,1');
+    Route::post('/subscription/admin/reject-payment/{subscription}', [SubscriptionController::class, 'adminRejectPayment'])->middleware('throttle:60,1');
+    Route::post('/subscription/admin/tiers', [SubscriptionController::class, 'createTier'])->middleware('throttle:60,1');
+    Route::put('/subscription/admin/tiers/{tier}', [SubscriptionController::class, 'updateTier'])->middleware('throttle:60,1');
+    Route::delete('/subscription/admin/tiers/{tier}', [SubscriptionController::class, 'deleteTier'])->middleware('throttle:60,1');
 
     // Admin Settings
-    Route::get('/admin/settings/general', [AdminSettingsController::class, 'getGeneralSettings'])->middleware('throttle:30,1');
-    Route::post('/admin/settings/general', [AdminSettingsController::class, 'saveGeneralSettings'])->middleware('throttle:30,1');
-    Route::get('/admin/settings/smtp', [AdminSettingsController::class, 'getSmtpSettings'])->middleware('throttle:30,1');
-    Route::post('/admin/settings/smtp', [AdminSettingsController::class, 'saveSmtpSettings'])->middleware('throttle:30,1');
-    Route::post('/admin/settings/smtp/test', [AdminSettingsController::class, 'testSmtpConnection'])->middleware('throttle:30,1');
-    Route::get('/admin/settings/stripe', [AdminSettingsController::class, 'getStripeSettings'])->middleware('throttle:30,1');
-    Route::post('/admin/settings/stripe', [AdminSettingsController::class, 'saveStripeSettings'])->middleware('throttle:30,1');
-    Route::get('/admin/settings/gemini', [AdminSettingsController::class, 'getGeminiSettings'])->middleware('throttle:30,1');
-    Route::post('/admin/settings/gemini', [AdminSettingsController::class, 'saveGeminiSettings'])->middleware('throttle:30,1');
-    Route::get('/admin/settings/whatsapp', [AdminSettingsController::class, 'getWhatsAppSettings'])->middleware('throttle:30,1');
-    Route::post('/admin/settings/whatsapp', [AdminSettingsController::class, 'saveWhatsAppSettings'])->middleware('throttle:30,1');
-    Route::get('/admin/settings/twilio', [AdminSettingsController::class, 'getTwilioSettings'])->middleware('throttle:30,1');
-    Route::post('/admin/settings/twilio', [AdminSettingsController::class, 'saveTwilioSettings'])->middleware('throttle:30,1');
-    Route::get('/admin/settings/notifications', [AdminSettingsController::class, 'getNotificationSettings'])->middleware('throttle:30,1');
-    Route::post('/admin/settings/notifications', [AdminSettingsController::class, 'saveNotificationSettings'])->middleware('throttle:30,1');
+    Route::get('/admin/settings/general', [AdminSettingsController::class, 'getGeneralSettings'])->middleware('throttle:60,1');
+    Route::post('/admin/settings/general', [AdminSettingsController::class, 'saveGeneralSettings'])->middleware('throttle:60,1');
+    Route::get('/admin/settings/smtp', [AdminSettingsController::class, 'getSmtpSettings'])->middleware('throttle:60,1');
+    Route::post('/admin/settings/smtp', [AdminSettingsController::class, 'saveSmtpSettings'])->middleware('throttle:60,1');
+    Route::post('/admin/settings/smtp/test', [AdminSettingsController::class, 'testSmtpConnection'])->middleware('throttle:60,1');
+    Route::get('/admin/settings/stripe', [AdminSettingsController::class, 'getStripeSettings'])->middleware('throttle:60,1');
+    Route::post('/admin/settings/stripe', [AdminSettingsController::class, 'saveStripeSettings'])->middleware('throttle:60,1');
+    Route::get('/admin/settings/gemini', [AdminSettingsController::class, 'getGeminiSettings'])->middleware('throttle:60,1');
+    Route::post('/admin/settings/gemini', [AdminSettingsController::class, 'saveGeminiSettings'])->middleware('throttle:60,1');
+    Route::get('/admin/settings/whatsapp', [AdminSettingsController::class, 'getWhatsAppSettings'])->middleware('throttle:60,1');
+    Route::post('/admin/settings/whatsapp', [AdminSettingsController::class, 'saveWhatsAppSettings'])->middleware('throttle:60,1');
+    Route::get('/admin/settings/twilio', [AdminSettingsController::class, 'getTwilioSettings'])->middleware('throttle:60,1');
+    Route::post('/admin/settings/twilio', [AdminSettingsController::class, 'saveTwilioSettings'])->middleware('throttle:60,1');
+    Route::get('/admin/settings/notifications', [AdminSettingsController::class, 'getNotificationSettings'])->middleware('throttle:60,1');
+    Route::post('/admin/settings/notifications', [AdminSettingsController::class, 'saveNotificationSettings'])->middleware('throttle:60,1');
 
     // Export
-    Route::get('/export/animals', [ExportController::class, 'exportAnimals'])->middleware('throttle:30,1');
-    Route::get('/export/devices', [ExportController::class, 'exportDevices'])->middleware('throttle:30,1');
-    Route::get('/export/geofences', [ExportController::class, 'exportGeofences'])->middleware('throttle:30,1');
-    Route::get('/export/users', [ExportController::class, 'exportUsers'])->middleware('throttle:30,1');
-    Route::get('/export/database', [ExportController::class, 'exportDatabase'])->middleware('throttle:30,1');
+    Route::get('/export/animals', [ExportController::class, 'exportAnimals'])->middleware('throttle:60,1');
+    Route::get('/export/devices', [ExportController::class, 'exportDevices'])->middleware('throttle:60,1');
+    Route::get('/export/geofences', [ExportController::class, 'exportGeofences'])->middleware('throttle:60,1');
+    Route::get('/export/users', [ExportController::class, 'exportUsers'])->middleware('throttle:60,1');
+    Route::get('/export/database', [ExportController::class, 'exportDatabase'])->middleware('throttle:60,1');
 
     // Role Management
-    Route::get('/admin/roles', [RoleManagementController::class, 'index'])->middleware('throttle:30,1');
-    Route::post('/admin/roles', [RoleManagementController::class, 'storeRole'])->middleware('throttle:30,1');
-    Route::put('/admin/roles/{role}', [RoleManagementController::class, 'updateRole'])->middleware('throttle:30,1');
-    Route::delete('/admin/roles/{role}', [RoleManagementController::class, 'deleteRole'])->middleware('throttle:30,1');
-    Route::get('/admin/users/{user}/roles', [RoleManagementController::class, 'getUserRoles'])->middleware('throttle:30,1');
-    Route::put('/admin/users/{user}/roles', [RoleManagementController::class, 'updateUserRoles'])->middleware('throttle:30,1');
+    Route::get('/admin/roles', [RoleManagementController::class, 'index'])->middleware('throttle:60,1');
+    Route::post('/admin/roles', [RoleManagementController::class, 'storeRole'])->middleware('throttle:60,1');
+    Route::put('/admin/roles/{role}', [RoleManagementController::class, 'updateRole'])->middleware('throttle:60,1');
+    Route::delete('/admin/roles/{role}', [RoleManagementController::class, 'deleteRole'])->middleware('throttle:60,1');
+    Route::get('/admin/users/{user}/roles', [RoleManagementController::class, 'getUserRoles'])->middleware('throttle:60,1');
+    Route::put('/admin/users/{user}/roles', [RoleManagementController::class, 'updateUserRoles'])->middleware('throttle:60,1');
 });

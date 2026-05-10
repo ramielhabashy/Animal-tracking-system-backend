@@ -24,6 +24,14 @@ class MedicalRecordController extends Controller
             $managedUsers = \App\Models\User::where('managed_by', $userId)->pluck('id')->toArray();
             $managedUsers[] = $userId;
             $query->whereIn('owner_id', $managedUsers);
+        } elseif ($userRole === 'Doctor') {
+            $user = \App\Models\User::find($userId);
+            if ($user && $user->managed_by) {
+                $animalIds = Animal::where('owner_id', $user->managed_by)->pluck('id')->toArray();
+                $query->whereIn('animal_id', $animalIds);
+            } else {
+                $query->where('id', 0);
+            }
         } else {
             $animalIds = Animal::where('owner_id', $userId)->pluck('id')->toArray();
             $query->whereIn('animal_id', $animalIds);
@@ -59,8 +67,15 @@ class MedicalRecordController extends Controller
         $userId = $request->header('X-User-Id');
         $userRole = $request->header('X-User-Role');
 
-        if ($userRole !== 'Admin' && $medicalRecord->owner_id !== $userId) {
-            return response()->json(['message' => 'Unauthorized', 'error' => 'unauthorized'], 403);
+        if ($userRole !== 'Admin') {
+            $allowed = $medicalRecord->owner_id === $userId;
+            if ($userRole === 'Doctor' && !$allowed) {
+                $user = \App\Models\User::find($userId);
+                $allowed = $user && $user->managed_by && $medicalRecord->owner_id === $user->managed_by;
+            }
+            if (!$allowed) {
+                return response()->json(['message' => 'Unauthorized', 'error' => 'unauthorized'], 403);
+            }
         }
 
         $medicalRecord->load(['animal']);
@@ -73,7 +88,7 @@ class MedicalRecordController extends Controller
         $userId = $request->header('X-User-Id');
         $userRole = $request->header('X-User-Role');
 
-        if (!in_array($userRole, ['Admin', 'Owner', 'Manager'])) {
+        if (!in_array($userRole, ['Admin', 'Owner', 'Manager', 'Doctor'])) {
             return response()->json(['message' => 'Unauthorized', 'error' => 'unauthorized'], 403);
         }
 
@@ -94,8 +109,15 @@ class MedicalRecordController extends Controller
 
         $animal = Animal::find($validated['animal_id']);
 
-        if ($userRole !== 'Admin' && $animal->owner_id !== $userId) {
-            return response()->json(['message' => 'Unauthorized to add record for this animal', 'error' => 'unauthorized'], 403);
+        if ($userRole !== 'Admin') {
+            $allowed = $animal->owner_id === $userId;
+            if ($userRole === 'Doctor' && !$allowed) {
+                $user = \App\Models\User::find($userId);
+                $allowed = $user && $user->managed_by && $animal->owner_id === $user->managed_by;
+            }
+            if (!$allowed) {
+                return response()->json(['message' => 'Unauthorized to add record for this animal', 'error' => 'unauthorized'], 403);
+            }
         }
 
         $recordData = $validated;
@@ -121,8 +143,15 @@ class MedicalRecordController extends Controller
         $userId = $request->header('X-User-Id');
         $userRole = $request->header('X-User-Role');
 
-        if ($userRole !== 'Admin' && $medicalRecord->owner_id !== $userId) {
-            return response()->json(['message' => 'Unauthorized', 'error' => 'unauthorized'], 403);
+        if ($userRole !== 'Admin') {
+            $allowed = $medicalRecord->owner_id === $userId;
+            if ($userRole === 'Doctor' && !$allowed) {
+                $user = \App\Models\User::find($userId);
+                $allowed = $user && $user->managed_by && $medicalRecord->owner_id === $user->managed_by;
+            }
+            if (!$allowed) {
+                return response()->json(['message' => 'Unauthorized', 'error' => 'unauthorized'], 403);
+            }
         }
 
         $validated = $request->validate([
@@ -157,8 +186,15 @@ class MedicalRecordController extends Controller
         $userId = $request->header('X-User-Id');
         $userRole = $request->header('X-User-Role');
 
-        if ($userRole !== 'Admin' && $medicalRecord->owner_id !== $userId) {
-            return response()->json(['message' => 'Unauthorized', 'error' => 'unauthorized'], 403);
+        if ($userRole !== 'Admin') {
+            $allowed = $medicalRecord->owner_id === $userId;
+            if ($userRole === 'Doctor' && !$allowed) {
+                $user = \App\Models\User::find($userId);
+                $allowed = $user && $user->managed_by && $medicalRecord->owner_id === $user->managed_by;
+            }
+            if (!$allowed) {
+                return response()->json(['message' => 'Unauthorized', 'error' => 'unauthorized'], 403);
+            }
         }
 
         $medicalRecord->delete();
@@ -180,6 +216,14 @@ class MedicalRecordController extends Controller
             $managedUsers = \App\Models\User::where('managed_by', $userId)->pluck('id')->toArray();
             $managedUsers[] = $userId;
             $query->whereIn('owner_id', $managedUsers);
+        } elseif ($userRole === 'Doctor') {
+            $user = \App\Models\User::find($userId);
+            if ($user && $user->managed_by) {
+                $animalIds = Animal::where('owner_id', $user->managed_by)->pluck('id')->toArray();
+                $query->whereIn('animal_id', $animalIds);
+            } else {
+                $query->where('id', 0);
+            }
         } else {
             $animalIds = Animal::where('owner_id', $userId)->pluck('id')->toArray();
             $query->whereIn('animal_id', $animalIds);

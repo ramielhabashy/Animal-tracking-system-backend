@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Users;
 
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Traits\ApiResponse;
+use App\Http\Resources\UserResource;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -64,9 +65,18 @@ class UserController extends Controller
             return false;
         }
 
-        // Owner/Veterinarian can access their managed users
-        if (($role === 'Owner' || $role === 'Veterinarian') && $targetUser->managed_by == $authUser->id) {
+        // Owner can access their managed users
+        if ($role === 'Owner' && $targetUser->managed_by == $authUser->id) {
             return true;
+        }
+
+        // Doctor can access their Owner and team members
+        if ($role === 'Doctor' && $authUser->managed_by) {
+            if ($targetUser->id == $authUser->managed_by ||
+                $targetUser->managed_by == $authUser->managed_by ||
+                $targetUser->id == $authUser->id) {
+                return true;
+            }
         }
 
         // Users can access their own profile
@@ -95,9 +105,21 @@ class UserController extends Controller
             return $query;
         }
 
-        // Owner/Veterinarian see their managed users
-        if ($role === 'Owner' || $role === 'Veterinarian') {
+        // Owner sees their managed users
+        if ($role === 'Owner') {
             return $query->where('managed_by', $authUser->id);
+        }
+
+        // Doctor sees themselves, the Owner they work for, and other team members
+        if ($role === 'Doctor') {
+            if ($authUser->managed_by) {
+                return $query->where(function ($q) use ($authUser) {
+                    $q->where('id', $authUser->id)
+                      ->orWhere('managed_by', $authUser->managed_by)
+                      ->orWhere('id', $authUser->managed_by);
+                });
+            }
+            return $query->where('id', $authUser->id);
         }
 
         // Others see only themselves
@@ -109,6 +131,11 @@ class UserController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
+        $user = $request->user();
+        if (!$user) {
+            return response()->json(['debug' => 'no user', 'error' => 'auth_failed'], 401);
+        }
+
         $query = User::query()->with('subscriptionTier');
 
         // Apply role-based filtering
@@ -118,7 +145,7 @@ class UserController extends Controller
         $perPage = $request->input('per_page', 15);
         $users = $query->paginate($perPage);
 
-        return $this->paginated($users);
+        return UserResource::collection($users)->response();
     }
 
     /**
@@ -172,7 +199,7 @@ class UserController extends Controller
             'email' => 'required|email|unique:users,email',
             'phone' => 'nullable|string',
             'location' => 'nullable|string',
-            'role' => 'sometimes|string|in:Admin,Owner,Veterinarian,Shepherd,Manager',
+            'role' => 'sometimes|string|in:Admin,Owner,Doctor,Shepherd,Manager',
             'is_active' => 'nullable|boolean',
             'password' => 'nullable|string|min:8',
             'subscription_tier_id' => 'nullable|exists:subscription_tiers,id',
@@ -189,10 +216,10 @@ class UserController extends Controller
             'is_active' => $request->boolean('is_active', true),
         ];
 
-        // Owner restrictions: can only create Manager, Veterinarian, or Shepherd
+        // Owner restrictions: can only create Manager, Doctor, or Shepherd
         if ($authRole === 'Owner') {
-            if (!in_array($requestedRole, ['Manager', 'Veterinarian', 'Shepherd'])) {
-                return $this->forbidden('Owner can only add Manager, Veterinarian, or Shepherd roles');
+            if (!in_array($requestedRole, ['Manager', 'Doctor', 'Shepherd'])) {
+                return $this->forbidden('Owner can only add Manager, Doctor, or Shepherd roles');
             }
             $userData['managed_by'] = $authUser->id;
         } elseif ($authRole === 'Admin') {
@@ -233,7 +260,7 @@ class UserController extends Controller
             'email' => 'sometimes|email|unique:users,email,' . $user->id,
             'phone' => 'nullable|string',
             'location' => 'nullable|string',
-            'role' => 'sometimes|in:Admin,Owner,Veterinarian,Shepherd,Manager',
+            'role' => 'sometimes|in:Admin,Owner,Doctor,Shepherd,Manager',
             'is_active' => 'nullable|boolean',
             'password' => 'nullable|string|min:8',
             'managed_by' => 'nullable|exists:users,id',
@@ -242,12 +269,15 @@ class UserController extends Controller
 
         $role = $this->getAuthRole($request);
 
-        // Non-admins cannot change sensitive fields
         if ($role !== 'Admin') {
-            unset($validated['role'], $validated['subscription_tier_id'], $validated['managed_by']);
+            // Owner can change role for managed users, but only to team roles
+            if (isset($validated['role']) && !in_array($validated['role'], ['Manager', 'Doctor', 'Shepherd'])) {
+                return $this->forbidden('Owner can only assign Manager, Doctor, or Shepherd roles');
+            }
+            unset($validated['subscription_tier_id'], $validated['managed_by']);
         }
 
-        // Update role if provided and user is admin
+        // Update role if provided
         if (isset($validated['role']) && $validated['role']) {
             $user->syncRoles([$validated['role']]);
             unset($validated['role']);
