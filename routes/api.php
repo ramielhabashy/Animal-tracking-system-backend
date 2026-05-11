@@ -227,6 +227,7 @@ Route::middleware(['auth:sanctum', 'role:Admin'])->group(function () {
     // Subscription Admin
     Route::post('/subscription/admin/set-tier/{user}/{tier}', [SubscriptionController::class, 'adminSetTier'])->middleware('throttle:60,1');
     Route::get('/subscription/admin/subscriptions', [SubscriptionController::class, 'adminListSubscriptions'])->middleware('throttle:60,1');
+    Route::get('/subscription/admin/stats', [SubscriptionController::class, 'adminSubscriptionStats'])->middleware('throttle:60,1');
     Route::get('/subscription/admin/pending-payments', [SubscriptionController::class, 'adminListPendingPayments'])->middleware('throttle:60,1');
     Route::post('/subscription/admin/approve-payment/{subscription}', [SubscriptionController::class, 'adminApprovePayment'])->middleware('throttle:60,1');
     Route::post('/subscription/admin/reject-payment/{subscription}', [SubscriptionController::class, 'adminRejectPayment'])->middleware('throttle:60,1');

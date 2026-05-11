@@ -339,6 +339,120 @@ class SubscriptionController extends Controller
         return response()->json(['data' => $users]);
     }
 
+    public function adminSubscriptionStats(Request $request): JsonResponse
+    {
+        $admin = $this->getRequestUser($request);
+
+        if (!$admin || !$admin->isAdmin()) {
+            return response()->json(['message' => 'Unauthorized', 'error' => 'unauthorized'], 403);
+        }
+
+        $totalUsers = User::whereNotNull('subscription_tier_id')->count();
+        $activeSubscribers = UserSubscription::where('status', 'active')->count();
+        $pendingPayments = UserSubscription::where('status', 'pending_payment')->count();
+        $cancelled = UserSubscription::where('status', 'cancelled')->count();
+        $pastDue = UserSubscription::where('status', 'past_due')->count();
+
+        $tiers = SubscriptionTier::orderBy('sort_order')->get()->map(function ($tier) {
+            return [
+                'id' => $tier->id,
+                'name' => $tier->name,
+                'slug' => $tier->slug,
+                'price_monthly' => $tier->price_monthly,
+                'subscriber_count' => User::where('subscription_tier_id', $tier->id)->count(),
+            ];
+        });
+
+        $mrr = UserSubscription::where('status', 'active')
+            ->with('tier')
+            ->get()
+            ->sum(function ($sub) {
+                return (float)($sub->tier?->price_monthly ?? 0);
+            });
+
+        $newThisMonth = UserSubscription::where('status', 'active')
+            ->where('started_at', '>=', now()->startOfMonth())
+            ->count();
+
+        $churnedThisMonth = UserSubscription::where('status', 'cancelled')
+            ->where('cancelled_at', '>=', now()->startOfMonth())
+            ->count();
+
+        $paymentMethods = UserSubscription::whereNotNull('payment_method')
+            ->selectRaw('payment_method, COUNT(*) as count')
+            ->groupBy('payment_method')
+            ->pluck('count', 'payment_method');
+
+        $revenueOverTime = UserSubscription::where('status', 'active')
+            ->whereNotNull('payment_reference')
+            ->where('started_at', '>=', now()->subMonths(12))
+            ->with('tier')
+            ->get()
+            ->groupBy(function ($sub) {
+                return $sub->started_at?->format('Y-m');
+            })
+            ->map(function ($subs, $month) {
+                return [
+                    'month' => $month,
+                    'revenue' => $subs->sum(fn($s) => (float)($s->tier?->price_monthly ?? 0)),
+                    'count' => $subs->count(),
+                ];
+            })
+            ->values();
+
+        $growthOverTime = UserSubscription::whereIn('status', ['active', 'cancelled', 'upgraded', 'downgraded'])
+            ->where('created_at', '>=', now()->subMonths(12))
+            ->get()
+            ->groupBy(function ($sub) {
+                return $sub->created_at?->format('Y-m');
+            })
+            ->map(function ($subs, $month) {
+                return [
+                    'month' => $month,
+                    'new' => $subs->where('status', 'active')->count(),
+                    'cancelled' => $subs->where('status', 'cancelled')->count(),
+                ];
+            })
+            ->values();
+
+        $recentSubscriptions = UserSubscription::with(['user', 'tier'])
+            ->latest()
+            ->take(20)
+            ->get()
+            ->map(function ($sub) {
+                return [
+                    'id' => $sub->id,
+                    'user_id' => $sub->user_id,
+                    'user_name' => $sub->user?->name ?? 'Unknown',
+                    'user_email' => $sub->user?->email ?? '',
+                    'tier_name' => $sub->tier?->name ?? 'Unknown',
+                    'status' => $sub->status,
+                    'started_at' => $sub->started_at?->toISOString(),
+                    'ends_at' => $sub->ends_at?->toISOString(),
+                    'payment_method' => $sub->payment_method,
+                    'billing_cycle' => $sub->billing_cycle,
+                ];
+            });
+
+        return response()->json([
+            'data' => [
+                'total_users' => $totalUsers,
+                'active_subscribers' => $activeSubscribers,
+                'pending_payments' => $pendingPayments,
+                'cancelled' => $cancelled,
+                'past_due' => $pastDue,
+                'mrr' => round($mrr, 2),
+                'new_this_month' => $newThisMonth,
+                'churned_this_month' => $churnedThisMonth,
+                'tier_distribution' => $tiers,
+                'payment_methods' => $paymentMethods,
+                'revenue_over_time' => $revenueOverTime,
+                'growth_over_time' => $growthOverTime,
+                'recent_subscriptions' => $recentSubscriptions,
+            ],
+        ]);
+    }
+
     public function createTier(Request $request): JsonResponse
     {
         $admin = $this->getRequestUser($request);
