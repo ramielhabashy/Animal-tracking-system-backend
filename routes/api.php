@@ -90,6 +90,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/users/{user}', [UserController::class, 'destroy'])->middleware(['limits:users', 'throttle:60,1']);
     Route::patch('/users/{user}/toggle-status', [UserController::class, 'toggleStatus'])->middleware('throttle:60,1');
     Route::get('/users/doctors/list', [UserController::class, 'doctors'])->middleware('throttle:60,1');
+    Route::get('/users/owners/list', [UserController::class, 'owners'])->middleware('throttle:60,1');
 
     // Geofences
     Route::middleware(['limits:geofences', 'throttle:60,1'])->group(function () {

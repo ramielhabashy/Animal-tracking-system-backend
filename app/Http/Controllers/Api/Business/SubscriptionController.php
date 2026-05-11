@@ -317,7 +317,10 @@ class SubscriptionController extends Controller
         }
 
         $users = User::with('subscriptionTier')
-            ->whereNotNull('subscription_tier_id')
+            ->withCount(['animals', 'devices', 'shepherds'])
+            ->whereHas('roles', function ($q) {
+                $q->where('name', 'Owner');
+            })
             ->orderBy('name')
             ->get()
             ->map(function ($user) {
@@ -333,6 +336,20 @@ class SubscriptionController extends Controller
                     'tier_id' => $user->subscription_tier_id,
                     'tier' => $user->subscriptionTier,
                     'status' => 'active',
+                    'usage' => [
+                        'animals' => [
+                            'used' => $user->animals_count,
+                            'max' => $user->subscriptionTier?->max_animals ?? 0,
+                        ],
+                        'devices' => [
+                            'used' => $user->devices_count,
+                            'max' => $user->subscriptionTier?->max_devices ?? 0,
+                        ],
+                        'team' => [
+                            'used' => $user->shepherds_count,
+                            'max' => $user->subscriptionTier?->max_users ?? 0,
+                        ],
+                    ],
                 ];
             });
 

@@ -105,9 +105,12 @@ class UserController extends Controller
             return $query;
         }
 
-        // Owner sees their managed users
+        // Owner sees their managed users and themselves
         if ($role === 'Owner') {
-            return $query->where('managed_by', $authUser->id);
+            return $query->where(function ($q) use ($authUser) {
+                $q->where('managed_by', $authUser->id)
+                  ->orWhere('id', $authUser->id);
+            });
         }
 
         // Doctor sees themselves, the Owner they work for, and other team members
@@ -141,9 +144,19 @@ class UserController extends Controller
         // Apply role-based filtering
         $query = $this->filterByRole($request, $query);
 
+        // Apply search filter
+        if ($search = $request->input('search')) {
+            $search = '%' . $search . '%';
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', $search)
+                  ->orWhere('email', 'like', $search)
+                  ->orWhere('phone', 'like', $search);
+            });
+        }
+
         // Paginate and format response
         $perPage = $request->input('per_page', 15);
-        $users = $query->paginate($perPage);
+        $users = $query->orderBy('created_at', 'desc')->paginate($perPage);
 
         return UserResource::collection($users)->response();
     }
@@ -359,6 +372,27 @@ class UserController extends Controller
         ->get();
 
         return response()->json(['data' => $doctors]);
+    }
+
+    /**
+     * List owners (users with Owner role) for device/animal assignment dropdowns
+     */
+    public function owners(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        if (!$user) {
+            return response()->json(['message' => 'Unauthorized'], 401);
+        }
+
+        $owners = User::whereHas('roles', function ($q) {
+            $q->where('name', 'Owner');
+        })
+        ->where('is_active', true)
+        ->select(['id', 'name'])
+        ->orderBy('name')
+        ->get();
+
+        return response()->json(['data' => $owners]);
     }
 
     /**
