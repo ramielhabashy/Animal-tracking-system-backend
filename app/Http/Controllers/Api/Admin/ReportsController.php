@@ -7,8 +7,8 @@ use App\Models\Animal;
 use App\Models\Device;
 use App\Models\LocationHistory;
 use App\Models\AnimalGroup;
+use App\Models\MedicalRecord;
 use App\Models\GeofenceAlert;
-use App\Models\Auction;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -17,15 +17,20 @@ class ReportsController extends Controller
 {
     public function index(Request $request)
     {
-        $userId = $request->header('X-User-Id');
-        $userRole = $request->header('X-User-Role');
+        $user = $request->user();
+        if (!$user) {
+            return response()->json(['message' => 'Unauthorized'], 401);
+        }
+
+        $role = $user->getPrimaryRoleName();
+        $ownerId = $this->resolveOwnerId($user, $role);
 
         $animalQuery = Animal::query();
         $deviceQuery = Device::query();
 
-        if ($userRole === 'Owner' && $userId) {
-            $animalQuery->where('owner_id', $userId);
-            $deviceQuery->where('owner_id', $userId);
+        if ($role !== 'Admin' && $ownerId) {
+            $animalQuery->where('owner_id', $ownerId);
+            $deviceQuery->where('owner_id', $ownerId);
         }
 
         $animals = $animalQuery->get();
@@ -39,8 +44,8 @@ class ReportsController extends Controller
 
         $healthScore = $this->calculateHealthScore($animals);
 
-        $activityData = $this->getActivityTrends($animals, $userId, $userRole);
-        $distanceByGroup = $this->getDistanceByGroup($userId, $userRole);
+        $activityData = $this->getActivityTrends($animals);
+        $distanceByGroup = $this->getDistanceByGroup($role, $ownerId);
         $activityDistribution = $this->getActivityDistribution($animals);
 
         return response()->json([
@@ -53,11 +58,24 @@ class ReportsController extends Controller
                 'connectivity' => $deviceConnectivity,
             ],
             'activity_trend' => $activityData['trend'],
+            'temperature_trend' => $this->getTemperatureTrend($animals),
+            'health_metrics' => $this->getHealthMetrics($animals),
             'distance_by_group' => $distanceByGroup,
             'activity_distribution' => $activityDistribution,
             'species_distribution' => $this->getSpeciesDistribution($animals),
             'breed_distribution' => $this->getBreedDistribution($animals),
         ]);
+    }
+
+    protected function resolveOwnerId($user, $role)
+    {
+        if ($role === 'Owner') {
+            return $user->id;
+        }
+        if (in_array($role, ['Manager', 'Doctor', 'Shepherd'])) {
+            return $user->managed_by;
+        }
+        return null;
     }
 
     protected function calculateHealthScore($animals)
@@ -83,15 +101,12 @@ class ReportsController extends Controller
         return round(($healthyCount / $totalWeight) * 100);
     }
 
-    protected function getActivityTrends($animals, $userId, $userRole)
+    protected function getActivityTrends($animals)
     {
         $animalIds = $animals->pluck('id')->toArray();
-        
+
         if (empty($animalIds)) {
-            return [
-                'trend' => $this->getDefaultTrendData(),
-                'avgDaily' => 0,
-            ];
+            return ['trend' => $this->getDefaultTrendData(), 'avgDaily' => 0];
         }
 
         $last7Days = Carbon::now()->subDays(7);
@@ -114,24 +129,21 @@ class ReportsController extends Controller
         for ($i = 6; $i >= 0; $i--) {
             $date = Carbon::now()->subDays($i)->format('Y-m-d');
             $dayData = $dailyDistances->firstWhere('date', $date);
-            
-            $distance = $dayData ? ($dayData->total_speed * 0.1) : rand(5, 15);
+
+            $distance = $dayData ? round($dayData->total_speed * 0.1, 1) : 0;
             $totalDistance += $distance;
-            $daysWithData++;
+            if ($distance > 0) $daysWithData++;
 
             $trend[] = [
                 'date' => $date,
                 'label' => Carbon::now()->subDays($i)->format('M d'),
-                'distance' => round($distance, 1),
+                'distance' => $distance,
             ];
         }
 
         $avgDaily = $daysWithData > 0 ? round($totalDistance / $daysWithData, 1) : 0;
 
-        return [
-            'trend' => $trend,
-            'avgDaily' => $avgDaily,
-        ];
+        return ['trend' => $trend, 'avgDaily' => $avgDaily];
     }
 
     protected function getDefaultTrendData()
@@ -147,28 +159,83 @@ class ReportsController extends Controller
         return $trend;
     }
 
-    protected function getDistanceByGroup($userId, $userRole)
+    protected function getTemperatureTrend($animals)
+    {
+        $avgTemp = $animals->whereNotNull('baseline_temperature')->avg('baseline_temperature');
+        $criticalCount = $animals->filter(function ($a) {
+            return $a->baseline_temperature && $a->baseline_temperature > 39.5;
+        })->count();
+
+        $tempRanges = [
+            ['range' => 'below_38', 'label' => 'Below 38°C', 'count' => 0, 'color' => '#60a5fa'],
+            ['range' => '38_39_5', 'label' => '38–39.5°C', 'count' => 0, 'color' => '#002819'],
+            ['range' => 'above_39_5', 'label' => 'Above 39.5°C', 'count' => 0, 'color' => '#ef4444'],
+        ];
+
+        foreach ($animals as $a) {
+            $t = $a->baseline_temperature;
+            if (!$t) continue;
+            if ($t < 38) $tempRanges[0]['count']++;
+            elseif ($t <= 39.5) $tempRanges[1]['count']++;
+            else $tempRanges[2]['count']++;
+        }
+
+        return [
+            'avg_temp' => $avgTemp ? round($avgTemp, 1) : null,
+            'critical_count' => $criticalCount,
+            'ranges' => $tempRanges,
+        ];
+    }
+
+    protected function getHealthMetrics($animals)
+    {
+        $animalIds = $animals->pluck('id')->toArray();
+
+        $recentRecords = MedicalRecord::whereIn('animal_id', $animalIds)
+            ->where('created_at', '>=', Carbon::now()->subDays(30))
+            ->get();
+
+        $totalAnimals = $animals->count();
+        $animalsWithRecords = $recentRecords->pluck('animal_id')->unique()->count();
+
+        $vaccinations = $recentRecords->where('type', 'vaccination')->count();
+        $checkups = $recentRecords->where('type', 'checkup')->count();
+        $treatments = $recentRecords->where('type', 'treatment')->count();
+
+        $criticalTempAnimals = $animals->filter(function ($a) {
+            return $a->baseline_temperature && $a->baseline_temperature > 39.5;
+        })->count();
+
+        return [
+            'total_records' => $recentRecords->count(),
+            'animals_with_records' => $animalsWithRecords,
+            'coverage_percentage' => $totalAnimals > 0 ? round(($animalsWithRecords / $totalAnimals) * 100) : 0,
+            'vaccinations' => $vaccinations,
+            'checkups' => $checkups,
+            'treatments' => $treatments,
+            'critical_temp_count' => $criticalTempAnimals,
+        ];
+    }
+
+    protected function getDistanceByGroup($role, $ownerId)
     {
         $groupQuery = AnimalGroup::with('animals');
-        
-        if ($userRole === 'Owner' && $userId) {
-            $groupQuery->where('owner_id', $userId);
+
+        if ($role !== 'Admin' && $ownerId) {
+            $groupQuery->where('owner_id', $ownerId);
         }
 
         $groups = $groupQuery->get();
 
         if ($groups->isEmpty()) {
-            return [
-                ['name' => 'Racing Camels (Elite)', 'distance' => 12.4, 'percentage' => 85],
-                ['name' => 'Breeding Herd (North)', 'distance' => 7.8, 'percentage' => 55],
-                ['name' => 'Grazing Sheep (West)', 'distance' => 5.2, 'percentage' => 38],
-            ];
+            return [];
         }
 
         $result = [];
+        $maxDistance = 0.01;
         foreach ($groups as $group) {
             $animalIds = $group->animals->pluck('id')->toArray();
-            
+
             $totalSpeed = 0;
             if (!empty($animalIds)) {
                 $totalSpeed = LocationHistory::whereIn('animal_id', $animalIds)
@@ -177,73 +244,63 @@ class ReportsController extends Controller
             }
 
             $distance = round($totalSpeed * 0.1, 1);
-            
+            if ($distance > $maxDistance) $maxDistance = $distance;
+
             $result[] = [
                 'name' => $group->name,
                 'distance' => $distance,
-                'percentage' => min(100, ($distance / 15) * 100),
+                'animal_count' => count($animalIds),
             ];
         }
 
-        return $result ?: [
-            ['name' => 'No Groups', 'distance' => 0, 'percentage' => 0],
-        ];
+        $result = array_map(function ($item) use ($maxDistance) {
+            $item['percentage'] = min(100, round(($item['distance'] / $maxDistance) * 100));
+            return $item;
+        }, $result);
+
+        return $result;
     }
 
     protected function getActivityDistribution($animals)
     {
         $animalIds = $animals->pluck('id')->toArray();
-        
+
         if (empty($animalIds)) {
-            return [
-                'grazing' => 60,
-                'moving' => 25,
-                'resting' => 15,
-            ];
+            return ['grazing' => 0, 'moving' => 0, 'resting' => 0, 'total_points' => 0];
         }
 
         $recentHistory = LocationHistory::whereIn('animal_id', $animalIds)
             ->where('recorded_at', '>=', Carbon::now()->subHours(24))
             ->get();
 
-        if ($recentHistory->isEmpty()) {
-            return [
-                'grazing' => 60,
-                'moving' => 25,
-                'resting' => 15,
-            ];
+        $total = $recentHistory->count();
+
+        if ($total === 0) {
+            return ['grazing' => 0, 'moving' => 0, 'resting' => 0, 'total_points' => 0];
         }
 
         $grazing = $recentHistory->where('speed', '<', 2)->count();
         $moving = $recentHistory->whereBetween('speed', [2, 8])->count();
         $resting = $recentHistory->where('speed', '>', 8)->count();
-        $total = $grazing + $moving + $resting;
-
-        if ($total === 0) {
-            return [
-                'grazing' => 60,
-                'moving' => 25,
-                'resting' => 15,
-            ];
-        }
 
         return [
             'grazing' => round(($grazing / $total) * 100),
             'moving' => round(($moving / $total) * 100),
             'resting' => round(($resting / $total) * 100),
+            'total_points' => $total,
         ];
     }
 
     protected function getSpeciesDistribution($animals)
     {
         $distribution = $animals->groupBy('species')->map->count();
-        
+
         $total = $distribution->sum();
         if ($total === 0) return [];
 
         return $distribution->map(function ($count, $species) use ($total) {
             return [
-                'species' => $species,
+                'species' => $species ?: 'Unknown',
                 'count' => $count,
                 'percentage' => round(($count / $total) * 100),
             ];
@@ -253,13 +310,13 @@ class ReportsController extends Controller
     protected function getBreedDistribution($animals)
     {
         $distribution = $animals->groupBy('breed')->map->count()->sortDesc()->take(10);
-        
+
         $total = $animals->count();
         if ($total === 0) return [];
 
         return $distribution->map(function ($count, $breed) use ($total) {
             return [
-                'breed' => $breed,
+                'breed' => $breed ?: 'Unknown',
                 'count' => $count,
                 'percentage' => round(($count / $total) * 100),
             ];

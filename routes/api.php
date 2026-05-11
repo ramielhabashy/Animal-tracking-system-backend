@@ -23,6 +23,7 @@ use App\Http\Controllers\Api\Admin\ExportController;
 use App\Http\Controllers\Api\Ai\AIController;
 use App\Http\Controllers\Api\Admin\LanguageController;
 use App\Http\Controllers\Api\Users\RoleManagementController;
+use App\Http\Controllers\Api\PublicSettingsController;
 use App\Http\Controllers\Api\Resources\SpeciesController;
 use App\Http\Controllers\Api\Health\HealthCheckController;
 use App\Http\Controllers\Api\Webhook\StripeWebhookController;
@@ -60,10 +61,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/auth/logout', [AuthController::class, 'logout']);
     Route::get('/auth/me', [AuthController::class, 'me']);
     Route::put('/auth/profile', [AuthController::class, 'updateProfile']);
+    Route::post('/auth/change-password', [AuthController::class, 'changePassword']);
     Route::get('/auth/features', [AuthController::class, 'features']);
 
     // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->middleware('throttle:60,1');
+
+    // Roles (read-only, available to all authenticated users for dropdowns)
+    Route::get('/admin/roles', [RoleManagementController::class, 'index'])->middleware('throttle:60,1');
 
     // Reports
     Route::get('/reports', [ReportsController::class, 'index'])->middleware('throttle:60,1');
@@ -84,6 +89,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('/users/{user}', [UserController::class, 'update'])->middleware(['limits:users', 'throttle:60,1']);
     Route::delete('/users/{user}', [UserController::class, 'destroy'])->middleware(['limits:users', 'throttle:60,1']);
     Route::patch('/users/{user}/toggle-status', [UserController::class, 'toggleStatus'])->middleware('throttle:60,1');
+    Route::get('/users/doctors/list', [UserController::class, 'doctors'])->middleware('throttle:60,1');
 
     // Geofences
     Route::middleware(['limits:geofences', 'throttle:60,1'])->group(function () {
@@ -213,6 +219,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/admin/translations/{id}', [LanguageController::class, 'updateTranslation'])->middleware('throttle:60,1');
     Route::delete('/admin/translations/{id}', [LanguageController::class, 'deleteTranslation'])->middleware('throttle:60,1');
     Route::post('/admin/translations/import', [LanguageController::class, 'importTranslations'])->middleware('throttle:60,1');
+    Route::get('/search', [App\Http\Controllers\Api\SearchController::class, 'search'])->middleware('throttle:60,1');
 });
 
 // Admin-only routes
@@ -252,10 +259,12 @@ Route::middleware(['auth:sanctum', 'role:Admin'])->group(function () {
     Route::get('/export/database', [ExportController::class, 'exportDatabase'])->middleware('throttle:60,1');
 
     // Role Management
-    Route::get('/admin/roles', [RoleManagementController::class, 'index'])->middleware('throttle:60,1');
     Route::post('/admin/roles', [RoleManagementController::class, 'storeRole'])->middleware('throttle:60,1');
     Route::put('/admin/roles/{role}', [RoleManagementController::class, 'updateRole'])->middleware('throttle:60,1');
     Route::delete('/admin/roles/{role}', [RoleManagementController::class, 'deleteRole'])->middleware('throttle:60,1');
     Route::get('/admin/users/{user}/roles', [RoleManagementController::class, 'getUserRoles'])->middleware('throttle:60,1');
     Route::put('/admin/users/{user}/roles', [RoleManagementController::class, 'updateUserRoles'])->middleware('throttle:60,1');
 });
+
+// Public settings (no auth required — used by login page, favicon, etc.)
+Route::get('/settings/public', [PublicSettingsController::class, 'index']);

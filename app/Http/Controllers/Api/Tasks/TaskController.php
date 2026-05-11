@@ -38,7 +38,10 @@ class TaskController extends Controller
         }
 
         if ($role === 'Doctor') {
-            return $user->managed_by && $task->owner_id == $user->managed_by;
+            if ($user->managed_by && $task->owner_id == $user->managed_by) {
+                return true;
+            }
+            return $task->assigned_to == $user->id;
         }
 
         if (in_array($role, ['Manager', 'Owner'])) {
@@ -94,6 +97,11 @@ class TaskController extends Controller
 
     public function index(Request $request): JsonResponse
     {
+        $user = $request->user();
+        if (!$user || !$user->can('task_view')) {
+            return $this->forbidden('Unauthorized to view tasks');
+        }
+
         $query = Task::with(['owner', 'assignee', 'animal', 'geofence']);
         $query = $this->filterByRole($request, $query);
 
@@ -125,7 +133,7 @@ class TaskController extends Controller
     public function store(Request $request): JsonResponse
     {
         $user = $request->user();
-        if (!$user || !$user->can('manage_tasks')) {
+        if (!$user || !$user->can('task_create')) {
             return $this->forbidden('Unauthorized to create tasks');
         }
 
@@ -150,16 +158,19 @@ class TaskController extends Controller
             return $this->notFound('Assignee not found');
         }
 
-        // Check permissions for Owner/Manager
+        // Check assignment permissions by role
         $role = $user->getPrimaryRoleName();
-        if ($role === 'Manager') {
+        if ($role === 'Shepherd') {
+            // Shepherds can only assign tasks to themselves
+            if ((int) $validated['assigned_to'] !== (int) $user->id) {
+                return $this->forbidden('Shepherds can only assign tasks to themselves');
+            }
+        } elseif ($role === 'Manager') {
             $managedUsers = User::where('managed_by', $user->id)->pluck('id')->toArray();
             if (!in_array($assignee->managed_by, $managedUsers) && $assignee->managed_by != $user->id) {
                 return $this->forbidden('Cannot assign task to this user');
             }
-        }
-
-        if ($role === 'Owner' && $assignee->managed_by != $user->id) {
+        } elseif ($role === 'Owner' && $assignee->managed_by != $user->id) {
             return $this->forbidden('Cannot assign task to this user');
         }
 
@@ -184,6 +195,11 @@ class TaskController extends Controller
 
     public function show(Request $request, Task $task): JsonResponse
     {
+        $user = $request->user();
+        if (!$user || !$user->can('task_view')) {
+            return $this->forbidden('Unauthorized to view tasks');
+        }
+
         if (!$this->canAccessTask($request, $task)) {
             return $this->forbidden('Unauthorized');
         }
@@ -193,11 +209,14 @@ class TaskController extends Controller
 
     public function update(Request $request, Task $task): JsonResponse
     {
+        $user = $request->user();
+        if (!$user || !$user->can('task_view')) {
+            return $this->forbidden('Unauthorized to view tasks');
+        }
+
         if (!$this->canAccessTask($request, $task)) {
             return $this->forbidden('Unauthorized');
         }
-
-        $user = $request->user();
         $role = $user->getPrimaryRoleName();
 
         $validated = $request->validate([
@@ -245,7 +264,7 @@ class TaskController extends Controller
     public function destroy(Request $request, Task $task): JsonResponse
     {
         $user = $request->user();
-        if (!$user || !$user->can('manage_tasks')) {
+        if (!$user || !$user->can('task_delete')) {
             return $this->forbidden('Unauthorized');
         }
 
@@ -266,8 +285,8 @@ class TaskController extends Controller
     public function myTasks(Request $request): JsonResponse
     {
         $user = $request->user();
-        if (!$user) {
-            return $this->unauthorized();
+        if (!$user || !$user->can('task_view')) {
+            return $this->forbidden('Unauthorized to view tasks');
         }
 
         $query = Task::with(['owner', 'animal', 'geofence'])
@@ -282,8 +301,17 @@ class TaskController extends Controller
         return $this->paginated($tasks);
     }
 
-    public function complete(Task $task): JsonResponse
+    public function complete(Request $request, Task $task): JsonResponse
     {
+        $user = $request->user();
+        if (!$user || !$user->can('task_complete')) {
+            return $this->forbidden('Unauthorized to complete tasks');
+        }
+
+        if (!$this->canAccessTask($request, $task)) {
+            return $this->forbidden('Unauthorized');
+        }
+
         $task->update([
             'status' => 'completed',
             'completed_at' => now(),
@@ -295,8 +323,8 @@ class TaskController extends Controller
     public function stats(Request $request): JsonResponse
     {
         $user = $request->user();
-        if (!$user) {
-            return $this->unauthorized();
+        if (!$user || !$user->can('task_view')) {
+            return $this->forbidden('Unauthorized to view tasks');
         }
 
         $query = Task::query();

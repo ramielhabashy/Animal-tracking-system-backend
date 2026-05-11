@@ -14,6 +14,23 @@ use App\Http\Controllers\Controller;
 
 class SubscriptionController extends Controller
 {
+    private function getRequestUser(Request $request): ?User
+    {
+        if ($request->user()) {
+            return $request->user();
+        }
+        $userId = $request->header('X-User-Id');
+        return $userId ? User::find($userId) : null;
+    }
+
+    private function getRequestUserId(Request $request): ?string
+    {
+        if ($request->user()) {
+            return (string) $request->user()->id;
+        }
+        return $request->header('X-User-Id');
+    }
+
     public function tiers(): JsonResponse
     {
         $tiers = SubscriptionTier::where('is_active', true)
@@ -30,8 +47,9 @@ class SubscriptionController extends Controller
 
     public function userSubscription(Request $request): JsonResponse
     {
-        $requestingUserId = $request->header('X-User-Id');
-        $requestingUserRole = $request->header('X-User-Role');
+        $user = $this->getRequestUser($request);
+        $requestingUserId = $user?->id ?? $request->header('X-User-Id');
+        $requestingUserRole = $user?->getPrimaryRoleName() ?? $request->header('X-User-Role');
         
         $targetUserId = $request->input('user_id') ?: $requestingUserId;
         
@@ -87,8 +105,7 @@ class SubscriptionController extends Controller
 
     public function subscribe(Request $request, SubscriptionTier $tier): JsonResponse
     {
-        $userId = $request->header('X-User-Id');
-        $user = User::find($userId);
+        $user = $this->getRequestUser($request);
 
         if (!$user) {
             return response()->json(['message' => 'User not found'], 404);
@@ -99,7 +116,20 @@ class SubscriptionController extends Controller
             ->first();
 
         if ($existingSubscription) {
-            return response()->json(['message' => 'Already have an active subscription'], 400);
+            $currentTier = $existingSubscription->tier;
+            if (!$currentTier) {
+                $currentTier = SubscriptionTier::find($existingSubscription->tier_id);
+            }
+
+            if ($currentTier && $currentTier->id === $tier->id) {
+                return response()->json(['message' => 'You are already subscribed to this plan'], 400);
+            }
+
+            if ($currentTier && $currentTier->sort_order < $tier->sort_order) {
+                return $this->upgrade($request, $tier);
+            }
+
+            return $this->downgrade($request, $tier);
         }
 
         $pendingSubscription = $user->subscription()
@@ -143,8 +173,7 @@ class SubscriptionController extends Controller
 
     public function upgrade(Request $request, SubscriptionTier $tier): JsonResponse
     {
-        $userId = $request->header('X-User-Id');
-        $user = User::find($userId);
+        $user = $this->getRequestUser($request);
 
         if (!$user) {
             return response()->json(['message' => 'User not found'], 404);
@@ -180,8 +209,7 @@ class SubscriptionController extends Controller
 
     public function downgrade(Request $request, SubscriptionTier $tier): JsonResponse
     {
-        $userId = $request->header('X-User-Id');
-        $user = User::find($userId);
+        $user = $this->getRequestUser($request);
 
         if (!$user) {
             return response()->json(['message' => 'User not found'], 404);
@@ -202,7 +230,8 @@ class SubscriptionController extends Controller
             'tier_id' => $tier->id,
             'status' => 'active',
             'started_at' => now(),
-            'ends_at' => now()->addDays(30),
+            'trial_ends_at' => $tier->trial_days > 0 ? now()->addDays($tier->trial_days) : null,
+            'ends_at' => now()->addDays($tier->trial_days > 0 ? $tier->trial_days : 30),
             'billing_cycle' => 'monthly',
         ]);
 
@@ -216,8 +245,7 @@ class SubscriptionController extends Controller
 
     public function cancel(Request $request): JsonResponse
     {
-        $userId = $request->header('X-User-Id');
-        $user = User::find($userId);
+        $user = $this->getRequestUser($request);
 
         if (!$user) {
             return response()->json(['message' => 'User not found'], 404);
@@ -249,8 +277,7 @@ class SubscriptionController extends Controller
 
     public function adminSetTier(Request $request, User $user, SubscriptionTier $tier): JsonResponse
     {
-        $adminId = $request->header('X-User-Id');
-        $admin = User::find($adminId);
+        $admin = $this->getRequestUser($request);
 
         if (!$admin || !$admin->isAdmin()) {
             return response()->json(['message' => 'Unauthorized', 'error' => 'unauthorized'], 403);
@@ -283,8 +310,7 @@ class SubscriptionController extends Controller
 
     public function adminListSubscriptions(Request $request): JsonResponse
     {
-        $adminId = $request->header('X-User-Id');
-        $admin = User::find($adminId);
+        $admin = $this->getRequestUser($request);
 
         if (!$admin || !$admin->isAdmin()) {
             return response()->json(['message' => 'Unauthorized', 'error' => 'unauthorized'], 403);
@@ -315,8 +341,7 @@ class SubscriptionController extends Controller
 
     public function createTier(Request $request): JsonResponse
     {
-        $adminId = $request->header('X-User-Id');
-        $admin = User::find($adminId);
+        $admin = $this->getRequestUser($request);
 
         if (!$admin || !$admin->isAdmin()) {
             return response()->json(['message' => 'Unauthorized', 'error' => 'unauthorized'], 403);
@@ -349,8 +374,7 @@ class SubscriptionController extends Controller
 
     public function updateTier(Request $request, SubscriptionTier $tier): JsonResponse
     {
-        $adminId = $request->header('X-User-Id');
-        $admin = User::find($adminId);
+        $admin = $this->getRequestUser($request);
 
         if (!$admin || !$admin->isAdmin()) {
             return response()->json(['message' => 'Unauthorized', 'error' => 'unauthorized'], 403);
@@ -384,8 +408,7 @@ class SubscriptionController extends Controller
 
     public function deleteTier(SubscriptionTier $tier): JsonResponse
     {
-        $adminId = request()->header('X-User-Id');
-        $admin = User::find($adminId);
+        $admin = $this->getRequestUser(request());
 
         if (!$admin || !$admin->isAdmin()) {
             return response()->json(['message' => 'Unauthorized', 'error' => 'unauthorized'], 403);
@@ -402,8 +425,7 @@ class SubscriptionController extends Controller
 
     public function processPayment(Request $request): JsonResponse
     {
-        $userId = $request->header('X-User-Id');
-        $user = User::find($userId);
+        $user = $this->getRequestUser($request);
 
         if (!$user) {
             return response()->json(['message' => 'User not found'], 404);
@@ -486,8 +508,7 @@ class SubscriptionController extends Controller
 
     public function bankTransfer(Request $request): JsonResponse
     {
-        $userId = $request->header('X-User-Id');
-        $user = User::find($userId);
+        $user = $this->getRequestUser($request);
 
         if (!$user) {
             return response()->json(['message' => 'User not found'], 404);
@@ -524,8 +545,7 @@ class SubscriptionController extends Controller
 
     public function adminApprovePayment(Request $request, UserSubscription $subscription): JsonResponse
     {
-        $adminId = $request->header('X-User-Id');
-        $admin = User::find($adminId);
+        $admin = $this->getRequestUser($request);
 
         if (!$admin || !$admin->isAdmin()) {
             return response()->json(['message' => 'Unauthorized', 'error' => 'unauthorized'], 403);
@@ -558,8 +578,7 @@ class SubscriptionController extends Controller
 
     public function adminRejectPayment(Request $request, UserSubscription $subscription): JsonResponse
     {
-        $adminId = $request->header('X-User-Id');
-        $admin = User::find($adminId);
+        $admin = $this->getRequestUser($request);
 
         if (!$admin || !$admin->isAdmin()) {
             return response()->json(['message' => 'Unauthorized', 'error' => 'unauthorized'], 403);
@@ -579,8 +598,7 @@ class SubscriptionController extends Controller
 
     public function adminListPendingPayments(Request $request): JsonResponse
     {
-        $adminId = $request->header('X-User-Id');
-        $admin = User::find($adminId);
+        $admin = $this->getRequestUser($request);
 
         if (!$admin || !$admin->isAdmin()) {
             return response()->json(['message' => 'Unauthorized', 'error' => 'unauthorized'], 403);

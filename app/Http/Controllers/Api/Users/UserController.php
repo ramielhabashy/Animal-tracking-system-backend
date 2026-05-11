@@ -199,7 +199,7 @@ class UserController extends Controller
             'email' => 'required|email|unique:users,email',
             'phone' => 'nullable|string',
             'location' => 'nullable|string',
-            'role' => 'sometimes|string|in:Admin,Owner,Doctor,Shepherd,Manager',
+            'role' => 'sometimes|string|exists:roles,name',
             'is_active' => 'nullable|boolean',
             'password' => 'nullable|string|min:8',
             'subscription_tier_id' => 'nullable|exists:subscription_tiers,id',
@@ -216,10 +216,10 @@ class UserController extends Controller
             'is_active' => $request->boolean('is_active', true),
         ];
 
-        // Owner restrictions: can only create Manager, Doctor, or Shepherd
+        // Owner restrictions: can only create team roles (not Admin or Owner)
         if ($authRole === 'Owner') {
-            if (!in_array($requestedRole, ['Manager', 'Doctor', 'Shepherd'])) {
-                return $this->forbidden('Owner can only add Manager, Doctor, or Shepherd roles');
+            if (in_array($requestedRole, ['Admin', 'Owner'])) {
+                return $this->forbidden('Owner can only add team roles, not Admin or Owner');
             }
             $userData['managed_by'] = $authUser->id;
         } elseif ($authRole === 'Admin') {
@@ -260,19 +260,20 @@ class UserController extends Controller
             'email' => 'sometimes|email|unique:users,email,' . $user->id,
             'phone' => 'nullable|string',
             'location' => 'nullable|string',
-            'role' => 'sometimes|in:Admin,Owner,Doctor,Shepherd,Manager',
+            'role' => 'sometimes|exists:roles,name',
             'is_active' => 'nullable|boolean',
             'password' => 'nullable|string|min:8',
             'managed_by' => 'nullable|exists:users,id',
             'subscription_tier_id' => 'nullable|exists:subscription_tiers,id',
+            'notify_user' => 'nullable|boolean',
         ]);
 
         $role = $this->getAuthRole($request);
 
         if ($role !== 'Admin') {
-            // Owner can change role for managed users, but only to team roles
-            if (isset($validated['role']) && !in_array($validated['role'], ['Manager', 'Doctor', 'Shepherd'])) {
-                return $this->forbidden('Owner can only assign Manager, Doctor, or Shepherd roles');
+            // Owner can change role for managed users, but not to Admin or Owner
+            if (isset($validated['role']) && in_array($validated['role'], ['Admin', 'Owner'])) {
+                return $this->forbidden('Owner can only assign team roles, not Admin or Owner');
             }
             unset($validated['subscription_tier_id'], $validated['managed_by']);
         }
@@ -290,14 +291,24 @@ class UserController extends Controller
         }
 
         // Hash password if provided
+        $passwordChanged = false;
         if (isset($validated['password']) && $validated['password']) {
             $validated['password'] = Hash::make($validated['password']);
+            $passwordChanged = true;
         } else {
             unset($validated['password']);
         }
 
+        $notifyUser = !empty($validated['notify_user']);
+        unset($validated['notify_user']);
+
         if (!empty($validated)) {
             $user->update($validated);
+        }
+
+        if ($passwordChanged && $notifyUser) {
+            // TODO: Implement password change notification
+            // e.g., Mail::to($user->email)->send(new PasswordChangedMail($user));
         }
 
         return $this->updated($user->fresh(), 'User updated successfully');
@@ -327,6 +338,27 @@ class UserController extends Controller
         $user->delete();
 
         return $this->deleted('User deleted successfully');
+    }
+
+    /**
+     * List doctors (users with Doctor role) for veterinarian dropdown
+     */
+    public function doctors(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        if (!$user) {
+            return response()->json(['message' => 'Unauthorized'], 401);
+        }
+
+        $doctors = User::whereHas('roles', function ($q) {
+            $q->where('name', 'Doctor');
+        })
+        ->where('is_active', true)
+        ->select(['id', 'name'])
+        ->orderBy('name')
+        ->get();
+
+        return response()->json(['data' => $doctors]);
     }
 
     /**

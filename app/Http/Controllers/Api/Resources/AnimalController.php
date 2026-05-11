@@ -91,16 +91,19 @@ class AnimalController extends Controller
         $data = $request->validated();
         
         // Check if device is already assigned to another animal
+        $deviceToAssign = null;
         if (!empty($data['device_id'])) {
-            $device = Device::find($data['device_id']);
-            if ($device && $device->animal_id) {
+            $deviceToAssign = Device::where('id', $data['device_id'])->orWhere('device_id', $data['device_id'])->first();
+            if ($deviceToAssign && $deviceToAssign->animal_id) {
                 return response()->json([
                     'message' => 'This device is already assigned to another animal',
                     'error' => 'device_already_assigned',
-                    'errors' => ['device_id' => ['This device is already assigned to animal ' . ($device->animal->animal_id ?? $device->animal_id)]]
-                ], 422);  // 422 Unprocessable Entity
+                    'errors' => ['device_id' => ['This device is already assigned to animal ' . ($deviceToAssign->animal->animal_id ?? $deviceToAssign->animal_id)]]
+                ], 422);
             }
         }
+        
+        unset($data['device_id']);
         
         // Auto-generate unique animal ID (OA = Ovine Animal)
         $data['animal_id'] = 'OA-' . date('Y') . '-' . str_pad(Animal::count() + 1, 4, '0', STR_PAD_LEFT);
@@ -143,10 +146,15 @@ class AnimalController extends Controller
             $filename = 'animal_' . time() . '_' . uniqid() . '.png';
             $path = 'public/images/' . $filename;
             Storage::disk('local')->put($path, $imageData);
-            $data['identification_photo'] = '/storage/' . $filename;
+            $data['identification_photo'] = '/storage/images/' . $filename;
         }
         
         $animal = Animal::create($data);
+
+        if ($deviceToAssign) {
+            $deviceToAssign->update(['animal_id' => $animal->id]);
+        }
+
         $animal->load(['owner', 'device']);
 
         return response()->json([
@@ -191,7 +199,7 @@ class AnimalController extends Controller
         $authUser = $request->user();
         
         // Check permission
-        if ($authUser && !$authUser->hasPermissionTo('manage_animals')) {
+        if ($authUser && !$authUser->can('animal_edit')) {
             return response()->json(['message' => 'Unauthorized to modify animal', 'error' => 'unauthorized'], 403);
         }
         
@@ -206,7 +214,7 @@ class AnimalController extends Controller
         if (isset($data['device_id'])) {
             if ($data['device_id']) {
                 // Assigning a device - check if it's already assigned elsewhere
-                $device = Device::find($data['device_id']);
+                $device = Device::where('id', $data['device_id'])->orWhere('device_id', $data['device_id'])->first();
                 if ($device && $device->animal_id && $device->animal_id !== $animal->id) {
                     return response()->json([
                         'message' => 'This device is already assigned to another animal',
@@ -228,8 +236,11 @@ class AnimalController extends Controller
         // Handle photo update (file upload)
         if ($request->hasFile('identification_photo')) {
             // Delete old photo if exists
-            if ($animal->identification_photo && Storage::disk('local')->exists(str_replace('/storage/', '', $animal->identification_photo))) {
-                Storage::disk('local')->delete(str_replace('/storage/', '', $animal->identification_photo));
+            if ($animal->identification_photo) {
+                $oldPath = 'public/' . str_replace('/storage/', '', $animal->identification_photo);
+                if (Storage::disk('local')->exists($oldPath)) {
+                    Storage::disk('local')->delete($oldPath);
+                }
             }
             
             $file = $request->file('identification_photo');
@@ -238,8 +249,11 @@ class AnimalController extends Controller
             $data['identification_photo'] = '/storage/' . str_replace('public/', '', $path);
         } elseif ($request->has('identification_photo') && is_string($request->identification_photo) && strpos($request->identification_photo, 'data:image') === 0) {
             // Handle base64 image update
-            if ($animal->identification_photo && Storage::disk('local')->exists(str_replace('/storage/', '', $animal->identification_photo))) {
-                Storage::disk('local')->delete(str_replace('/storage/', '', $animal->identification_photo));
+            if ($animal->identification_photo) {
+                $oldPath = 'public/' . str_replace('/storage/', '', $animal->identification_photo);
+                if (Storage::disk('local')->exists($oldPath)) {
+                    Storage::disk('local')->delete($oldPath);
+                }
             }
             
             $base64Data = $request->identification_photo;
@@ -247,7 +261,7 @@ class AnimalController extends Controller
             $filename = 'animal_' . time() . '_' . uniqid() . '.png';
             $path = 'public/images/' . $filename;
             Storage::disk('local')->put($path, $imageData);
-            $data['identification_photo'] = '/storage/' . $filename;
+            $data['identification_photo'] = '/storage/images/' . $filename;
         }
         
         $animal->update($data);
@@ -275,7 +289,7 @@ class AnimalController extends Controller
         $authUser = $request->user();
         
         // Check permissions
-        if ($authUser && !$authUser->hasPermissionTo('manage_animals')) {
+        if ($authUser && !$authUser->can('animal_delete')) {
             return response()->json(['message' => 'Unauthorized to delete animal', 'error' => 'unauthorized'], 403);
         }
         
@@ -284,8 +298,11 @@ class AnimalController extends Controller
         }
         
         // Delete photo from storage
-        if ($animal->identification_photo && Storage::disk('local')->exists(str_replace('/storage/', '', $animal->identification_photo))) {
-            Storage::disk('local')->delete(str_replace('/storage/', '', $animal->identification_photo));
+        if ($animal->identification_photo) {
+            $oldPath = 'public/' . str_replace('/storage/', '', $animal->identification_photo);
+            if (Storage::disk('local')->exists($oldPath)) {
+                Storage::disk('local')->delete($oldPath);
+            }
         }
         
         $animal->delete();

@@ -209,6 +209,46 @@ class AuthController extends Controller
     }
 
     /**
+     * Change User Password
+     * Allows authenticated users to change their own password
+     * Requires current password verification for security
+     * 
+     * @param Request $request Contains current_password, password, password_confirmation
+     * @return JsonResponse Success/error message
+     */
+    public function changePassword(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        $validated = $request->validate([
+            'current_password' => 'required|string',
+            'password' => 'required|string|min:8|confirmed',
+        ]);
+
+        if (!Hash::check($validated['current_password'], $user->password)) {
+            return response()->json([
+                'message' => 'Current password is incorrect',
+                'error' => 'invalid_password',
+            ], 400);
+        }
+
+        if ($validated['current_password'] === $validated['password']) {
+            return response()->json([
+                'message' => 'New password must be different from current password',
+                'error' => 'same_password',
+            ], 400);
+        }
+
+        $user->update([
+            'password' => bcrypt($validated['password']),
+        ]);
+
+        return response()->json([
+            'message' => 'Password changed successfully',
+        ]);
+    }
+
+    /**
      * Get User's Subscription Features
      * Returns feature flags based on user's subscription tier
      * Frontend uses this to show/hide features

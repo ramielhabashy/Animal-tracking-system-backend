@@ -71,6 +71,9 @@ class AdminSettingsController extends Controller
                 'timezone' => $settings['general_timezone'] ?? 'Asia/Dubai',
                 'date_format' => $settings['general_date_format'] ?? 'Y-m-d',
                 'default_language' => $settings['general_default_language'] ?? 'en',
+                'logo' => $settings['general_logo'] ?? '',
+                'favicon' => $settings['general_favicon'] ?? '',
+                'copyright_text' => $settings['general_copyright_text'] ?? 'Digital Majlis.',
             ]
         ]);
     }
@@ -84,6 +87,7 @@ class AdminSettingsController extends Controller
             'timezone' => 'nullable|string',
             'date_format' => 'nullable|string',
             'default_language' => 'nullable|in:en,ar',
+            'copyright_text' => 'nullable|string|max:255',
         ]);
 
         $settings = [
@@ -93,7 +97,24 @@ class AdminSettingsController extends Controller
             'general_timezone' => $validated['timezone'] ?? 'Asia/Dubai',
             'general_date_format' => $validated['date_format'] ?? 'Y-m-d',
             'general_default_language' => $validated['default_language'] ?? 'en',
+            'general_copyright_text' => $validated['copyright_text'] ?? 'Digital Majlis.',
         ];
+
+        if ($request->hasFile('logo')) {
+            $logo = $request->file('logo');
+            $logoPath = $logo->store('settings', 'public');
+            $settings['general_logo'] = '/storage/' . $logoPath;
+        } elseif ($request->has('logo') && empty($request->input('logo'))) {
+            $settings['general_logo'] = '';
+        }
+
+        if ($request->hasFile('favicon')) {
+            $favicon = $request->file('favicon');
+            $faviconPath = $favicon->store('settings', 'public');
+            $settings['general_favicon'] = '/storage/' . $faviconPath;
+        } elseif ($request->has('favicon') && empty($request->input('favicon'))) {
+            $settings['general_favicon'] = '';
+        }
 
         foreach ($settings as $key => $value) {
             DB::table('settings')->updateOrInsert(

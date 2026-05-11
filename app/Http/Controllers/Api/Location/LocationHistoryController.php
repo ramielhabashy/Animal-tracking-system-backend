@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Location;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Traits\OwnableAuthorization;
 use App\Models\LocationHistory;
 use App\Models\Animal;
 use App\Models\Device;
@@ -15,6 +16,8 @@ use Carbon\Carbon;
 
 class LocationHistoryController extends Controller
 {
+    use OwnableAuthorization;
+
     protected NotificationService $notificationService;
 
     public function __construct(NotificationService $notificationService)
@@ -22,9 +25,13 @@ class LocationHistoryController extends Controller
         $this->notificationService = $notificationService;
     }
 
-    public function index($animalId): JsonResponse
+    public function index(Request $request, $animalId): JsonResponse
     {
         $animal = Animal::findOrFail($animalId);
+
+        if (!$this->canAccessOwner($request, $animal->owner_id)) {
+            return response()->json(['message' => 'Unauthorized', 'error' => 'unauthorized'], 403);
+        }
 
         $hours = request()->get('hours', 48);
         $hoursAgo = Carbon::now()->subHours($hours);
