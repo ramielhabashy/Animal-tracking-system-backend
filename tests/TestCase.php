@@ -28,7 +28,7 @@ abstract class TestCase extends BaseTestCase
             'animal_create', 'animal_edit', 'animal_delete', 'animal_view',
             'device_create', 'device_edit', 'device_delete', 'device_view',
             'geofence_create', 'geofence_edit', 'geofence_delete', 'geofence_view',
-            'task_create', 'task_edit', 'task_view', 'task_complete',
+            'task_create', 'task_edit', 'task_view', 'task_complete', 'task_delete',
             'medical_record_create', 'medical_record_edit', 'medical_record_view',
             'auction_create', 'auction_edit', 'auction_view',
         ];
@@ -45,12 +45,30 @@ abstract class TestCase extends BaseTestCase
                 'animal_create', 'animal_edit', 'animal_delete', 'animal_view',
                 'device_create', 'device_edit', 'device_delete', 'device_view',
                 'geofence_create', 'geofence_edit', 'geofence_delete', 'geofence_view',
-                'task_create', 'task_edit', 'task_view', 'task_complete',
+                'task_create', 'task_edit', 'task_view', 'task_complete', 'task_delete',
             ]);
         }
         if (!\Spatie\Permission\Models\Role::where('name', 'Admin')->exists()) {
             $adminRole = \Spatie\Permission\Models\Role::create(['name' => 'Admin', 'guard_name' => 'web']);
             $adminRole->givePermissionTo(\Spatie\Permission\Models\Permission::all());
+        }
+        if (!\Spatie\Permission\Models\Role::where('name', 'Shepherd')->exists()) {
+            $shepherdRole = \Spatie\Permission\Models\Role::create(['name' => 'Shepherd', 'guard_name' => 'web']);
+            $shepherdRole->givePermissionTo([
+                'task_view', 'task_create', 'task_complete',
+            ]);
+        }
+        if (!\Spatie\Permission\Models\Role::where('name', 'Doctor')->exists()) {
+            $doctorRole = \Spatie\Permission\Models\Role::create(['name' => 'Doctor', 'guard_name' => 'web']);
+            $doctorRole->givePermissionTo([
+                'task_view', 'task_complete',
+            ]);
+        }
+        if (!\Spatie\Permission\Models\Role::where('name', 'Manager')->exists()) {
+            $managerRole = \Spatie\Permission\Models\Role::create(['name' => 'Manager', 'guard_name' => 'web']);
+            $managerRole->givePermissionTo([
+                'task_create', 'task_edit', 'task_view', 'task_complete',
+            ]);
         }
     }
     
@@ -98,6 +116,9 @@ abstract class TestCase extends BaseTestCase
 
     protected function createUser(array $attributes = []): \App\Models\User
     {
+        $role = $attributes['role'] ?? 'Owner';
+        unset($attributes['role']);
+
         $user = \App\Models\User::factory()->create(array_merge([
             'password' => Hash::make('password'),
             'is_active' => true,
@@ -110,9 +131,9 @@ abstract class TestCase extends BaseTestCase
             }
         }
         
-        // Assign Owner role with permissions
-        if (!$user->hasRole('Owner')) {
-            $user->assignRole('Owner');
+        // Assign role
+        if (!$user->hasRole($role)) {
+            $user->assignRole($role);
         }
 
         return $user;

@@ -64,6 +64,16 @@ class User extends Authenticatable
         return $this->belongsTo(SubscriptionTier::class, 'subscription_tier_id');
     }
 
+    public function notifications(): HasMany
+    {
+        return $this->hasMany(Notification::class);
+    }
+
+    public function unreadNotifications(): HasMany
+    {
+        return $this->hasMany(Notification::class)->whereNull('read_at');
+    }
+
     public function subscription(): HasMany
     {
         return $this->hasMany(UserSubscription::class);

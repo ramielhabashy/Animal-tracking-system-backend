@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\Animal;
 use App\Models\Geofence;
 use App\Models\PredefinedTask;
+use App\Models\TaskType;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
@@ -144,7 +145,7 @@ class TaskController extends Controller
             'animal_id' => 'nullable|exists:animals,id',
             'geofence_id' => 'nullable|exists:geofences,id',
             'priority' => 'nullable|in:low,medium,high,urgent',
-            'task_type' => 'nullable|in:inspection,medical,feeding,movement,other',
+            'task_type' => 'nullable|string|exists:task_types,slug',
             'due_date' => 'nullable|date',
             'notes' => 'nullable|string',
             'is_recurring' => 'nullable|boolean',
@@ -190,6 +191,22 @@ class TaskController extends Controller
             $task->createNextOccurrence();
         }
 
+        if ($task->assigned_to && (int) $task->assigned_to !== (int) $user->id) {
+            \App\Models\Notification::create([
+                'user_id' => $task->assigned_to,
+                'type' => 'task_assigned',
+                'title' => 'New Task Assigned',
+                'body' => 'You have been assigned: ' . $task->title,
+                'data' => [
+                    'task_id' => $task->id,
+                    'task_title' => $task->title,
+                    'priority' => $task->priority,
+                    'due_date' => $task->due_date?->toDateString(),
+                    'link' => '/tasks',
+                ],
+            ]);
+        }
+
         return $this->created($task->load(['owner', 'assignee', 'animal', 'geofence']), 'Task created successfully');
     }
 
@@ -226,8 +243,8 @@ class TaskController extends Controller
             'animal_id' => 'nullable|exists:animals,id',
             'geofence_id' => 'nullable|exists:geofences,id',
             'priority' => 'nullable|in:low,medium,high,urgent',
-            'status' => 'nullable|in:pending,in_progress,completed,cancelled',
-            'task_type' => 'nullable|in:inspection,medical,feeding,movement,other',
+             'status' => 'nullable|in:pending,in_progress,delivered,completed,cancelled',
+            'task_type' => 'nullable|string|exists:task_types,slug',
             'due_date' => 'nullable|date',
             'notes' => 'nullable|string',
         ]);
@@ -247,6 +264,7 @@ class TaskController extends Controller
         }
 
         // Check if reassignment is allowed
+        $previousAssignee = $task->assigned_to;
         if (isset($validated['assigned_to'])) {
             $assignee = User::find($validated['assigned_to']);
             if ($assignee && $role !== 'Admin') {
@@ -257,6 +275,23 @@ class TaskController extends Controller
         }
 
         $task->update($validated);
+
+        // Notify new assignee on reassignment
+        if (isset($validated['assigned_to']) && (int) $validated['assigned_to'] !== (int) $previousAssignee && (int) $validated['assigned_to'] !== (int) $user->id) {
+            \App\Models\Notification::create([
+                'user_id' => $task->assigned_to,
+                'type' => 'task_assigned',
+                'title' => 'New Task Assigned',
+                'body' => 'You have been assigned: ' . $task->title,
+                'data' => [
+                    'task_id' => $task->id,
+                    'task_title' => $task->title,
+                    'priority' => $task->priority,
+                    'due_date' => $task->due_date?->toDateString(),
+                    'link' => '/tasks',
+                ],
+            ]);
+        }
 
         return $this->updated($task->load(['owner', 'assignee', 'animal', 'geofence']), 'Task updated successfully');
     }
@@ -317,6 +352,40 @@ class TaskController extends Controller
             'completed_at' => now(),
         ]);
 
+        // Notify task owner that task was completed
+        if ($task->owner_id && (int) $task->owner_id !== (int) $user->id) {
+            \App\Models\Notification::create([
+                'user_id' => $task->owner_id,
+                'type' => 'task_completed',
+                'title' => 'Task Completed',
+                'body' => $user->name . ' completed task: ' . $task->title,
+                'data' => [
+                    'task_id' => $task->id,
+                    'task_title' => $task->title,
+                    'completed_by' => $user->id,
+                    'completed_by_name' => $user->name,
+                    'link' => '/tasks',
+                ],
+            ]);
+        }
+
+        // Notify assignee if completed by someone else (e.g. owner marking assignee's task as done)
+        if ($task->assigned_to && (int) $task->assigned_to !== (int) $user->id && (int) $task->assigned_to !== (int) $task->owner_id) {
+            \App\Models\Notification::create([
+                'user_id' => $task->assigned_to,
+                'type' => 'task_completed',
+                'title' => 'Task Marked Complete',
+                'body' => 'Your task has been marked complete: ' . $task->title,
+                'data' => [
+                    'task_id' => $task->id,
+                    'task_title' => $task->title,
+                    'completed_by' => $user->id,
+                    'completed_by_name' => $user->name,
+                    'link' => '/tasks',
+                ],
+            ]);
+        }
+
         return $this->success($task->load(['owner', 'assignee', 'animal', 'geofence']), 'Task completed');
     }
 
@@ -354,15 +423,260 @@ class TaskController extends Controller
             $query->where('assigned_to', $user->id);
         }
 
-        $stats = [
-            'total' => $query->count(),
-            'pending' => (clone $query)->where('status', 'pending')->count(),
-            'in_progress' => (clone $query)->where('status', 'in_progress')->count(),
-            'completed' => (clone $query)->where('status', 'completed')->count(),
-            'overdue' => (clone $query)->where('due_date', '<', now())->where('status', '!=', 'completed')->count(),
-            'high_priority' => (clone $query)->whereIn('priority', ['high', 'urgent'])->whereNotIn('status', ['completed', 'cancelled'])->count(),
-        ];
+         $stats = [
+             'total' => $query->count(),
+             'pending' => (clone $query)->where('status', 'pending')->count(),
+             'in_progress' => (clone $query)->where('status', 'in_progress')->count(),
+             'delivered' => (clone $query)->where('status', 'delivered')->count(),
+             'completed' => (clone $query)->where('status', 'completed')->count(),
+             'overdue' => (clone $query)->where('due_date', '<', now())->whereNotIn('status', ['completed', 'delivered', 'cancelled'])->count(),
+             'high_priority' => (clone $query)->whereIn('priority', ['high', 'urgent'])->whereNotIn('status', ['completed', 'delivered', 'cancelled'])->count(),
+         ];
 
         return $this->success($stats);
+    }
+
+    public function calendar(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        if (!$user) {
+            return $this->unauthorized();
+        }
+
+        $month = $request->integer('month', now()->month);
+        $year = $request->integer('year', now()->year);
+
+        $query = Task::with(['assignee', 'animal'])
+            ->whereYear('due_date', $year)
+            ->whereMonth('due_date', $month);
+
+        $query = $this->filterByRole($request, $query);
+
+        $tasks = $query->get(['id', 'task_id', 'title', 'due_date', 'status', 'priority', 'assigned_to', 'animal_id']);
+
+        $grouped = [];
+        foreach ($tasks as $task) {
+            $date = $task->due_date ? $task->due_date->toDateString() : 'no_date';
+            if (!isset($grouped[$date])) {
+                $grouped[$date] = [];
+            }
+            $grouped[$date][] = [
+                'id' => $task->id,
+                'task_id' => $task->task_id,
+                'title' => $task->title,
+                'due_date' => $task->due_date?->toDateString(),
+                'status' => $task->status,
+                'priority' => $task->priority,
+                'assignee_name' => $task->assignee?->name,
+                'animal_name' => $task->animal?->animal_id,
+            ];
+        }
+
+        return $this->success($grouped);
+    }
+
+     public function deliver(Request $request, Task $task): JsonResponse
+     {
+         $user = $request->user();
+         if (!$user) {
+             return $this->unauthorized();
+         }
+
+         if (!$this->canAccessTask($request, $task)) {
+             return $this->forbidden('Unauthorized');
+         }
+
+         if (in_array($task->status, ['delivered', 'completed', 'cancelled'])) {
+             return $this->error('Task is already delivered, completed or cancelled');
+         }
+
+         $validated = $request->validate([
+             'notes' => 'nullable|string|max:2000',
+         ]);
+
+         $task->update([
+             'status' => 'delivered',
+             'delivered_at' => now(),
+             'delivered_by' => $user->id,
+             'deliver_notes' => $validated['notes'] ?? $task->deliver_notes,
+         ]);
+
+         if ($task->owner_id && (int) $task->owner_id !== (int) $user->id) {
+             \App\Models\Notification::create([
+                 'user_id' => $task->owner_id,
+                 'type' => 'task_delivered',
+                 'title' => 'Task Delivered for Review',
+                 'body' => $user->name . ' delivered task: ' . $task->title,
+                 'data' => [
+                     'task_id' => $task->id,
+                     'task_title' => $task->title,
+                     'delivered_by' => $user->id,
+                     'delivered_by_name' => $user->name,
+                     'deliver_notes' => $validated['notes'] ?? null,
+                     'link' => '/tasks',
+                 ],
+             ]);
+         }
+
+          return $this->success($task->load(['owner', 'assignee', 'animal', 'geofence']), 'Task delivered for review');
+      }
+
+     public function approve(Request $request, Task $task): JsonResponse
+     {
+         $user = $request->user();
+         if (!$user) {
+             return $this->unauthorized();
+         }
+
+         if (!$this->canAccessTask($request, $task)) {
+             return $this->forbidden('Unauthorized');
+         }
+
+         if ($task->status !== 'delivered') {
+             return $this->error('Task is not delivered for approval');
+         }
+
+         $role = $user->getPrimaryRoleName();
+         $isOwner = (int) $task->owner_id === (int) $user->id;
+         
+         if (!in_array($role, ['Admin', 'Owner', 'Manager']) && !$isOwner) {
+             return $this->forbidden('Only task owner, admin, or manager can approve tasks');
+         }
+
+         $validated = $request->validate([
+             'notes' => 'nullable|string|max:2000',
+         ]);
+
+         $task->update([
+             'status' => 'completed',
+             'completed_at' => now(),
+         ]);
+
+         if ($task->assigned_to && (int) $task->assigned_to !== (int) $user->id) {
+             \App\Models\Notification::create([
+                 'user_id' => $task->assigned_to,
+                 'type' => 'task_approved',
+                 'title' => 'Task Approved',
+                 'body' => 'Your task "' . $task->title . '" has been approved by ' . $user->name,
+                 'data' => [
+                     'task_id' => $task->id,
+                     'task_title' => $task->title,
+                     'approved_by' => $user->id,
+                     'approved_by_name' => $user->name,
+                     'approval_notes' => $validated['notes'] ?? null,
+                     'link' => '/tasks',
+                 ],
+             ]);
+         }
+
+         if ($task->is_recurring && $task->next_due_date) {
+             $task->createNextOccurrence();
+         }
+
+         return $this->success($task->load(['owner', 'assignee', 'animal', 'geofence']), 'Task approved and completed');
+     }
+
+     public function reject(Request $request, Task $task): JsonResponse
+     {
+         $user = $request->user();
+         if (!$user) {
+             return $this->unauthorized();
+         }
+
+         if (!$this->canAccessTask($request, $task)) {
+             return $this->forbidden('Unauthorized');
+         }
+
+         if ($task->status !== 'delivered') {
+             return $this->error('Task is not delivered for review');
+         }
+
+         $role = $user->getPrimaryRoleName();
+         $isOwner = (int) $task->owner_id === (int) $user->id;
+         
+         if (!in_array($role, ['Admin', 'Owner', 'Manager']) && !$isOwner) {
+             return $this->forbidden('Only task owner, admin, or manager can reject tasks');
+         }
+
+         $validated = $request->validate([
+             'notes' => 'required|string|max:2000',
+         ]);
+
+         $task->update([
+             'status' => 'in_progress',
+             'reject_notes' => $validated['notes'],
+         ]);
+
+         if ($task->assigned_to && (int) $task->assigned_to !== (int) $user->id) {
+             \App\Models\Notification::create([
+                 'user_id' => $task->assigned_to,
+                 'type' => 'task_rejected',
+                 'title' => 'Task Rejected - Needs More Work',
+                 'body' => 'Your task "' . $task->title . '" was rejected by ' . $user->name . '. Reason: ' . $validated['notes'],
+                 'data' => [
+                     'task_id' => $task->id,
+                     'task_title' => $task->title,
+                     'rejected_by' => $user->id,
+                     'rejected_by_name' => $user->name,
+                     'reject_notes' => $validated['notes'],
+                     'link' => '/tasks',
+                 ],
+             ]);
+         }
+
+         return $this->success($task->load(['owner', 'assignee', 'animal', 'geofence']), 'Task rejected and sent back to assignee');
+     }
+
+     public function reassign(Request $request, Task $task): JsonResponse
+    {
+        $user = $request->user();
+        if (!$user) {
+            return $this->unauthorized();
+        }
+
+        if (!$this->canAccessTask($request, $task)) {
+            return $this->forbidden('Unauthorized');
+        }
+
+        $role = $user->getPrimaryRoleName();
+        if ($role === 'Shepherd') {
+            return $this->forbidden('Shepherds cannot reassign tasks');
+        }
+
+        $validated = $request->validate([
+            'assigned_to' => 'required|exists:users,id',
+        ]);
+
+        $assignee = User::find($validated['assigned_to']);
+        if ($role !== 'Admin' && $assignee->managed_by != $user->id) {
+            return $this->forbidden('Cannot reassign to this user');
+        }
+
+        $previousAssignee = $task->assigned_to;
+        $task->update(['assigned_to' => $validated['assigned_to']]);
+
+        if ((int) $validated['assigned_to'] !== (int) $user->id) {
+            \App\Models\Notification::create([
+                'user_id' => $task->assigned_to,
+                'type' => 'task_assigned',
+                'title' => 'Task Reassigned',
+                'body' => 'Task has been reassigned to you: ' . $task->title,
+                'data' => [
+                    'task_id' => $task->id,
+                    'task_title' => $task->title,
+                    'priority' => $task->priority,
+                    'due_date' => $task->due_date?->toDateString(),
+                    'link' => '/tasks',
+                ],
+            ]);
+        }
+
+        return $this->success($task->load(['owner', 'assignee', 'animal', 'geofence']), 'Task reassigned successfully');
+    }
+
+    public function taskTypes(): JsonResponse
+    {
+        $types = TaskType::active()->orderBy('name')->get(['id', 'name', 'slug', 'icon', 'color']);
+        return response()->json(['data' => $types]);
     }
 }

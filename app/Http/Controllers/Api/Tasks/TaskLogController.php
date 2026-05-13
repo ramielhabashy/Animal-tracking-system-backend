@@ -7,6 +7,7 @@ use App\Http\Controllers\Traits\ApiResponse;
 use App\Models\TaskLog;
 use App\Models\Task;
 use App\Models\User;
+use App\Models\TaskLogType;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Storage;
@@ -84,65 +85,106 @@ class TaskLogController extends Controller
         return $this->paginated($logs);
     }
 
-    public function store(Request $request): JsonResponse
-    {
-        $user = $request->user();
-        if (!$user || $user->getPrimaryRoleName() !== 'Shepherd') {
-            return $this->forbidden('Only shepherds can submit task logs');
-        }
+     public function logTypes(): JsonResponse
+     {
+         $types = TaskLogType::active()->orderBy('name')->get(['id', 'name', 'slug', 'icon', 'color', 'allows_media', 'is_status']);
+         return response()->json(['data' => $types]);
+     }
 
-        $validated = $request->validate([
-            'task_id' => 'required|exists:tasks,id',
-            'log_type' => 'required|in:checkpoint,photo,note,location_update,status_change',
-            'description' => 'required|string|max:2000',
-            'location_lat' => 'nullable|numeric',
-            'location_lng' => 'nullable|numeric',
-            'photo' => 'nullable|file|mimes:jpeg,png,jpg|max:5120',
-            'voice_note' => 'nullable|file|mimes:webm,mp3,wav|max:10240',
-        ]);
+     public function store(Request $request): JsonResponse
+     {
+         $user = $request->user();
+         if (!$user) {
+             return $this->unauthorized();
+         }
 
-        $task = Task::find($validated['task_id']);
+         $validated = $request->validate([
+             'task_id' => 'required|exists:tasks,id',
+             'log_type' => 'required|string',
+             'description' => 'nullable|string|max:5000',
+             'location_lat' => 'nullable|numeric',
+             'location_lng' => 'nullable|numeric',
+             'photo' => 'nullable|file|mimes:jpg,jpeg,png,gif|max:10240',
+             'voice_note' => 'nullable|file|mimes:webm,mp3,wav,ogg|max:10240',
+         ]);
 
-        if (!$this->canAccessTask($request, $task)) {
-            return $this->forbidden('Unauthorized to submit logs for this task');
-        }
+         $task = Task::findOrFail($validated['task_id']);
 
-        if ($task->assigned_to != $user->id) {
-            return $this->forbidden('You can only submit logs for tasks assigned to you');
-        }
+         if (!$task->is_recurring) {
+             return $this->error('Task logs are only available for recurring tasks');
+         }
 
-        $photoPath = null;
-        if ($request->hasFile('photo')) {
-            $photo = $request->file('photo');
-            $filename = time() . '_' . $user->id . '_' . uniqid() . '.' . $photo->getClientOriginalExtension();
-            $photoPath = $photo->storeAs('task-logs', $filename, 'public');
-        }
+         if (!$this->canAccessTask($request, $task)) {
+             return $this->forbidden('Unauthorized to add logs to this task');
+         }
 
-        $voiceNotePath = null;
-        if ($request->hasFile('voice_note')) {
-            $voice = $request->file('voice_note');
-            $filename = time() . '_' . $user->id . '_voice_' . uniqid() . '.webm';
-            $voiceNotePath = $voice->storeAs('task-logs', $filename, 'public');
-        }
+         $logType = strtolower($validated['log_type']);
+         $dbLogType = 'note';
+         if (in_array($logType, ['photo', 'image'])) {
+             $dbLogType = 'photo';
+         } elseif (in_array($logType, ['voice', 'voice_note', 'audio'])) {
+             $dbLogType = 'voice';
+         } elseif (in_array($logType, ['location', 'location_update', 'checkpoint', 'movement'])) {
+             $dbLogType = 'location';
+         }
 
-        $log = TaskLog::create([
-            'task_id' => $validated['task_id'],
-            'user_id' => $user->id,
-            'log_type' => $validated['log_type'],
-            'description' => $validated['description'],
-            'location_lat' => $validated['location_lat'] ?? null,
-            'location_lng' => $validated['location_lng'] ?? null,
-            'photo_path' => $photoPath,
-            'voice_note_path' => $voiceNotePath,
-            'status' => 'submitted',
-        ]);
+         $logData = [
+             'task_id' => $task->id,
+             'user_id' => $user->id,
+             'log_type' => $dbLogType,
+             'description' => $validated['description'] ?? null,
+             'location_lat' => $validated['location_lat'] ?? null,
+             'location_lng' => $validated['location_lng'] ?? null,
+             'status' => 'submitted',
+         ];
 
-        if ($task->status === 'pending') {
-            $task->update(['status' => 'in_progress']);
-        }
+         if ($request->hasFile('photo')) {
+             $path = $request->file('photo')->store('task-logs/photos', 'public');
+             $logData['photo_path'] = $path;
+         }
 
-        return $this->created($log->load(['task', 'user']), 'Task log submitted successfully');
-    }
+         if ($request->hasFile('voice_note')) {
+             $path = $request->file('voice_note')->store('task-logs/voice', 'public');
+             $logData['voice_note_path'] = $path;
+         }
+
+         $log = TaskLog::create($logData);
+
+         $assigneeId = $task->assigned_to;
+         $ownerId = $task->owner_id;
+
+         if ($assigneeId && $assigneeId != $user->id) {
+             \App\Models\Notification::create([
+                 'user_id' => $assigneeId,
+                 'type' => 'task_log_added',
+                 'title' => 'Task Log Added',
+                 'body' => $user->name . ' added a log to task: ' . $task->title,
+                 'data' => [
+                     'task_id' => $task->id,
+                     'task_title' => $task->title,
+                     'log_id' => $log->id,
+                     'link' => '/tasks',
+                 ],
+             ]);
+         }
+
+         if ($ownerId && $ownerId != $user->id && $ownerId != $assigneeId) {
+             \App\Models\Notification::create([
+                 'user_id' => $ownerId,
+                 'type' => 'task_log_added',
+                 'title' => 'Task Log Added',
+                 'body' => $user->name . ' added a log to task: ' . $task->title,
+                 'data' => [
+                     'task_id' => $task->id,
+                     'task_title' => $task->title,
+                     'log_id' => $log->id,
+                     'link' => '/tasks',
+                 ],
+             ]);
+         }
+
+         return $this->created($log->load(['user', 'task']), 'Log submitted successfully');
+     }
 
     public function show(Request $request, TaskLog $taskLog): JsonResponse
     {

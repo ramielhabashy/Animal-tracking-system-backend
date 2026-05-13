@@ -224,30 +224,16 @@ return new class extends Migration
     private function hasIndex(string $table, string $indexName): bool
     {
         $connection = Schema::getConnection();
-        $driverName = $connection->getDriverName();
-        
-        if ($driverName === 'sqlite') {
-            // SQLite: check indexes using PRAGMA
-            $indexes = $connection->select("PRAGMA index_list(" . $table . ")");
-            foreach ($indexes as $index) {
-                if ($index->name === $indexName) {
-                    return true;
-                }
-            }
-            return false;
-        } else {
-            // MySQL/Others: use information_schema
-            $databaseName = $connection->getDatabaseName();
-            
-            $result = $connection->select("
-                SELECT COUNT(*) as count 
-                FROM information_schema.STATISTICS 
-                WHERE TABLE_SCHEMA = ? 
-                AND TABLE_NAME = ? 
-                AND INDEX_NAME = ?
-            ", [$databaseName, $table, $indexName]);
-            
-            return $result[0]->count > 0;
-        }
+        $databaseName = $connection->getDatabaseName();
+
+        $result = $connection->select("
+            SELECT COUNT(*) as count 
+            FROM information_schema.STATISTICS 
+            WHERE TABLE_SCHEMA = ? 
+            AND TABLE_NAME = ? 
+            AND INDEX_NAME = ?
+        ", [$databaseName, $table, $indexName]);
+
+        return $result[0]->count > 0;
     }
 };

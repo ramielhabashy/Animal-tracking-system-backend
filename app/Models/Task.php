@@ -10,36 +10,41 @@ class Task extends Model
 {
     public $translatable = ['title', 'description'];
 
-    protected $fillable = [
-        'task_id',
-        'owner_id',
-        'assigned_to',
-        'animal_id',
-        'geofence_id',
-        'title',
-        'description',
-        'priority',
-        'status',
-        'task_type',
-        'due_date',
-        'completed_at',
-        'notes',
-        'is_recurring',
-        'recurrence_type',
-        'recurrence_interval',
-        'recurrence_days',
-        'next_due_date',
-        'is_predefined',
-    ];
+     protected $fillable = [
+         'task_id',
+         'owner_id',
+         'assigned_to',
+         'animal_id',
+         'geofence_id',
+         'title',
+         'description',
+         'priority',
+         'status',
+         'task_type',
+         'due_date',
+         'completed_at',
+         'delivered_at',
+         'delivered_by',
+         'deliver_notes',
+         'reject_notes',
+         'notes',
+         'is_recurring',
+         'recurrence_type',
+         'recurrence_interval',
+         'recurrence_days',
+         'next_due_date',
+         'is_predefined',
+     ];
 
-    protected $casts = [
-        'due_date' => 'datetime',
-        'completed_at' => 'datetime',
-        'next_due_date' => 'datetime',
-        'is_recurring' => 'boolean',
-        'is_predefined' => 'boolean',
-        'recurrence_days' => 'array',
-    ];
+     protected $casts = [
+         'due_date' => 'datetime',
+         'completed_at' => 'datetime',
+         'delivered_at' => 'datetime',
+         'next_due_date' => 'datetime',
+         'is_recurring' => 'boolean',
+         'is_predefined' => 'boolean',
+         'recurrence_days' => 'array',
+     ];
 
     protected static function boot()
     {
@@ -83,10 +88,15 @@ class Task extends Model
         return $this->belongsTo(Geofence::class);
     }
 
-    public function isOverdue(): bool
-    {
-        return $this->due_date && $this->due_date->isPast() && $this->status !== 'completed';
-    }
+      public function isOverdue(): bool
+     {
+         return $this->due_date && $this->due_date->isPast() && !in_array($this->status, ['completed', 'delivered', 'cancelled']);
+     }
+
+     public function scopeDelivered($query)
+     {
+         return $query->where('status', 'delivered');
+     }
 
     public function scopePending($query)
     {

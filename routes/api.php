@@ -66,6 +66,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->middleware('throttle:60,1');
+    Route::get('/dashboard/owners', [DashboardController::class, 'ownerStats'])->middleware('throttle:60,1');
 
     // Roles (read-only, available to all authenticated users for dropdowns)
     Route::get('/admin/roles', [RoleManagementController::class, 'index'])->middleware('throttle:60,1');
@@ -167,10 +168,13 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Subscription
     Route::get('/subscription/current', [SubscriptionController::class, 'userSubscription'])->middleware('throttle:60,1');
+    Route::get('/subscription/history', [SubscriptionController::class, 'userHistory'])->middleware('throttle:60,1');
     Route::post('/subscription/subscribe/{tier}', [SubscriptionController::class, 'subscribe'])->middleware('throttle:60,1');
     Route::post('/subscription/upgrade/{tier}', [SubscriptionController::class, 'upgrade'])->middleware('throttle:60,1');
     Route::post('/subscription/downgrade/{tier}', [SubscriptionController::class, 'downgrade'])->middleware('throttle:60,1');
     Route::post('/subscription/cancel', [SubscriptionController::class, 'cancel'])->middleware('throttle:60,1');
+    Route::post('/subscription/renew', [SubscriptionController::class, 'renew'])->middleware('throttle:60,1');
+    Route::post('/subscription/reactivate', [SubscriptionController::class, 'reactivate'])->middleware('throttle:60,1');
     Route::post('/subscription/process-payment', [SubscriptionController::class, 'processPayment'])->middleware('throttle:60,1');
     Route::post('/subscription/bank-transfer', [SubscriptionController::class, 'bankTransfer'])->middleware('throttle:60,1');
 
@@ -182,8 +186,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/tasks/{task}', [TaskController::class, 'show'])->middleware('throttle:60,1');
     Route::put('/tasks/{task}', [TaskController::class, 'update'])->middleware('throttle:60,1');
     Route::delete('/tasks/{task}', [TaskController::class, 'destroy'])->middleware('throttle:60,1');
-    Route::post('/tasks/{task}/complete', [TaskController::class, 'complete'])->middleware('throttle:60,1');
+     Route::post('/tasks/{task}/complete', [TaskController::class, 'complete'])->middleware('throttle:60,1');
+     Route::post('/tasks/{task}/deliver', [TaskController::class, 'deliver'])->middleware('throttle:60,1');
+     Route::post('/tasks/{task}/approve', [TaskController::class, 'approve'])->middleware('throttle:60,1');
+     Route::post('/tasks/{task}/reject', [TaskController::class, 'reject'])->middleware('throttle:60,1');
+     Route::post('/tasks/{task}/reassign', [TaskController::class, 'reassign'])->middleware('throttle:60,1');
     Route::get('/tasks/{task}/logs', [TaskLogController::class, 'logsForTask'])->middleware('throttle:60,1');
+    Route::get('/tasks/calendar/data', [TaskController::class, 'calendar'])->middleware('throttle:60,1');
+    Route::get('/tasks/types/list', [TaskController::class, 'taskTypes'])->middleware('throttle:60,1');
 
     // Task Logs
     Route::get('/task-logs', [TaskLogController::class, 'index'])->middleware('throttle:60,1');
@@ -221,6 +231,22 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/admin/translations/{id}', [LanguageController::class, 'deleteTranslation'])->middleware('throttle:60,1');
     Route::post('/admin/translations/import', [LanguageController::class, 'importTranslations'])->middleware('throttle:60,1');
     Route::get('/search', [App\Http\Controllers\Api\SearchController::class, 'search'])->middleware('throttle:60,1');
+
+    // Task Types (public list for all auth users)
+    Route::get('/task-types', [App\Http\Controllers\Api\Admin\TaskTypeController::class, 'index'])->middleware('throttle:60,1');
+    Route::get('/task-log-types', [App\Http\Controllers\Api\Tasks\TaskLogController::class, 'logTypes'])->middleware('throttle:60,1');
+
+    // Medical Record Types (public list for all auth users)
+    Route::get('/medical-record-types', [App\Http\Controllers\Api\Admin\MedicalRecordTypeController::class, 'index'])->middleware('throttle:60,1');
+
+    // Vaccination Types (public list for all auth users)
+    Route::get('/vaccination-types', [App\Http\Controllers\Api\Admin\MedicalRecordTypeController::class, 'vaccinationTypes'])->middleware('throttle:60,1');
+
+    // Notifications (accessible by all authenticated users)
+    Route::get('/notifications', [App\Http\Controllers\Api\Notifications\NotificationController::class, 'index'])->middleware('throttle:60,1');
+    Route::get('/notifications/unread-count', [App\Http\Controllers\Api\Notifications\NotificationController::class, 'unreadCount'])->middleware('throttle:60,1');
+    Route::patch('/notifications/{notification}/read', [App\Http\Controllers\Api\Notifications\NotificationController::class, 'markAsRead'])->middleware('throttle:60,1');
+    Route::post('/notifications/read-all', [App\Http\Controllers\Api\Notifications\NotificationController::class, 'markAllAsRead'])->middleware('throttle:60,1');
 });
 
 // Admin-only routes
@@ -235,6 +261,30 @@ Route::middleware(['auth:sanctum', 'role:Admin'])->group(function () {
     Route::post('/subscription/admin/tiers', [SubscriptionController::class, 'createTier'])->middleware('throttle:60,1');
     Route::put('/subscription/admin/tiers/{tier}', [SubscriptionController::class, 'updateTier'])->middleware('throttle:60,1');
     Route::delete('/subscription/admin/tiers/{tier}', [SubscriptionController::class, 'deleteTier'])->middleware('throttle:60,1');
+    Route::post('/subscription/admin/pause/{user}', [SubscriptionController::class, 'adminPauseSubscription'])->middleware('throttle:60,1');
+    Route::post('/subscription/admin/reactivate/{user}', [SubscriptionController::class, 'adminReactivateSubscription'])->middleware('throttle:60,1');
+    Route::post('/subscription/admin/cancel/{user}', [SubscriptionController::class, 'adminCancelSubscription'])->middleware('throttle:60,1');
+    Route::put('/subscription/admin/billing-cycle/{subscription}', [SubscriptionController::class, 'adminChangeBillingCycle'])->middleware('throttle:60,1');
+    Route::put('/subscription/admin/update/{subscription}', [SubscriptionController::class, 'adminUpdateSubscription'])->middleware('throttle:60,1');
+
+    // Task Type Admin
+    Route::post('/admin/task-types', [App\Http\Controllers\Api\Admin\TaskTypeController::class, 'store'])->middleware('throttle:60,1');
+    Route::put('/admin/task-types/{taskType}', [App\Http\Controllers\Api\Admin\TaskTypeController::class, 'update'])->middleware('throttle:60,1');
+    Route::delete('/admin/task-types/{taskType}', [App\Http\Controllers\Api\Admin\TaskTypeController::class, 'destroy'])->middleware('throttle:60,1');
+    Route::post('/admin/task-log-types', [App\Http\Controllers\Api\Admin\TaskTypeController::class, 'storeLogType'])->middleware('throttle:60,1');
+    Route::put('/admin/task-log-types/{taskLogType}', [App\Http\Controllers\Api\Admin\TaskTypeController::class, 'updateLogType'])->middleware('throttle:60,1');
+    Route::delete('/admin/task-log-types/{taskLogType}', [App\Http\Controllers\Api\Admin\TaskTypeController::class, 'destroyLogType'])->middleware('throttle:60,1');
+
+    // Medical Record Type Admin
+    Route::post('/admin/medical-record-types', [App\Http\Controllers\Api\Admin\MedicalRecordTypeController::class, 'store'])->middleware('throttle:60,1');
+    Route::put('/admin/medical-record-types/{medicalRecordType}', [App\Http\Controllers\Api\Admin\MedicalRecordTypeController::class, 'update'])->middleware('throttle:60,1');
+    Route::delete('/admin/medical-record-types/{medicalRecordType}', [App\Http\Controllers\Api\Admin\MedicalRecordTypeController::class, 'destroy'])->middleware('throttle:60,1');
+
+    // Vaccination Type Admin
+    Route::get('/admin/vaccination-types', [App\Http\Controllers\Api\Admin\MedicalRecordTypeController::class, 'allVaccinationTypes'])->middleware('throttle:60,1');
+    Route::post('/admin/vaccination-types', [App\Http\Controllers\Api\Admin\MedicalRecordTypeController::class, 'storeVaccinationType'])->middleware('throttle:60,1');
+    Route::put('/admin/vaccination-types/{vaccinationType}', [App\Http\Controllers\Api\Admin\MedicalRecordTypeController::class, 'updateVaccinationType'])->middleware('throttle:60,1');
+    Route::delete('/admin/vaccination-types/{vaccinationType}', [App\Http\Controllers\Api\Admin\MedicalRecordTypeController::class, 'destroyVaccinationType'])->middleware('throttle:60,1');
 
     // Admin Settings
     Route::get('/admin/settings/general', [AdminSettingsController::class, 'getGeneralSettings'])->middleware('throttle:60,1');

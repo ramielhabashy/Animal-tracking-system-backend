@@ -106,7 +106,12 @@ class AnimalController extends Controller
         unset($data['device_id']);
         
         // Auto-generate unique animal ID (OA = Ovine Animal)
-        $data['animal_id'] = 'OA-' . date('Y') . '-' . str_pad(Animal::count() + 1, 4, '0', STR_PAD_LEFT);
+        $year = date('Y');
+        $lastAnimal = Animal::where('animal_id', 'like', "OA-{$year}-%")
+            ->orderByRaw('CAST(SUBSTRING(animal_id, -4) AS UNSIGNED) DESC')
+            ->first();
+        $nextNumber = $lastAnimal ? (int) substr($lastAnimal->animal_id, -4) + 1 : 1;
+        $data['animal_id'] = 'OA-' . $year . '-' . str_pad($nextNumber, 4, '0', STR_PAD_LEFT);
         
         // Role-based owner assignment logic
         if ($authUser && $authUser->hasRole('Owner') && empty($data['owner_id'])) {

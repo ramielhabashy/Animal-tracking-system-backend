@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class MedicalRecord extends Model
 {
@@ -21,6 +22,7 @@ class MedicalRecord extends Model
         'medication',
         'dosage',
         'status',
+        'health_status',
         'notes',
         'attachment_url',
         'next_follow_up',
@@ -29,6 +31,7 @@ class MedicalRecord extends Model
     protected $casts = [
         'record_date' => 'date',
         'next_follow_up' => 'date',
+        'health_status' => 'string',
     ];
 
     protected static function boot()
@@ -61,6 +64,11 @@ class MedicalRecord extends Model
     public function owner(): BelongsTo
     {
         return $this->belongsTo(User::class, 'owner_id');
+    }
+
+    public function attachments(): HasMany
+    {
+        return $this->hasMany(MedicalRecordAttachment::class);
     }
 
     public function scopeForOwner($query, $ownerId)

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Controllers\Traits\ApiResponse;
 use App\Http\Resources\UserResource;
 use App\Models\User;
+use App\Models\UserSubscription;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Hash;
@@ -247,6 +248,16 @@ class UserController extends Controller
         $user = User::create($userData);
         $user->assignRole($requestedRole);
 
+        if ($requestedRole === 'Owner' && $user->subscription_tier_id) {
+            UserSubscription::create([
+                'user_id' => $user->id,
+                'tier_id' => $user->subscription_tier_id,
+                'status' => 'active',
+                'started_at' => now(),
+                'billing_cycle' => 'monthly',
+            ]);
+        }
+
         // Handle avatar upload
         if ($request->hasFile('avatar_url')) {
             $file = $request->file('avatar_url');
@@ -315,8 +326,20 @@ class UserController extends Controller
         $notifyUser = !empty($validated['notify_user']);
         unset($validated['notify_user']);
 
+        $tierChanged = $request->has('subscription_tier_id');
+
         if (!empty($validated)) {
             $user->update($validated);
+        }
+
+        if ($tierChanged && $user->hasRole('Owner') && $user->subscription_tier_id) {
+            UserSubscription::create([
+                'user_id' => $user->id,
+                'tier_id' => $user->subscription_tier_id,
+                'status' => 'active',
+                'started_at' => now(),
+                'billing_cycle' => 'monthly',
+            ]);
         }
 
         if ($passwordChanged && $notifyUser) {
@@ -363,13 +386,21 @@ class UserController extends Controller
             return response()->json(['message' => 'Unauthorized'], 401);
         }
 
-        $doctors = User::whereHas('roles', function ($q) {
+        $query = User::whereHas('roles', function ($q) {
             $q->where('name', 'Doctor');
         })
         ->where('is_active', true)
-        ->select(['id', 'name'])
-        ->orderBy('name')
-        ->get();
+        ->select(['id', 'name', 'managed_by']);
+
+        if ($user->hasRole('Owner')) {
+            $query->where('managed_by', $user->id);
+        } elseif ($user->hasRole('Doctor')) {
+            $query->where('managed_by', $user->managed_by);
+        } elseif ($user->hasRole('Admin') && $request->has('owner_id')) {
+            $query->where('managed_by', $request->owner_id);
+        }
+
+        $doctors = $query->orderBy('name')->get();
 
         return response()->json(['data' => $doctors]);
     }

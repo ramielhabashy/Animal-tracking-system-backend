@@ -45,6 +45,37 @@ class SubscriptionController extends Controller
         return response()->json(['data' => $tier]);
     }
 
+    public function userHistory(Request $request): JsonResponse
+    {
+        $user = $this->getRequestUser($request);
+
+        if (!$user) {
+            return response()->json(['message' => 'User not found'], 404);
+        }
+
+        $subscriptions = UserSubscription::where('user_id', $user->id)
+            ->with('tier')
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function ($sub) {
+                return [
+                    'id' => $sub->id,
+                    'tier_name' => $sub->tier?->name,
+                    'tier_slug' => $sub->tier?->slug,
+                    'status' => $sub->status,
+                    'payment_method' => $sub->payment_method,
+                    'payment_reference' => $sub->payment_reference,
+                    'amount' => $sub->tier?->price_monthly,
+                    'started_at' => $sub->started_at?->toISOString(),
+                    'ended_at' => $sub->ends_at?->toISOString(),
+                    'created_at' => $sub->created_at?->toISOString(),
+                    'billing_cycle' => $sub->billing_cycle,
+                ];
+            });
+
+        return response()->json(['data' => $subscriptions]);
+    }
+
     public function userSubscription(Request $request): JsonResponse
     {
         $user = $this->getRequestUser($request);
@@ -197,6 +228,8 @@ class SubscriptionController extends Controller
             'trial_ends_at' => $tier->trial_days > 0 ? now()->addDays($tier->trial_days) : null,
             'ends_at' => now()->addDays($tier->trial_days > 0 ? $tier->trial_days : 30),
             'billing_cycle' => $request->input('billing_cycle', 'monthly'),
+            'payment_method' => $request->input('payment_method'),
+            'payment_reference' => $request->input('payment_reference'),
         ]);
 
         $user->update(['subscription_tier_id' => $tier->id]);
@@ -233,6 +266,8 @@ class SubscriptionController extends Controller
             'trial_ends_at' => $tier->trial_days > 0 ? now()->addDays($tier->trial_days) : null,
             'ends_at' => now()->addDays($tier->trial_days > 0 ? $tier->trial_days : 30),
             'billing_cycle' => 'monthly',
+            'payment_method' => $request->input('payment_method'),
+            'payment_reference' => $request->input('payment_reference'),
         ]);
 
         $user->update(['subscription_tier_id' => $tier->id]);
@@ -288,7 +323,7 @@ class SubscriptionController extends Controller
             ->first();
 
         if ($existingSubscription) {
-            $existingSubscription->update(['status' => 'changed_by_admin']);
+            $existingSubscription->update(['status' => 'cancelled', 'cancelled_at' => now()]);
         }
 
         $subscription = UserSubscription::create([
@@ -317,6 +352,7 @@ class SubscriptionController extends Controller
         }
 
         $users = User::with('subscriptionTier')
+            ->with('subscription')
             ->withCount(['animals', 'devices', 'shepherds'])
             ->whereHas('roles', function ($q) {
                 $q->where('name', 'Owner');
@@ -324,9 +360,21 @@ class SubscriptionController extends Controller
             ->orderBy('name')
             ->get()
             ->map(function ($user) {
+                $sub = $user->subscription->sortByDesc('created_at')->first();
+                $nextBillingDate = null;
+                if ($sub?->ends_at) {
+                    $nextBillingDate = $sub->ends_at;
+                } elseif ($sub?->started_at) {
+                    $period = match ($sub->billing_cycle) {
+                        'yearly' => '1 year',
+                        default => '1 month',
+                    };
+                    $nextBillingDate = $sub->started_at->copy()->add($period);
+                }
                 return [
                     'id' => $user->id,
                     'user_id' => $user->id,
+                    'subscription_id' => $sub?->id,
                     'user' => [
                         'id' => $user->id,
                         'name' => $user->name,
@@ -335,7 +383,14 @@ class SubscriptionController extends Controller
                     ],
                     'tier_id' => $user->subscription_tier_id,
                     'tier' => $user->subscriptionTier,
-                    'status' => 'active',
+                    'status' => $sub?->status ?? 'active',
+                    'created_at' => $sub?->created_at?->toISOString(),
+                    'started_at' => $sub?->started_at?->toISOString(),
+                    'ends_at' => $sub?->ends_at?->toISOString(),
+                    'renewal_at' => $nextBillingDate?->toISOString(),
+                    'next_billing_date' => $nextBillingDate?->toISOString(),
+                    'billing_cycle' => $sub?->billing_cycle,
+                    'payment_method' => $sub?->payment_method,
                     'usage' => [
                         'animals' => [
                             'used' => $user->animals_count,
@@ -579,7 +634,6 @@ class SubscriptionController extends Controller
         try {
             Stripe::setApiKey(config('services.stripe.secret'));
 
-            // Parse expiry (format: MM/YY or MMYY)
             $expiry = $validated['expiry'];
             $expMonth = null;
             $expYear = null;
@@ -590,7 +644,6 @@ class SubscriptionController extends Controller
                 $expYear = substr($expiry, 2, 2);
             }
 
-            // Create token from actual card details
             $token = Token::create([
                 'card' => [
                     'number' => $validated['card_number'],
@@ -612,9 +665,19 @@ class SubscriptionController extends Controller
             ]);
 
             if ($charge->status === 'succeeded') {
+                $existingActive = $user->subscription()
+                    ->where('status', 'active')
+                    ->first();
+
+                if ($existingActive) {
+                    $existingTier = $existingActive->tier;
+                    $isUpgrade = $existingTier && $existingTier->sort_order < $tier->sort_order;
+                    $existingActive->update(['status' => $isUpgrade ? 'upgraded' : 'downgraded']);
+                }
+
                 $this->activateSubscription($user, $tier);
 
-                UserSubscription::create([
+                $subscription = UserSubscription::create([
                     'user_id' => $user->id,
                     'tier_id' => $tier->id,
                     'status' => 'active',
@@ -628,6 +691,7 @@ class SubscriptionController extends Controller
                 return response()->json([
                     'message' => 'Payment successful',
                     'payment_id' => $charge->id,
+                    'data' => $subscription->load('tier'),
                 ]);
             }
 
@@ -652,6 +716,16 @@ class SubscriptionController extends Controller
 
         $tier = SubscriptionTier::find($validated['tier_id']);
         $path = $request->file('payment_proof')->store('subscription-payments', 'public');
+
+        $existingActive = $user->subscription()
+            ->where('status', 'active')
+            ->first();
+
+        if ($existingActive) {
+            $existingTier = $existingActive->tier;
+            $isUpgrade = $existingTier && $existingTier->sort_order < $tier->sort_order;
+            $existingActive->update(['status' => $isUpgrade ? 'upgraded' : 'downgraded']);
+        }
 
         UserSubscription::create([
             'user_id' => $user->id,
@@ -741,5 +815,197 @@ class SubscriptionController extends Controller
             ->get();
 
         return response()->json(['data' => $pendingSubscriptions]);
+    }
+
+    public function adminPauseSubscription(Request $request, User $user): JsonResponse
+    {
+        $admin = $this->getRequestUser($request);
+
+        if (!$admin || !$admin->isAdmin()) {
+            return response()->json(['message' => 'Unauthorized', 'error' => 'unauthorized'], 403);
+        }
+
+        $subscription = $user->subscription()
+            ->where('status', 'active')
+            ->first();
+
+        if (!$subscription) {
+            return response()->json(['message' => 'No active subscription found'], 404);
+        }
+
+        $subscription->update([
+            'status' => 'paused',
+            'paused_at' => now(),
+        ]);
+
+        return response()->json([
+            'message' => 'Subscription paused successfully',
+            'data' => $subscription->fresh()->load('tier'),
+        ]);
+    }
+
+    public function adminReactivateSubscription(Request $request, User $user): JsonResponse
+    {
+        $admin = $this->getRequestUser($request);
+
+        if (!$admin || !$admin->isAdmin()) {
+            return response()->json(['message' => 'Unauthorized', 'error' => 'unauthorized'], 403);
+        }
+
+        $subscription = $user->subscription()
+            ->whereIn('status', ['paused', 'cancelled'])
+            ->latest()
+            ->first();
+
+        if (!$subscription) {
+            return response()->json(['message' => 'No paused or cancelled subscription found'], 404);
+        }
+
+        $subscription->update([
+            'status' => 'active',
+            'paused_at' => null,
+            'cancelled_at' => null,
+        ]);
+
+        $user->update(['subscription_tier_id' => $subscription->tier_id]);
+
+        return response()->json([
+            'message' => 'Subscription reactivated successfully',
+            'data' => $subscription->fresh()->load('tier'),
+        ]);
+    }
+
+    public function adminCancelSubscription(Request $request, User $user): JsonResponse
+    {
+        $admin = $this->getRequestUser($request);
+
+        if (!$admin || !$admin->isAdmin()) {
+            return response()->json(['message' => 'Unauthorized', 'error' => 'unauthorized'], 403);
+        }
+
+        $subscription = $user->subscription()
+            ->whereIn('status', ['active', 'paused'])
+            ->latest()
+            ->first();
+
+        if (!$subscription) {
+            return response()->json(['message' => 'No active or paused subscription found'], 404);
+        }
+
+        $subscription->update([
+            'status' => 'cancelled',
+            'cancelled_at' => now(),
+        ]);
+
+        $freeTier = SubscriptionTier::where('slug', 'free')->first();
+        $user->update(['subscription_tier_id' => $freeTier?->id]);
+
+        return response()->json([
+            'message' => 'Subscription cancelled successfully',
+            'data' => $subscription->fresh()->load('tier'),
+        ]);
+    }
+
+    public function adminUpdateSubscription(Request $request, UserSubscription $subscription): JsonResponse
+    {
+        $admin = $this->getRequestUser($request);
+
+        if (!$admin || !$admin->isAdmin()) {
+            return response()->json(['message' => 'Unauthorized', 'error' => 'unauthorized'], 403);
+        }
+
+        $validated = $request->validate([
+            'payment_method' => 'nullable|string|max:50',
+            'payment_reference' => 'nullable|string|max:255',
+            'notes' => 'nullable|string|max:1000',
+            'billing_cycle' => 'nullable|in:monthly,yearly',
+        ]);
+
+        $subscription->update($validated);
+
+        return response()->json([
+            'message' => 'Subscription updated successfully',
+            'data' => $subscription->fresh()->load(['user', 'tier']),
+        ]);
+    }
+
+    public function renew(Request $request): JsonResponse
+    {
+        $user = $this->getRequestUser($request);
+
+        if (!$user) {
+            return response()->json(['message' => 'User not found'], 404);
+        }
+
+        $subscription = $user->subscription()
+            ->where('status', 'active')
+            ->first();
+
+        if (!$subscription) {
+            return response()->json(['message' => 'No active subscription to renew'], 400);
+        }
+
+        $period = $subscription->billing_cycle === 'yearly' ? '1 year' : '1 month';
+        $subscription->update([
+            'ends_at' => now()->add($period),
+        ]);
+
+        return response()->json([
+            'message' => 'Subscription renewed successfully',
+            'data' => $subscription->fresh()->load('tier'),
+        ]);
+    }
+
+    public function reactivate(Request $request): JsonResponse
+    {
+        $user = $this->getRequestUser($request);
+
+        if (!$user) {
+            return response()->json(['message' => 'User not found'], 404);
+        }
+
+        $subscription = $user->subscription()
+            ->whereIn('status', ['paused', 'cancelled'])
+            ->latest()
+            ->first();
+
+        if (!$subscription) {
+            return response()->json(['message' => 'No paused or cancelled subscription found'], 404);
+        }
+
+        $subscription->update([
+            'status' => 'active',
+            'paused_at' => null,
+            'cancelled_at' => null,
+        ]);
+
+        $user->update(['subscription_tier_id' => $subscription->tier_id]);
+
+        return response()->json([
+            'message' => 'Subscription reactivated successfully',
+            'data' => $subscription->fresh()->load('tier'),
+        ]);
+    }
+
+    public function adminChangeBillingCycle(Request $request, UserSubscription $subscription): JsonResponse
+    {
+        $admin = $this->getRequestUser($request);
+
+        if (!$admin || !$admin->isAdmin()) {
+            return response()->json(['message' => 'Unauthorized', 'error' => 'unauthorized'], 403);
+        }
+
+        $validated = $request->validate([
+            'billing_cycle' => 'required|in:monthly,yearly',
+        ]);
+
+        $subscription->update([
+            'billing_cycle' => $validated['billing_cycle'],
+        ]);
+
+        return response()->json([
+            'message' => 'Billing cycle updated successfully',
+            'data' => $subscription->fresh()->load('tier'),
+        ]);
     }
 }
