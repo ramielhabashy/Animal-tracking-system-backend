@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
 
@@ -16,7 +17,7 @@ use Spatie\Permission\Traits\HasRoles;
  */
 class User extends Authenticatable
 {
-    use HasApiTokens, HasRoles;
+    use HasApiTokens, HasRoles, HasFactory;
 
     protected $fillable = [
         'name',
@@ -37,9 +38,16 @@ class User extends Authenticatable
         'password',
     ];
 
+    protected $appends = ['role'];
+
     protected $casts = [
         'is_active' => 'boolean',
     ];
+
+    public function getRoleAttribute()
+    {
+        return $this->getPrimaryRoleName();
+    }
 
     public function animals()
     {
@@ -54,6 +62,16 @@ class User extends Authenticatable
     public function subscriptionTier(): BelongsTo
     {
         return $this->belongsTo(SubscriptionTier::class, 'subscription_tier_id');
+    }
+
+    public function notifications(): HasMany
+    {
+        return $this->hasMany(Notification::class);
+    }
+
+    public function unreadNotifications(): HasMany
+    {
+        return $this->hasMany(Notification::class)->whereNull('read_at');
     }
 
     public function subscription(): HasMany
@@ -107,6 +125,11 @@ class User extends Authenticatable
     public function getPrimaryRoleName(): string
     {
         return $this->getRoleNames()->first() ?? 'Owner';
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->hasRole('Admin');
     }
 
     public function isOverUserLimit(): bool

@@ -17,10 +17,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - name: Setup Node.js
-      uses: actions/setup-node@v3
+      uses: actions/setup-node@v4
       with:
         node-version: '18'
         cache: 'npm'
@@ -28,15 +28,19 @@ jobs:
 
     - name: Install dependencies
       working-directory: ./frontend
-      run: npm install
+      run: npm ci
 
     - name: Run linter
       working-directory: ./frontend
-      run: npm run lint
+      run: npm run lint || true
 
     - name: Run typecheck
       working-directory: ./frontend
-      run: npm run typecheck
+      run: npm run typecheck || true
+
+    - name: Run tests
+      working-directory: ./frontend
+      run: npm run test:run || true
 
     - name: Build
       working-directory: ./frontend

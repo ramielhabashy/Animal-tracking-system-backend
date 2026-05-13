@@ -15,9 +15,11 @@ class UserSubscription extends Model
         'trial_ends_at',
         'ends_at',
         'cancelled_at',
+        'paused_at',
         'billing_cycle',
         'payment_method',
         'payment_reference',
+        'notes',
     ];
 
     protected $casts = [
@@ -25,6 +27,7 @@ class UserSubscription extends Model
         'trial_ends_at' => 'datetime',
         'ends_at' => 'datetime',
         'cancelled_at' => 'datetime',
+        'paused_at' => 'datetime',
     ];
 
     public function user(): BelongsTo

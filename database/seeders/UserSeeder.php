@@ -60,6 +60,15 @@ class UserSeeder extends Seeder
                 'phone' => '+201066746002',
                 'subscription_tier_id' => $freeTier?->id,
             ],
+            [
+                'name' => 'Zeno Doctor',
+                'email' => 'zeno@oasis.com',
+                'password' => Hash::make('12345678'),
+                'role' => 'Doctor',
+                'is_active' => true,
+                'phone' => '+201066746009',
+                'subscription_tier_id' => $freeTier?->id,
+            ],
         ];
 
         foreach ($users as $user) {

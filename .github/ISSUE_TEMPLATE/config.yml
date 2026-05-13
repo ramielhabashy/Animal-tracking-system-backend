@@ -1,0 +1,17 @@
+# Issue Template Config
+# This file configures how the issue templates behave
+
+blank_issues_enabled: true
+contact_links:
+  - name: Report a Bug
+    url: https://github.com/OWNER/REPO/issues/new?template=bug_report.md
+    about: File a bug report to help us improve
+  - name: Request a Feature
+    url: https://github.com/OWNER/REPO/issues/new?template=feature_request.md
+    about: Suggest an idea for this project
+  - name: Create a Task
+    url: https://github.com/OWNER/REPO/issues/new?template=task.md
+    about: Create a development task
+  - name: Ask a Question
+    url: https://github.com/OWNER/REPO/discussions/new
+    about: Ask a question or get help

@@ -12,7 +12,7 @@ class BidSeeder extends Seeder
     public function run(): void
     {
         $auctions = Auction::where('status', 'active')->get();
-        $users = User::where('role', 'Owner')->get();
+        $users = User::role('Owner')->get();
 
         foreach ($auctions as $auction) {
             $numBids = rand(1, 3);

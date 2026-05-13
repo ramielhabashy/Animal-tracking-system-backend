@@ -26,25 +26,31 @@ jobs:
           - 3306:3306
         options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
 
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: --health-cmd="redis-cli ping" --health-interval=10s --health-timeout=5s --health-retries=3
+
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - name: Setup PHP
       uses: shivammathur/setup-php@v2
       with:
         php-version: '8.2'
-        extensions: mbstring, pdo, pdo_mysql
+        extensions: mbstring, pdo, pdo_mysql, redis
 
     - name: Copy .env
-      run: cd backend && cp .env.example .env
-
-    - name: Install Composer dependencies
-      working-directory: ./backend
-      run: composer install --no-interaction --prefer-dist
+      run: cp backend/.env.example backend/.env
 
     - name: Generate APP_KEY
       working-directory: ./backend
       run: php artisan key:generate
+
+    - name: Install Composer dependencies
+      working-directory: ./backend
+      run: composer install --no-interaction --prefer-dist --optimize-autoloader
 
     - name: Run migrations
       working-directory: ./backend
@@ -54,9 +60,11 @@ jobs:
         DB_DATABASE: oasis_test
         DB_USERNAME: root
         DB_PASSWORD: password
-      run: php artisan migrate --env=testing --force
+        QUEUE_CONNECTION: redis
+        REDIS_HOST: 127.0.0.1
+      run: php artisan migrate --force
 
-    - name: Run tests
+    - name: Run tests with coverage
       working-directory: ./backend
       env:
         DB_HOST: 127.0.0.1
@@ -64,4 +72,6 @@ jobs:
         DB_DATABASE: oasis_test
         DB_USERNAME: root
         DB_PASSWORD: password
-      run: php artisan test
+        QUEUE_CONNECTION: redis
+        REDIS_HOST: 127.0.0.1
+      run: php artisan test --coverage

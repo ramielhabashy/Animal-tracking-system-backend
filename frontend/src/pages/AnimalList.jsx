@@ -1,8 +1,8 @@
 import React from 'react';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { MaterialSymbol } from 'react-material-symbols';
-import { apiFetch } from '../utils/api';
+import { apiFetch, storageUrl } from '../utils/api';
 import { exportData } from '../utils/export';
 import { useAuth } from '../context/AuthContext';
 import { useI18n } from '../i18n';
@@ -25,6 +25,16 @@ export default function AnimalList() {
   const [assigning, setAssigning] = useState(false);
   const [message, setMessage] = useState(null);
   const [exporting, setExporting] = useState(false);
+  const [speciesFilter, setSpeciesFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [deviceFilter, setDeviceFilter] = useState('all');
+  const [ownerFilter, setOwnerFilter] = useState('all');
+  const [viewMode, setViewMode] = useState('tiles');
+  
+  const [currentPage, setCurrentPage] = useState(1);
+  const [perPage, setPerPage] = useState(100);
+  const [totalAnimals, setTotalAnimals] = useState(0);
+  const [stats, setStats] = useState({ assigned: 0, unassigned: 0, healthy: 0, warning: 0, critical: 0 });
   
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(searchQuery), 300);
@@ -35,18 +45,10 @@ export default function AnimalList() {
     setCurrentPage(1);
   }, [debouncedSearch]);
   
-  const [speciesFilter, setSpeciesFilter] = useState('all');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [deviceFilter, setDeviceFilter] = useState('all');
-  const [ownerFilter, setOwnerFilter] = useState('all');
-  
-  const [currentPage, setCurrentPage] = useState(1);
-  const [perPage, setPerPage] = useState(100);
-  const [totalAnimals, setTotalAnimals] = useState(0);
-  const [stats, setStats] = useState({ assigned: 0, unassigned: 0 });
-  
-  const canModify = user?.role !== 'Shepherd';
+  const canModify = user?.role !== 'Shepherd' && user?.role !== 'Doctor';
   const isAdmin = user?.role === 'Admin';
+
+  const extractList = (res) => Array.isArray(res.data) ? res.data : (res.data?.data || []);
 
   const getDeviceStatus = (deviceId) => {
     if (!deviceId) return 'unknown';
@@ -57,12 +59,6 @@ export default function AnimalList() {
     if (!deviceId) return null;
     return devices.find(d => d.device_id === deviceId || d.id === deviceId);
   };
-  const getOwnerName = (ownerId) => {
-    if (!ownerId) return t('common.noData');
-    const owner = users.find(u => u.id === ownerId);
-    return owner?.name || t('common.noData');
-  };
-
   useEffect(() => {
     fetchData();
     fetchStats();
@@ -80,20 +76,20 @@ export default function AnimalList() {
       let animals = [];
       if (animalsRes.ok) {
         const animalsData = await animalsRes.json();
-        animals = animalsData.data || [];
-        setTotalAnimals(animalsData.meta?.total || animalsData.total || 0);
+        animals = extractList(animalsData);
+        setTotalAnimals(animalsData.meta?.total || animalsData.total || animalsData.data?.meta?.total || 0);
       }
       
       let devices = [];
       if (devicesRes.ok) {
         const devicesData = await devicesRes.json();
-        devices = devicesData.data || [];
+        devices = extractList(devicesData);
       }
       
       let users = [];
       if (usersRes.ok) {
         const usersData = await usersRes.json();
-        users = usersData.data || [];
+        users = extractList(usersData);
       }
       
       setAnimals(animals);
@@ -115,14 +111,24 @@ export default function AnimalList() {
       
       if (animalsRes.ok && devicesRes.ok) {
         const animalsData = await animalsRes.json();
-        const devicesData = await devicesRes.json();
-        const allAnimals = animalsData.data || [];
+        const allAnimals = extractList(animalsData);
         
-        const assigned = allAnimals.filter(a => a.device?.device_id || a.device_id).length;
+        let assigned = 0, healthy = 0, warning = 0, critical = 0;
+        for (const a of allAnimals) {
+          const hasDevice = a.device?.device_id || a.device_id;
+          if (hasDevice) assigned++;
+          const temp = parseFloat(a.baseline_temperature) || 38.5;
+          if (temp > 39.5) critical++;
+          else if (temp > 39) warning++;
+          else healthy++;
+        }
         
         setStats({
           assigned,
           unassigned: allAnimals.length - assigned,
+          healthy,
+          warning,
+          critical,
         });
       }
     } catch (error) {
@@ -188,7 +194,7 @@ export default function AnimalList() {
   });
 
   const speciesOptions = [...new Set(animals.map(a => a.species).filter(Boolean))];
-  const ownerOptions = users.filter(u => u.role === 'Owner');
+  const ownerOptions = users.filter(u => u.role === 'Owner' || u.role === 'Admin');
   const assignedCount = stats.assigned;
   const unassignedCount = stats.unassigned;
 
@@ -267,13 +273,15 @@ export default function AnimalList() {
               {exporting ? t('common.exporting') : t('common.export')}
             </button>
           )}
-          <Link
-            to="/animals/new"
-            className="btn-primary flex items-center gap-2"
-          >
-            <MaterialSymbol icon="add" size={20} />
-            {t('animals.addAnimal')}
-          </Link>
+          {canModify && (
+            <Link
+              to="/animals/new"
+              className="btn-primary flex items-center gap-2"
+            >
+              <MaterialSymbol icon="add" size={20} />
+              {t('animals.addAnimal')}
+            </Link>
+          )}
         </div>
       </div>
 
@@ -315,6 +323,7 @@ export default function AnimalList() {
           <option value="healthy">{t('animals.healthy')}</option>
           <option value="warning">{t('alertsPage.warning')}</option>
           <option value="critical">{t('dashboard.critical')}</option>
+          <option value="device_issue">{t('devices.deviceIssue') || 'Device Issue'}</option>
         </select>
 
         <select
@@ -325,7 +334,36 @@ export default function AnimalList() {
           <option value="all">{t('animals.allDevices')}</option>
           <option value="assigned">{t('devices.assigned')}</option>
           <option value="unassigned">{t('animals.noDeviceAssigned')}</option>
+          <option value="offline">{t('devices.offline')}</option>
         </select>
+
+        <select
+          value={ownerFilter}
+          onChange={(e) => setOwnerFilter(e.target.value)}
+          className="bg-white rounded-xl px-4 py-3 text-sm shadow-sm focus:ring-2 focus:ring-[#06402b]/10 cursor-pointer"
+        >
+          <option value="all">{t('mapPage.allOwners')}</option>
+          {ownerOptions.map(owner => (
+            <option key={owner.id} value={owner.id}>{owner.name}</option>
+          ))}
+        </select>
+
+        <div className="flex bg-gray-100 rounded-xl p-0.5">
+          <button
+            onClick={() => setViewMode('tiles')}
+            className={`p-2.5 rounded-lg text-sm transition-all ${viewMode === 'tiles' ? 'bg-white shadow-sm text-[#002819]' : 'text-gray-500 hover:text-gray-700'}`}
+            title={t('dashboard.regionalView')}
+          >
+            <MaterialSymbol icon="grid_view" size={18} />
+          </button>
+          <button
+            onClick={() => setViewMode('list')}
+            className={`p-2.5 rounded-lg text-sm transition-all ${viewMode === 'list' ? 'bg-white shadow-sm text-[#002819]' : 'text-gray-500 hover:text-gray-700'}`}
+            title={t('common.list')}
+          >
+            <MaterialSymbol icon="table_rows" size={18} />
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -343,7 +381,10 @@ export default function AnimalList() {
         </div>
         <div className="bg-[#D4AF37]/10 p-5 rounded-2xl">
           <p className="text-xs font-bold text-[#735C00] uppercase">{t('animals.health')}</p>
-          <p className="text-3xl font-black text-[#735C00] mt-1">{assignedCount}</p>
+          <p className="text-3xl font-black text-[#735C00] mt-1">{stats.healthy ?? 0}</p>
+          <p className="text-xs text-[#735C00]/60 mt-1">
+            {stats.warning ?? 0} {t('alertsPage.warning')} &middot; {stats.critical ?? 0} {t('dashboard.critical')}
+          </p>
         </div>
       </div>
 
@@ -351,6 +392,88 @@ export default function AnimalList() {
         <div className="card p-12 text-center">
           <MaterialSymbol icon="pets" size={64} className="text-[#717973] mx-auto mb-4 opacity-50" />
           <p className="text-[#404943] font-medium text-lg">{t('animals.noAnimals')}</p>
+        </div>
+      ) : viewMode === 'list' ? (
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-100 bg-gray-50">
+                <th className="text-left py-3 px-5 font-bold text-[#002819] text-xs uppercase tracking-wider">{t('animals.name')}</th>
+                <th className="text-left py-3 px-4 font-bold text-[#002819] text-xs uppercase tracking-wider">{t('animals.species')}</th>
+                <th className="text-left py-3 px-4 font-bold text-[#002819] text-xs uppercase tracking-wider">{t('animals.breed')}</th>
+                <th className="text-center py-3 px-4 font-bold text-[#002819] text-xs uppercase tracking-wider">{t('animals.device')}</th>
+                <th className="text-left py-3 px-4 font-bold text-[#002819] text-xs uppercase tracking-wider">{t('animals.owner')}</th>
+                <th className="text-center py-3 px-4 font-bold text-[#002819] text-xs uppercase tracking-wider">{t('common.status')}</th>
+                <th className="text-right py-3 px-5 font-bold text-[#002819] text-xs uppercase tracking-wider">{t('common.actions')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredAnimals.map((animal) => {
+                const animalDeviceId = animal.device?.device_id || animal.device_id;
+                const animalStatus = getAnimalStatus(animal);
+                return (
+                  <tr key={animal.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
+                    <td className="py-3 px-5">
+                      <Link to={`/animals/${animal.id}`} className="flex items-center gap-3">
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-base ${
+                          animalStatus === 'critical' ? 'bg-[#BA1A1A]/10' :
+                          animalStatus === 'warning' ? 'bg-[#D4AF37]/10' : 'bg-[#002819]/5'
+                        }`}>
+                          {animal.species === 'Camel' ? '🐪' : animal.species === 'Goat' ? '🐐' : '🐪'}
+                        </div>
+                        <div>
+                          <p className="font-semibold text-[#002819]">{animal.animal_id}</p>
+                          {animal.name && <p className="text-xs text-[#717973]">{animal.name}</p>}
+                        </div>
+                      </Link>
+                    </td>
+                    <td className="py-3 px-4 text-[#404943]">{animal.species}</td>
+                    <td className="py-3 px-4 text-[#404943]">{animal.breed || '-'}</td>
+                    <td className="text-center py-3 px-4">
+                      {animalDeviceId ? (
+                        <span className="text-xs font-medium text-[#002819]">{animalDeviceId}</span>
+                      ) : (
+                        <span className="text-xs text-[#BA1A1A]">{t('animals.noDeviceAssigned')}</span>
+                      )}
+                    </td>
+                    <td className="py-3 px-4 text-[#404943]">{animal.owner?.name || '-'}</td>
+                    <td className="text-center py-3 px-4">
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
+                        animalStatus === 'critical' ? 'bg-[#BA1A1A]/10 text-[#BA1A1A]' :
+                        animalStatus === 'warning' ? 'bg-[#D4AF37]/10 text-[#735C00]' :
+                        'bg-[#10B981]/10 text-[#10B981]'
+                      }`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${
+                          animalStatus === 'critical' ? 'bg-[#BA1A1A]' :
+                          animalStatus === 'warning' ? 'bg-[#D4AF37]' : 'bg-[#10B981]'
+                        }`} />
+                        {animalStatus}
+                      </span>
+                    </td>
+                    <td className="text-right py-3 px-5">
+                      <div className={`flex items-center justify-end gap-1 ${isRtl ? 'flex-row-reverse' : ''}`}>
+                        <Link to={`/animals/${animal.id}`} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500" title={t('common.view')}>
+                          <MaterialSymbol icon="visibility" size={16} />
+                        </Link>
+                        {canModify && (
+                          <>
+                            <Link to={`/animals/${animal.id}/edit`} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500" title={t('common.edit')}>
+                              <MaterialSymbol icon="edit" size={16} />
+                            </Link>
+                            {!animalDeviceId && (
+                              <button onClick={() => openAssignModal(animal)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500" title={t('animals.assignDevice')}>
+                                <MaterialSymbol icon="sensors" size={16} />
+                              </button>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -370,7 +493,7 @@ return (
                           'bg-[#002819]/5'
                         }`}>
                           {animal.identification_photo ? (
-                            <img src={animal.identification_photo} alt={animal.animal_id} className="w-full h-full object-cover" />
+                            <img src={storageUrl(animal.identification_photo)} alt={animal.animal_id} className="w-full h-full object-cover" />
                           ) : (
                             <span className="text-2xl">
                               {animal.species === 'Camel' ? '🐪' : animal.species === 'Goat' ? '🐐' : animal.species === 'Sheep' ? '🐑' : animal.species === 'Cow' ? '🐄' : animal.species === 'Dog' ? '🐕' : '🐪'}
@@ -409,6 +532,22 @@ return (
                         {animal.device?.device_id ? animal.device.device_id : 
                          animalDeviceId && !/^\d+$/.test(animalDeviceId) ? animalDeviceId : '-'}
                       </p>
+                    </div>
+                    <div className="bg-[#F4F4EF] rounded-xl p-3">
+                      <p className="text-xs text-[#717973]">{t('animals.owner')}</p>
+                      <p className="font-semibold text-[#002819] text-sm truncate">
+                        {animal.owner?.name || '-'}
+                      </p>
+                    </div>
+                    <div className="bg-[#F4F4EF] rounded-xl p-3">
+                      <p className="text-xs text-[#717973]">{t('animals.groups')}</p>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {animal.groups?.length > 0 ? animal.groups.map(g => (
+                          <span key={g.id} className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: g.color || '#D4AF37', color: '#fff' }}>
+                            {g.name}
+                          </span>
+                        )) : <span className="text-xs font-semibold text-[#002819]">-</span>}
+                      </div>
                     </div>
                   </div>
 
@@ -503,7 +642,7 @@ return (
                 >
                   <option value="">{t('common.selectDevice')}</option>
                   {availableDevices.map(d => (
-                    <option key={d.id} value={d.id}>
+                    <option key={d.id} value={d.device_id}>
                       {d.device_id} {t('common.separator')} {d.status}{d.battery ? ` (${d.battery}${t('common.percent')})` : ''}
                     </option>
                   ))}

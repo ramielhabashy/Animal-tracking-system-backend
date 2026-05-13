@@ -21,6 +21,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'limits' => CheckSubscriptionLimits::class,
             'feature' => CheckFeatureAccess::class,
             'auth' => CustomAuthenticate::class,
+            'role' => \App\Http\Middleware\CheckRole::class,
             'encrypt_cookies' => \App\Http\Middleware\EncryptCookies::class,
         ]);
         $middleware->api(prepend: [
@@ -32,6 +33,9 @@ return Application::configure(basePath: dirname(__DIR__))
             if (app()->environment('testing')) {
                 return;
             }
-            report($e);
+            // Prevent recursion - just log to file
+            $logFile = __DIR__.'/../storage/logs/laravel.log';
+            $message = '[' . date('Y-m-d H:i:s') . '] ' . get_class($e) . ': ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine() . "\n";
+            file_put_contents($logFile, $message, FILE_APPEND);
         });
     })->create();

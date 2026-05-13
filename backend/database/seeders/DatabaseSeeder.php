@@ -9,21 +9,32 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call([
-            LanguageSeeder::class,
-            SubscriptionTierSeeder::class,
-            UserSeeder::class,
-            UserSubscriptionSeeder::class,
-            RoleSeeder::class,
-            UserRoleSeeder::class,
-            DeviceSeeder::class,
-            AnimalSeeder::class,
-            AnimalGroupSeeder::class,
-            GeofenceSeeder::class,
-            LocationHistorySeeder::class,
-            AuctionSeeder::class,
-            BidSeeder::class,
-            GeofenceAlertSeeder::class,
-            TaskSeeder::class,
+            // First: Create tables that others depend on
+            \Database\Seeders\LanguageSeeder::class,
+            \Database\Seeders\SubscriptionTierSeeder::class,
+            
+            // Then: Roles (depends on nothing)
+            \Database\Seeders\RoleSeeder::class,
+            
+            // Users (depends on roles)
+            \Database\Seeders\UserSeeder::class,
+            
+            // User roles (depends on users and roles)
+            \Database\Seeders\UserRoleSeeder::class,
+            
+            // Subscriptions (depends on users and tiers)
+            \Database\Seeders\UserSubscriptionSeeder::class,
+            
+            // Other data
+            \Database\Seeders\DeviceSeeder::class,
+            \Database\Seeders\AnimalSeeder::class,
+            \Database\Seeders\AnimalGroupSeeder::class,
+            \Database\Seeders\GeofenceSeeder::class,
+            \Database\Seeders\LocationHistorySeeder::class,
+            \Database\Seeders\AuctionSeeder::class,
+            \Database\Seeders\BidSeeder::class,
+            \Database\Seeders\GeofenceAlertSeeder::class,
+            \Database\Seeders\TaskSeeder::class,
         ]);
     }
 }

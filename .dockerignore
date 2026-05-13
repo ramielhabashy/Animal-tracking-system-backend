@@ -58,6 +58,8 @@ database/import/
 # Documentation
 *.md
 !README.md
+!DEPLOYMENT.md
+!INFRASTRUCTURE_CHANGES.md
 
 # Zip files
 *.zip

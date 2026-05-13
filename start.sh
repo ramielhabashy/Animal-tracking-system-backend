@@ -1,22 +1,36 @@
 #!/bin/bash
-# Start script for Railway deployment
+# Start script for local development
 
-# Move to backend directory
-cd backend
+set -e
 
-# Install PHP dependencies
-composer install --no-dev --optimize-autoloader
+echo "Starting Animal Tracking System..."
 
-# Generate APP_KEY if not set
-if [ -z "$APP_KEY" ]; then
-    php artisan key:generate --force
+# Check if Docker is running
+if ! docker info > /dev/null 2>&1; then
+    echo "Error: Docker is not running. Please start Docker first."
+    exit 1
 fi
 
-# Run migrations
-php artisan migrate --force
+# Check if .env exists, copy from example if not
+if [ ! -f backend/.env ]; then
+    echo "Creating backend/.env from .env.example..."
+    cp backend/.env.example backend/.env
+    echo "Please update backend/.env with your configuration before continuing."
+fi
 
-# Seed database (optional)
-# php artisan db:seed --force
+if [ ! -f frontend/.env ]; then
+    echo "Creating frontend/.env from .env.example..."
+    cp frontend/.env.example frontend/.env
+fi
 
-# Start Laravel server
-php artisan serve --host=0.0.0.0 --port=${PORT:-8000}
+# Start services with docker-compose
+cd backend
+docker-compose up -d
+
+echo ""
+echo "Services started!"
+echo "Backend API: http://localhost:8080"
+echo "MySQL: localhost:3306"
+echo ""
+echo "To view logs: docker-compose logs -f"
+echo "To stop: docker-compose down"

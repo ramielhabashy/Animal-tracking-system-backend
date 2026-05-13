@@ -2,36 +2,43 @@
 
 namespace App\Http\Controllers\Api\Tasks;
 
+use App\Http\Controllers\Controller;
+use App\Http\Controllers\Traits\ApiResponse;
 use App\Models\TaskLog;
 use App\Models\Task;
 use App\Models\User;
+use App\Models\TaskLogType;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Storage;
-use App\Http\Controllers\Controller;
 
 class TaskLogController extends Controller
 {
+    use ApiResponse;
+
     private function canAccessTask(Request $request, Task $task): bool
     {
-        $userId = $request->header('X-User-Id');
-        $userRole = $request->header('X-User-Role');
+        $user = $request->user();
+        if (!$user) {
+            return false;
+        }
 
-        if ($userRole === 'Admin') {
+        $role = $user->getPrimaryRoleName();
+
+        if ($role === 'Admin') {
             return true;
         }
 
-        if ($task->owner_id == $userId) {
+        if ($task->owner_id == $user->id) {
             return true;
         }
 
-        if ($task->assigned_to == $userId) {
+        if ($task->assigned_to == $user->id) {
             return true;
         }
 
-        $manager = User::find($userId);
-        if ($manager && $manager->hasAnyRole(['Manager', 'Owner'])) {
-            $managedUsers = User::where('managed_by', $userId)->pluck('id')->toArray();
+        if (in_array($role, ['Manager', 'Owner'])) {
+            $managedUsers = User::where('managed_by', $user->id)->pluck('id')->toArray();
             return in_array($task->owner_id, $managedUsers) || in_array($task->assigned_to, $managedUsers);
         }
 
@@ -40,21 +47,25 @@ class TaskLogController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $userId = $request->header('X-User-Id');
-        $userRole = $request->header('X-User-Role');
+        $user = $request->user();
+        if (!$user) {
+            return $this->unauthorized();
+        }
 
         $query = TaskLog::with(['task', 'user']);
+        $role = $user->getPrimaryRoleName();
 
-        if ($userRole === 'Admin' || $userRole === 'Owner') {
-        } elseif ($userRole === 'Manager') {
-            $managedUserIds = User::where('managed_by', $userId)->pluck('id')->toArray();
-            $managedUserIds[] = $userId;
+        if (in_array($role, ['Admin', 'Owner'])) {
+            // No filter
+        } elseif ($role === 'Manager') {
+            $managedUserIds = User::where('managed_by', $user->id)->pluck('id')->toArray();
+            $managedUserIds[] = $user->id;
             $query->whereHas('task', function ($q) use ($managedUserIds) {
                 $q->whereIn('owner_id', $managedUserIds)
                   ->orWhereIn('assigned_to', $managedUserIds);
             });
         } else {
-            $query->where('user_id', $userId);
+            $query->where('user_id', $user->id);
         }
 
         if ($request->has('task_id')) {
@@ -71,102 +82,142 @@ class TaskLogController extends Controller
 
         $logs = $query->orderBy('created_at', 'desc')->paginate(30);
 
-        return response()->json($logs);
+        return $this->paginated($logs);
     }
 
-    public function store(Request $request): JsonResponse
-    {
-        $userId = $request->header('X-User-Id');
-        $userRole = $request->header('X-User-Role');
+     public function logTypes(): JsonResponse
+     {
+         $types = TaskLogType::active()->orderBy('name')->get(['id', 'name', 'slug', 'icon', 'color', 'allows_media', 'is_status']);
+         return response()->json(['data' => $types]);
+     }
 
-        if ($userRole !== 'Shepherd') {
-            return response()->json(['message' => 'Only shepherds can submit task logs'], 403);
-        }
+     public function store(Request $request): JsonResponse
+     {
+         $user = $request->user();
+         if (!$user) {
+             return $this->unauthorized();
+         }
 
-        $validated = $request->validate([
-            'task_id' => 'required|exists:tasks,id',
-            'log_type' => 'required|in:checkpoint,photo,note,location_update,status_change',
-            'description' => 'required|string|max:2000',
-            'location_lat' => 'nullable|numeric',
-            'location_lng' => 'nullable|numeric',
-            'photo' => 'nullable|file|mimes:jpeg,png,jpg|max:5120',
-            'voice_note' => 'nullable|file|mimes:webm,mp3,wav|max:10240',
-        ]);
+         $validated = $request->validate([
+             'task_id' => 'required|exists:tasks,id',
+             'log_type' => 'required|string',
+             'description' => 'nullable|string|max:5000',
+             'location_lat' => 'nullable|numeric',
+             'location_lng' => 'nullable|numeric',
+             'photo' => 'nullable|file|mimes:jpg,jpeg,png,gif|max:10240',
+             'voice_note' => 'nullable|file|mimes:webm,mp3,wav,ogg|max:10240',
+         ]);
 
-        $task = Task::find($validated['task_id']);
+         $task = Task::findOrFail($validated['task_id']);
 
-        if (!$this->canAccessTask($request, $task)) {
-            return response()->json(['message' => 'Unauthorized to submit logs for this task', 'error' => 'unauthorized'], 403);
-        }
+         if (!$task->is_recurring) {
+             return $this->error('Task logs are only available for recurring tasks');
+         }
 
-        if ($task->assigned_to != $userId) {
-            return response()->json(['message' => 'You can only submit logs for tasks assigned to you', 'error' => 'unauthorized'], 403);
-        }
+         if (!$this->canAccessTask($request, $task)) {
+             return $this->forbidden('Unauthorized to add logs to this task');
+         }
 
-        $photoPath = null;
-        if ($request->hasFile('photo')) {
-            $photo = $request->file('photo');
-            $filename = time() . '_' . $userId . '_' . uniqid() . '.' . $photo->getClientOriginalExtension();
-            $photoPath = $photo->storeAs('task-logs', $filename, 'public');
-        }
+         $logType = strtolower($validated['log_type']);
+         $dbLogType = 'note';
+         if (in_array($logType, ['photo', 'image'])) {
+             $dbLogType = 'photo';
+         } elseif (in_array($logType, ['voice', 'voice_note', 'audio'])) {
+             $dbLogType = 'voice';
+         } elseif (in_array($logType, ['location', 'location_update', 'checkpoint', 'movement'])) {
+             $dbLogType = 'location';
+         }
 
-        $voiceNotePath = null;
-        if ($request->hasFile('voice_note')) {
-            $voice = $request->file('voice_note');
-            $filename = time() . '_' . $userId . '_voice_' . uniqid() . '.webm';
-            $voiceNotePath = $voice->storeAs('task-logs', $filename, 'public');
-        }
+         $logData = [
+             'task_id' => $task->id,
+             'user_id' => $user->id,
+             'log_type' => $dbLogType,
+             'description' => $validated['description'] ?? null,
+             'location_lat' => $validated['location_lat'] ?? null,
+             'location_lng' => $validated['location_lng'] ?? null,
+             'status' => 'submitted',
+         ];
 
-        $log = TaskLog::create([
-            'task_id' => $validated['task_id'],
-            'user_id' => $userId,
-            'log_type' => $validated['log_type'],
-            'description' => $validated['description'],
-            'location_lat' => $validated['location_lat'] ?? null,
-            'location_lng' => $validated['location_lng'] ?? null,
-            'photo_path' => $photoPath,
-            'voice_note_path' => $voiceNotePath,
-            'status' => 'submitted',
-        ]);
+         if ($request->hasFile('photo')) {
+             $path = $request->file('photo')->store('task-logs/photos', 'public');
+             $logData['photo_path'] = $path;
+         }
 
-        if ($task->status === 'pending') {
-            $task->update(['status' => 'in_progress']);
-        }
+         if ($request->hasFile('voice_note')) {
+             $path = $request->file('voice_note')->store('task-logs/voice', 'public');
+             $logData['voice_note_path'] = $path;
+         }
 
-        return response()->json([
-            'message' => 'Task log submitted successfully',
-            'log' => $log->load(['task', 'user']),
-        ], 201);
-    }
+         $log = TaskLog::create($logData);
+
+         $assigneeId = $task->assigned_to;
+         $ownerId = $task->owner_id;
+
+         if ($assigneeId && $assigneeId != $user->id) {
+             \App\Models\Notification::create([
+                 'user_id' => $assigneeId,
+                 'type' => 'task_log_added',
+                 'title' => 'Task Log Added',
+                 'body' => $user->name . ' added a log to task: ' . $task->title,
+                 'data' => [
+                     'task_id' => $task->id,
+                     'task_title' => $task->title,
+                     'log_id' => $log->id,
+                     'link' => '/tasks',
+                 ],
+             ]);
+         }
+
+         if ($ownerId && $ownerId != $user->id && $ownerId != $assigneeId) {
+             \App\Models\Notification::create([
+                 'user_id' => $ownerId,
+                 'type' => 'task_log_added',
+                 'title' => 'Task Log Added',
+                 'body' => $user->name . ' added a log to task: ' . $task->title,
+                 'data' => [
+                     'task_id' => $task->id,
+                     'task_title' => $task->title,
+                     'log_id' => $log->id,
+                     'link' => '/tasks',
+                 ],
+             ]);
+         }
+
+         return $this->created($log->load(['user', 'task']), 'Log submitted successfully');
+     }
 
     public function show(Request $request, TaskLog $taskLog): JsonResponse
     {
-        $userId = $request->header('X-User-Id');
-        $userRole = $request->header('X-User-Role');
+        $user = $request->user();
+        if (!$user) {
+            return $this->unauthorized();
+        }
 
-        if ($userRole === 'Admin') {
-        } elseif ($userRole === 'Owner' || $userRole === 'Manager') {
-            if ($taskLog->task->owner_id != $userId && $taskLog->task->assigned_to != $userId) {
-                $managedUsers = User::where('managed_by', $userId)->pluck('id')->toArray();
+        $role = $user->getPrimaryRoleName();
+
+        if ($role === 'Admin') {
+            // Allow
+        } elseif (in_array($role, ['Owner', 'Manager'])) {
+            if ($taskLog->task->owner_id != $user->id && $taskLog->task->assigned_to != $user->id) {
+                $managedUsers = User::where('managed_by', $user->id)->pluck('id')->toArray();
                 if (!in_array($taskLog->task->owner_id, $managedUsers)) {
-                    return response()->json(['message' => 'Unauthorized', 'error' => 'unauthorized'], 403);
+                    return $this->forbidden('Unauthorized');
                 }
             }
         } else {
-            if ($taskLog->user_id != $userId && $taskLog->task->assigned_to != $userId) {
-                return response()->json(['message' => 'Unauthorized', 'error' => 'unauthorized'], 403);
+            if ($taskLog->user_id != $user->id && $taskLog->task->assigned_to != $user->id) {
+                return $this->forbidden('Unauthorized');
             }
         }
 
-        return response()->json(['data' => $taskLog->load(['task', 'user'])]);
+        return $this->success($taskLog->load(['task', 'user']));
     }
 
     public function update(Request $request, TaskLog $taskLog): JsonResponse
     {
-        $userRole = $request->header('X-User-Role');
-
-        if ($userRole !== 'Admin' && $userRole !== 'Owner' && $userRole !== 'Manager') {
-            return response()->json(['message' => 'Only managers can update log status', 'error' => 'unauthorized'], 403);
+        $user = $request->user();
+        if (!$user || !in_array($user->getPrimaryRoleName(), ['Admin', 'Owner', 'Manager'])) {
+            return $this->forbidden('Only managers can update log status');
         }
 
         $validated = $request->validate([
@@ -176,32 +227,31 @@ class TaskLogController extends Controller
 
         $taskLog->update($validated);
 
-        return response()->json([
-            'message' => 'Log updated successfully',
-            'log' => $taskLog->load(['task', 'user']),
-        ]);
+        return $this->updated($taskLog->load(['task', 'user']), 'Log updated successfully');
     }
 
     public function destroy(Request $request, TaskLog $taskLog): JsonResponse
     {
-        $userId = $request->header('X-User-Id');
-        $userRole = $request->header('X-User-Role');
+        $user = $request->user();
+        if (!$user) {
+            return $this->unauthorized();
+        }
 
-        if ($userRole === 'Admin' || $taskLog->task->owner_id == $userId) {
+        if ($user->getPrimaryRoleName() === 'Admin' || $taskLog->task->owner_id == $user->id) {
             if ($taskLog->photo_path) {
                 Storage::disk('public')->delete($taskLog->photo_path);
             }
             $taskLog->delete();
-            return response()->json(['message' => 'Log deleted successfully']);
+            return $this->deleted('Log deleted successfully');
         }
 
-        return response()->json(['message' => 'Unauthorized', 'error' => 'unauthorized'], 403);
+        return $this->forbidden('Unauthorized');
     }
 
     public function logsForTask(Request $request, Task $task): JsonResponse
     {
         if (!$this->canAccessTask($request, $task)) {
-            return response()->json(['message' => 'Unauthorized', 'error' => 'unauthorized'], 403);
+            return $this->forbidden('Unauthorized');
         }
 
         $logs = TaskLog::where('task_id', $task->id)
@@ -209,15 +259,18 @@ class TaskLogController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
-        return response()->json(['data' => $logs]);
+        return $this->success($logs);
     }
 
     public function myLogs(Request $request): JsonResponse
     {
-        $userId = $request->header('X-User-Id');
+        $user = $request->user();
+        if (!$user) {
+            return $this->unauthorized();
+        }
 
         $query = TaskLog::with(['task', 'user'])
-            ->where('user_id', $userId);
+            ->where('user_id', $user->id);
 
         if ($request->has('status') && $request->status !== 'all') {
             $query->where('status', $request->status);
@@ -229,29 +282,34 @@ class TaskLogController extends Controller
 
         $logs = $query->orderBy('created_at', 'desc')->paginate(30);
 
-        return response()->json($logs);
+        return $this->paginated($logs);
     }
 
     public function archive(Request $request): JsonResponse
     {
-        $userId = $request->header('X-User-Id');
-        $userRole = $request->header('X-User-Role');
+        $user = $request->user();
+        if (!$user) {
+            return $this->unauthorized();
+        }
 
         $query = TaskLog::with(['task', 'user']);
 
-        if ($userRole === 'Admin') {
-        } elseif ($userRole === 'Owner') {
-            $query->whereHas('task', function ($q) use ($userId) {
-                $q->where('owner_id', $userId);
+        $role = $user->getPrimaryRoleName();
+
+        if ($role === 'Admin') {
+            // No filter
+        } elseif ($role === 'Owner') {
+            $query->whereHas('task', function ($q) use ($user) {
+                $q->where('owner_id', $user->id);
             });
-        } elseif ($userRole === 'Manager') {
-            $managedUserIds = User::where('managed_by', $userId)->pluck('id')->toArray();
-            $managedUserIds[] = $userId;
+        } elseif ($role === 'Manager') {
+            $managedUserIds = User::where('managed_by', $user->id)->pluck('id')->toArray();
+            $managedUserIds[] = $user->id;
             $query->whereHas('task', function ($q) use ($managedUserIds) {
                 $q->whereIn('owner_id', $managedUserIds);
             });
         } else {
-            $query->where('user_id', $userId);
+            $query->where('user_id', $user->id);
         }
 
         if ($request->has('status') && $request->status !== 'all') {
@@ -267,16 +325,16 @@ class TaskLogController extends Controller
             $query->where(function ($q) use ($search) {
                 $q->where('description', 'like', "%{$search}%")
                   ->orWhereHas('task', function ($tq) use ($search) {
-                      $tq->where('title', 'like', "%{$search}%");
+                        $tq->where('title', 'like', "%{$search}%");
                   })
                   ->orWhereHas('user', function ($uq) use ($search) {
-                      $uq->where('name', 'like', "%{$search}%");
+                        $uq->where('name', 'like', "%{$search}%");
                   });
             });
         }
 
         $logs = $query->orderBy('created_at', 'desc')->paginate(50);
 
-        return response()->json($logs);
+        return $this->paginated($logs);
     }
 }

@@ -2,8 +2,9 @@ import React from 'react';
 import { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { MaterialSymbol } from 'react-material-symbols';
-import { apiFetch } from '../utils/api';
+import { apiFetch, storageUrl } from '../utils/api';
 import { useAuth } from '../context/AuthContext';
+import { useI18n } from '../i18n';
 
 export default function AuctionDetails() {
   const { id } = useParams();
@@ -205,7 +206,7 @@ export default function AuctionDetails() {
   const isAdmin = user?.role === 'Admin';
   const isOwner = user?.id === auction?.owner?.id;
   const isWinner = user?.id === auction?.winner?.id;
-  const canManageAuction = isAdmin || isOwner;
+  const canManageAuction = isAdmin || isOwner || user?.role === 'Manager';
   const minimumBid = Math.ceil(auction?.current_price) + 1;
 
   if (loading) {
@@ -419,7 +420,7 @@ export default function AuctionDetails() {
           <div className="relative rounded-[2rem] overflow-hidden h-[400px] shadow-2xl">
             {auction.animal?.identification_photo ? (
               <img 
-                src={auction.animal.identification_photo} 
+                src={storageUrl(auction.animal.identification_photo)} 
                 alt={auction.title}
                 className="w-full h-full object-cover"
               />

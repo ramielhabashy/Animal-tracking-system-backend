@@ -2,15 +2,17 @@ import React from 'react';
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { MaterialSymbol } from 'react-material-symbols';
-import { apiFetch } from '../utils/api';
+import { apiFetch, storageUrl } from '../utils/api';
 import { useI18n } from '../i18n';
 import { useRole } from '../hooks/useRole';
+import { useAuth } from '../context/AuthContext';
 
 export default function AnimalEdit() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { t, dir } = useI18n();
-  const { isShepherd } = useRole();
+  const { user } = useAuth();
+  const { isShepherd, isOwner, isManager } = useRole();
   const isRtl = dir === 'rtl';
   const isNewAnimal = !id || id === 'new';
   const fileInputRef = useRef(null);
@@ -89,10 +91,12 @@ export default function AnimalEdit() {
       const animalResponse = !isNewAnimal && animalRes.ok ? await animalRes.json() : null;
       const speciesData = speciesRes.ok ? await speciesRes.json() : { data: [] };
       
+      const currentAnimal = animalResponse?.data || animalResponse;
+      
       setSpeciesList(speciesData.data || []);
       
       const animals = animalsData.data || animalsData || [];
-      const devices = devicesData.data || devicesData || [];
+      const devices = devicesData.data?.data || devicesData.data || devicesData || [];
       // API returns array directly for users (not {data: []} format)
       const users = Array.isArray(usersData) ? usersData : (usersData.data || []);
       
@@ -102,23 +106,38 @@ export default function AnimalEdit() {
       });
       setOwners(ownersList);
 
-      const currentDeviceId = currentAnimal?.device_id;
-      const currentDevice = currentDeviceId ? devices.find(d => d.device_id === currentDeviceId) : null;
+      if (isNewAnimal) {
+        let assignedOwnerId = '';
+        if (isOwner) {
+          assignedOwnerId = String(user?.id || '');
+        } else if (isManager) {
+          const currentUserInList = users.find(u => u.id === user?.id);
+          assignedOwnerId = String(currentUserInList?.managed_by || '');
+        }
+        if (assignedOwnerId) {
+          setFormData(prev => ({ ...prev, owner_id: assignedOwnerId }));
+          const owner = ownersList.find(u => u.id === parseInt(assignedOwnerId));
+          if (owner) setCurrentOwner(owner);
+        }
+      }
+
+      const currentDeviceId = currentAnimal?.device?.device_id;
+      const currentDeviceObj = currentDeviceId ? devices.find(d => d.device_id === currentDeviceId) : null;
       
-      if (currentDevice) {
-        setCurrentDevice(currentDevice);
+      if (currentDeviceObj) {
+        setCurrentDevice(currentDeviceObj);
       }
 
       const assignedDeviceIds = animals
-        .filter(a => a.device_id && a.id !== parseInt(id || 0))
-        .map(a => a.device_id);
+        .filter(a => a.device?.device_id && a.id !== parseInt(id || 0))
+        .map(a => a.device?.device_id);
 
       const available = devices.filter(d => 
         !assignedDeviceIds.includes(d.device_id)
       );
       
-      if (currentDevice && !available.find(d => d.device_id === currentDeviceId)) {
-        available.unshift(currentDevice);
+      if (currentDeviceObj && !available.find(d => d.device_id === currentDeviceId)) {
+        available.unshift(currentDeviceObj);
       }
       
       setAvailableDevices(available);
@@ -143,12 +162,12 @@ export default function AnimalEdit() {
           current_weight: currentAnimal.current_weight || '',
           baseline_temperature: currentAnimal.baseline_temperature || '',
           normal_heart_rate: currentAnimal.normal_heart_rate || '',
-          device_id: currentAnimal.device_id || '',
+          device_id: currentAnimal?.device?.device_id || '',
           owner_id: currentAnimal.owner_id || '',
         });
         if (currentAnimal.identification_photo) {
           setExistingImage(currentAnimal.identification_photo);
-          setImagePreview(currentAnimal.identification_photo);
+          setImagePreview(storageUrl(currentAnimal.identification_photo));
         }
         if (currentAnimal.owner_id) {
           const owner = users.find(u => u.id === currentAnimal.owner_id);
@@ -188,26 +207,22 @@ export default function AnimalEdit() {
     }
   };
 
-  const handleOwnerChange = async (e) => {
+  const handleOwnerChange = (e) => {
     const ownerId = e.target.value;
     setFormData((prev) => ({ ...prev, owner_id: ownerId }));
     if (ownerId) {
-      const ownersRes = await apiFetch('/api/users');
-      const ownersData = await ownersRes.json();
-      const owner = ownersData.data?.find(u => u.id === parseInt(ownerId));
+      const owner = owners.find(u => u.id === parseInt(ownerId));
       setCurrentOwner(owner);
     } else {
       setCurrentOwner(null);
     }
   };
 
-  const handleDeviceChange = async (e) => {
+  const handleDeviceChange = (e) => {
     const deviceId = e.target.value;
     setFormData((prev) => ({ ...prev, device_id: deviceId }));
     if (deviceId) {
-      const devicesRes = await apiFetch('/api/devices');
-      const devicesData = await devicesRes.json();
-      const device = devicesData.data?.find(d => d.device_id === deviceId);
+      const device = availableDevices.find(d => d.device_id === deviceId);
       setCurrentDevice(device);
     } else {
       setCurrentDevice(null);
@@ -237,9 +252,11 @@ export default function AnimalEdit() {
 
     try {
       const url = isNewAnimal ? '/api/animals' : `/api/animals/${id}`;
-      const method = isNewAnimal ? 'POST' : 'PUT';
 
       const submitData = new FormData();
+      if (!isNewAnimal) {
+        submitData.append('_method', 'PUT');
+      }
 
       Object.keys(formData).forEach(key => {
         if (key === 'species') {
@@ -248,17 +265,21 @@ export default function AnimalEdit() {
         } else if (key === 'breed') {
           const breedValue = formData.breed === 'Other' ? formData.custom_breed : formData.breed;
           if (breedValue) submitData.append(key, breedValue);
-        } else if (formData[key] !== '' && formData[key] !== null && key !== 'identification_photo' && key !== 'custom_breed' && key !== 'custom_species') {
+        } else if (formData[key] !== '' && formData[key] !== null && key !== 'identification_photo' && key !== 'custom_breed' && key !== 'custom_species' && key !== 'device_id') {
           submitData.append(key, formData[key]);
         }
       });
+
+      if (formData.device_id !== undefined) {
+        submitData.append('device_id', formData.device_id);
+      }
 
       if (formData.identification_photo instanceof File) {
         submitData.append('identification_photo', formData.identification_photo);
       }
 
       const response = await apiFetch(url, {
-        method,
+        method: 'POST',
         body: submitData,
       });
 
@@ -454,7 +475,7 @@ export default function AnimalEdit() {
                 <div className="w-full md:w-64">
                   <div className="relative group aspect-square rounded-xl overflow-hidden shadow-inner bg-stone-100 cursor-pointer" onClick={() => fileInputRef.current?.click()}>
                     {imagePreview ? (
-                      <img src={imagePreview} alt="Animal" className="w-full h-full object-cover" />
+                      <img src={storageUrl(imagePreview)} alt="Animal" className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-[#E3E3DE] to-[#cfe5d6]">
                         <MaterialSymbol icon="add_a_photo" size={48} className="text-[#002819]/20 mb-2" />
@@ -562,7 +583,7 @@ export default function AnimalEdit() {
                     <>
                       <div className={`w-20 h-20 rounded-2xl overflow-hidden shadow-lg border-2 border-white flex-shrink-0 ${isRtl ? 'ml-4 mr-0' : 'mr-4 ml-0'}`}>
                         {existingImage || imagePreview ? (
-                          <img src={imagePreview || existingImage} alt="Animal" className="w-full h-full object-cover" />
+                          <img src={storageUrl(imagePreview || existingImage)} alt="Animal" className="w-full h-full object-cover" />
                         ) : (
                           <div className="w-full h-full bg-gradient-to-br from-[#E3E3DE] to-[#cfe5d6] flex items-center justify-center">
                             <MaterialSymbol icon="pets" size={40} className="text-[#002819]/20" />
@@ -663,19 +684,23 @@ export default function AnimalEdit() {
                 </div>
               ) : (
                 <>
-                  <select name="owner_id" value={formData.owner_id} onChange={handleOwnerChange} className="w-full bg-[#f4f4ef] border-none rounded-xl px-4 py-3 text-emerald-900 font-semibold mb-4">
-                    <option value="">{t('animals.selectOwner')}</option>
-                    {owners.map(owner => (
-                      <option key={owner.id} value={owner.id}>
-                        {owner.name}
-                      </option>
-                    ))}
-                  </select>
+                  {!isOwner && !isManager ? (
+                    <select name="owner_id" value={formData.owner_id} onChange={handleOwnerChange} className="w-full bg-[#f4f4ef] border-none rounded-xl px-4 py-3 text-emerald-900 font-semibold mb-4">
+                      <option value="">{t('animals.selectOwner')}</option>
+                      {owners.map(owner => (
+                        <option key={owner.id} value={owner.id}>
+                          {owner.name}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input type="hidden" name="owner_id" value={formData.owner_id} />
+                  )}
                   {currentOwner && (
                     <div className={`flex items-center gap-3 ${isRtl ? 'flex-row-reverse' : ''}`}>
                       <div className="w-10 h-10 rounded-full bg-[#06402b]/10 overflow-hidden">
                         {currentOwner.avatar_url ? (
-                          <img src={currentOwner.avatar_url} alt={currentOwner.name} className="w-full h-full object-cover" />
+                          <img src={storageUrl(currentOwner.avatar_url)} alt={currentOwner.name} className="w-full h-full object-cover" />
                         ) : (
                           <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(currentOwner.name)}&background=002819&color=D4AF37`} alt={currentOwner.name} className="w-full h-full object-cover" />
                         )}

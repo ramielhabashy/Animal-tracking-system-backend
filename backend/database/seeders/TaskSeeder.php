@@ -12,8 +12,8 @@ class TaskSeeder extends Seeder
 {
     public function run(): void
     {
-        $owners = User::where('role', 'Owner')->get();
-        $shepherds = User::where('role', 'Shepherd')->get();
+        $owners = User::role('Owner')->get();
+        $shepherds = User::role('Shepherd')->get();
         $animals = Animal::take(5)->get();
 
         if ($shepherds->isEmpty()) {

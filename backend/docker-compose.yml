@@ -3,31 +3,61 @@ version: '3.8'
 services:
   mysql:
     image: mysql:8.0
-    container_name: oasis-staging-mysql
+    container_name: oasis-mysql
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: rootpassword
-      MYSQL_DATABASE: oasis_staging
-      MYSQL_USER: oasis_user
-      MYSQL_PASSWORD: oasis_password
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootpassword}
+      MYSQL_DATABASE: ${DB_DATABASE:-oasis_staging}
+      MYSQL_USER: ${DB_USERNAME:-oasis_user}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-oasis_password}
     ports:
-      - "3306:3306"
+      - "${DB_PORT:-3306}:3306"
     volumes:
       - mysql_data:/var/lib/mysql
+      - ./database/oasis_staging_v0.1.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - oasis-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  app:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: oasis-app
+    restart: unless-stopped
+    environment:
+      APP_ENV: ${APP_ENV:-production}
+      APP_DEBUG: ${APP_DEBUG:-false}
+      APP_URL: ${APP_URL:-http://localhost:8080}
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_DATABASE: ${DB_DATABASE:-oasis_staging}
+      DB_USERNAME: ${DB_USERNAME:-oasis_user}
+      DB_PASSWORD: ${DB_PASSWORD:-oasis_password}
+    volumes:
+      - ./storage:/var/www/html/storage
+      - ./bootstrap/cache:/var/www/html/bootstrap/cache
+    depends_on:
+      mysql:
+        condition: service_healthy
     networks:
       - oasis-network
 
-  app:
+  nginx:
     image: nginx:alpine
-    container_name: oasis-staging-nginx
+    container_name: oasis-nginx
     restart: unless-stopped
     ports:
-      - "8080:80"
+      - "${HTTP_PORT:-8080}:80"
     volumes:
       - ./:/var/www/html
       - ./nginx.conf:/etc/nginx/conf.d/default.conf
     depends_on:
-      - mysql
+      - app
     networks:
       - oasis-network
 

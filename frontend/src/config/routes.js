@@ -1,5 +1,7 @@
 import { lazy } from 'react';
 import { Navigate } from 'react-router-dom';
+import NotFound from '../pages/NotFound';
+import Forbidden from '../pages/Forbidden';
 
 const Login = lazy(() => import('../pages/Login'));
 const Dashboard = lazy(() => import('../pages/Dashboard'));
@@ -34,8 +36,6 @@ const VaccinationSchedulePage = lazy(() => import('../pages/VaccinationScheduleP
 const SettingsPage = lazy(() => import('../pages/SettingsPage'));
 const LanguageSettingsPage = lazy(() => import('../pages/LanguageSettingsPage'));
 const RolesPage = lazy(() => import('../pages/RolesPage'));
-const NotFound = lazy(() => import('../pages/NotFound'));
-const Forbidden = lazy(() => import('../pages/Forbidden'));
 
 export const routeConfig = {
   public: [
@@ -49,19 +49,19 @@ export const routeConfig = {
     { path: '/animals/:id', component: AnimalDetails, roles: ['Admin', 'Owner', 'Manager', 'Shepherd', 'Doctor'] },
     { path: '/animals/:id/edit', component: AnimalEdit, roles: ['Admin', 'Owner', 'Manager', 'Shepherd'] },
     { path: '/devices', component: DeviceList, roles: ['Admin', 'Owner', 'Manager'] },
-    { path: '/devices/new', component: DeviceForm, roles: ['Admin', 'Owner', 'Manager'] },
+    { path: '/devices/new', component: DeviceForm, roles: ['Admin'] },
     { path: '/devices/:id/edit', component: DeviceEdit, roles: ['Admin', 'Owner', 'Manager'] },
     { path: '/users', component: UserList, roles: ['Admin', 'Owner'] },
     { path: '/users/new', component: UserCreate, roles: ['Admin', 'Owner'] },
     { path: '/users/add', component: Navigate, to: '/users/new' },
     { path: '/users/:id/edit', component: UserEdit, roles: ['Admin', 'Owner'] },
-    { path: '/map', component: MapView, roles: ['Admin', 'Owner', 'Manager'] },
-    { path: '/auctions', component: AuctionList, roles: ['Admin', 'Owner'] },
-    { path: '/auctions/new', component: AuctionCreate, roles: ['Admin', 'Owner'] },
-    { path: '/auctions/:id', component: AuctionDetails, roles: ['Admin', 'Owner'] },
-    { path: '/auctions/:id/edit', component: AuctionEdit, roles: ['Admin', 'Owner'] },
+    { path: '/map', component: MapView, roles: ['Admin', 'Owner', 'Manager', 'Doctor', 'Shepherd'] },
+    { path: '/auctions', component: AuctionList, roles: ['Admin', 'Owner', 'Manager'] },
+    { path: '/auctions/new', component: AuctionCreate, roles: ['Admin', 'Owner', 'Manager'] },
+    { path: '/auctions/:id', component: AuctionDetails, roles: ['Admin', 'Owner', 'Manager'] },
+    { path: '/auctions/:id/edit', component: AuctionEdit, roles: ['Admin', 'Owner', 'Manager'] },
     { path: '/alerts', component: AlertsPage, roles: ['Admin', 'Owner', 'Manager'] },
-    { path: '/geofences', component: GeofenceList, roles: ['Admin', 'Owner', 'Manager'] },
+    { path: '/geofences', component: GeofenceList, roles: ['Admin', 'Owner', 'Manager', 'Shepherd'] },
     { path: '/animal-groups', component: AnimalGroupList, roles: ['Admin', 'Owner', 'Manager'] },
     { path: '/subscription', component: SubscriptionsPage, roles: ['Admin', 'Owner'] },
     { path: '/subscription/tiers', component: SubscriptionsPage, roles: ['Admin', 'Owner'] },
@@ -73,7 +73,7 @@ export const routeConfig = {
     { path: '/medical-records', component: MedicalRecordsPage, roles: ['Admin', 'Owner', 'Manager', 'Doctor'] },
     { path: '/vaccination-schedule', component: VaccinationSchedulePage, roles: ['Admin', 'Owner', 'Manager', 'Doctor'] },
     { path: '/team', component: TeamPage, roles: ['Admin'] },
-    { path: '/reports', component: ReportsPage, roles: ['Admin', 'Owner', 'Manager'] },
+    { path: '/reports', component: ReportsPage, roles: ['Admin', 'Owner', 'Manager', 'Doctor'] },
     { path: '/tasks', component: TasksPage, roles: ['Admin', 'Owner', 'Manager', 'Shepherd', 'Doctor'] },
     { path: '/task-logs-archive', component: TaskLogsArchive, roles: ['Admin', 'Owner'] },
     { path: '/payments', component: PaymentManagement, roles: ['Admin'] },

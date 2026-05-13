@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { getLocale, setLocale as setStoredLocale } from '../utils/cookies';
+import { apiFetch } from '../utils/api';
 import en from './en';
 import ar from './ar';
 import ur from './ur';
@@ -32,11 +33,7 @@ function transformFlatTranslations(data) {
     data.forEach(item => {
       const fullKey = item.group ? `${item.group}.${item.key}` : item.key;
       if (!nested[item.language_code]) nested[item.language_code] = {};
-      // Store both the full key (common.edit) and the short key (edit)
       nested[item.language_code][fullKey] = item.value;
-      if (item.group && !nested[item.language_code][item.key]) {
-        nested[item.language_code][item.key] = item.value;
-      }
     });
   }
   return nested;
@@ -56,7 +53,7 @@ export function I18nProvider({ children }) {
   useEffect(() => {
     const loadLanguages = async () => {
       try {
-        const res = await fetch('http://localhost:8050/api/languages');
+        const res = await apiFetch('/api/languages');
         if (res.ok) {
           const data = await res.json();
           setLanguages(data.filter(lang => lang.is_active));
@@ -71,10 +68,12 @@ export function I18nProvider({ children }) {
   useEffect(() => {
     const loadTranslations = async () => {
       try {
-        const res = await fetch('http://localhost:8050/api/translations');
-        const data = await res.json();
-        const nested = transformFlatTranslations(data);
-        setApiTranslations(nested);
+        const res = await apiFetch('/api/translations');
+        if (res.ok) {
+          const data = await res.json();
+          const nested = transformFlatTranslations(data);
+          setApiTranslations(nested);
+        }
       } catch (e) {
         console.warn('Failed to load translations:', e.message);
       }
@@ -92,7 +91,7 @@ export function I18nProvider({ children }) {
         
         if (now - dirtyTime < fiveMinutes) {
           try {
-            const res = await fetch('http://localhost:8050/api/translations');
+            const res = await apiFetch('/api/translations');
             const data = await res.json();
             const nested = transformFlatTranslations(data);
             setApiTranslations(nested);
@@ -133,6 +132,7 @@ export function I18nProvider({ children }) {
 
     // Try full key in API translations (e.g., common.edit)
     let value = getNestedValue(apiTranslations[locale], key);
+    if (value && typeof value === 'string') value = value.normalize();
     if (isCorrupted(value)) value = null;
     // Try short key in API translations (e.g., edit)
     if (!value) value = getNestedValue(apiTranslations[locale], shortKey);

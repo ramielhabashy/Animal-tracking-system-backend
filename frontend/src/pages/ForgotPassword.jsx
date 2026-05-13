@@ -21,20 +21,20 @@ export default function ForgotPassword() {
     setError('');
 
     try {
-      const response = await fetch('/api/auth/forgot-password', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify({ email }),
-      });
+       const response = await apiFetch('/api/auth/forgot-password', {
+         method: 'POST',
+         headers: {
+           'Content-Type': 'application/json',
+           'Accept': 'application/json',
+         },
+         body: JSON.stringify({ email }),
+       });
 
       if (response.ok) {
         setSuccess(true);
       } else {
         const data = await response.json();
-        setError(data.message || t('errors.serverError'));
+        setError(t(`errors.${data.error}`) || data.message || t('errors.serverError'));
       }
     } catch (err) {
       setError(t('errors.networkError'));

@@ -11,7 +11,15 @@ class UserSubscriptionSeeder extends Seeder
 {
     public function run(): void
     {
-        $users = User::where('role', 'Owner')->limit(5)->get();
+        // Use users with 'Owner' role via Spatie permissions
+        $users = User::whereHas('roles', function ($query) {
+            $query->where('name', 'Owner');
+        })->limit(5)->get();
+        
+        if ($users->isEmpty()) {
+            // Fallback: get any 5 users
+            $users = User::limit(5)->get();
+        }
         $tiers = SubscriptionTier::all();
 
         foreach ($users as $index => $user) {

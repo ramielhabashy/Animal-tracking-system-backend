@@ -9,6 +9,9 @@ export default function VaccinationSchedulePage() {
   const { t, dir } = useI18n();
   const isRtl = dir === 'rtl';
   const { user } = useAuth();
+  const role = user?.role;
+  const canAdd = ['Admin', 'Owner', 'Doctor'].includes(role);
+  const canEdit = ['Admin', 'Owner', 'Doctor'].includes(role);
 
   const [vaccinations, setVaccinations] = useState([]);
   const [animals, setAnimals] = useState([]);
@@ -20,6 +23,7 @@ export default function VaccinationSchedulePage() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState('month');
   const [teamMembers, setTeamMembers] = useState([]);
+  const [vaccinationTypes, setVaccinationTypes] = useState([]);
 
   const [formData, setFormData] = useState({
     animal_id: '',
@@ -45,11 +49,12 @@ export default function VaccinationSchedulePage() {
 
   const fetchData = async () => {
     try {
-      const [vaccRes, animalsRes, statsRes, teamRes] = await Promise.all([
+      const [vaccRes, animalsRes, statsRes, teamRes, vaccTypesRes] = await Promise.all([
         apiFetch('/api/vaccination-schedules?per_page=100'),
         apiFetch('/api/animals?per_page=100'),
         apiFetch('/api/vaccination-schedules/stats'),
         apiFetch('/api/users'),
+        apiFetch('/api/vaccination-types'),
       ]);
 
       if (vaccRes.ok) {
@@ -70,6 +75,11 @@ export default function VaccinationSchedulePage() {
       if (teamRes.ok) {
         const data = await teamRes.json();
         setTeamMembers(data.data || []);
+      }
+
+      if (vaccTypesRes.ok) {
+        const data = await vaccTypesRes.json();
+        setVaccinationTypes(data.data || []);
       }
     } catch (error) {
       console.error('Failed to fetch data:', error);
@@ -499,13 +509,15 @@ export default function VaccinationSchedulePage() {
       </div>
 
       <div className="flex-1 flex flex-col gap-8 min-w-[320px]">
-        <button
-          onClick={() => { resetForm(); setEditingRecord(null); setShowModal(true); }}
-          className="w-full py-4 bg-gradient-to-br from-[#002819] to-[#06402b] text-white rounded-2xl font-bold text-sm shadow-lg shadow-[#002819]/20 flex items-center justify-center gap-2 hover:opacity-95 transition-opacity"
-        >
-          <MaterialSymbol icon="add_circle" size={22} />
-          {t('vaccination.add')}
-        </button>
+        {canAdd && (
+          <button
+            onClick={() => { resetForm(); setEditingRecord(null); setShowModal(true); }}
+            className="w-full py-4 bg-gradient-to-br from-[#002819] to-[#06402b] text-white rounded-2xl font-bold text-sm shadow-lg shadow-[#002819]/20 flex items-center justify-center gap-2 hover:opacity-95 transition-opacity"
+          >
+            <MaterialSymbol icon="add_circle" size={22} />
+            {t('vaccination.add')}
+          </button>
+        )}
 
         <div className="bg-[#e3e3de] rounded-2xl p-6 flex-1 flex flex-col">
           <h3 className={`text-lg font-bold font-['Manrope'] mb-6 flex items-center justify-between ${isRtl ? 'flex-row-reverse text-right' : ''}`}>
@@ -537,18 +549,22 @@ export default function VaccinationSchedulePage() {
                       <span className="text-[10px] text-[#404943]">{animal?.name || t('nav.animals')}</span>
                     </div>
                     <div className={`flex gap-2 mt-3 ${isRtl ? 'flex-row-reverse' : ''}`}>
-                      <button
-                        onClick={() => handleAdminister(vacc.id)}
-                        className="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-1 rounded font-semibold hover:bg-emerald-200"
-                      >
-                        {t('vaccination.done')}
-                      </button>
-                      <button
-                        onClick={() => openEditModal(vacc)}
-                        className="text-[10px] bg-blue-100 text-blue-700 px-2 py-1 rounded font-semibold hover:bg-blue-200"
-                      >
-                        {t('common.edit')}
-                      </button>
+                      {canEdit && (
+                        <button
+                          onClick={() => handleAdminister(vacc.id)}
+                          className="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-1 rounded font-semibold hover:bg-emerald-200"
+                        >
+                          {t('vaccination.done')}
+                        </button>
+                      )}
+                      {canEdit && (
+                        <button
+                          onClick={() => openEditModal(vacc)}
+                          className="text-[10px] bg-blue-100 text-blue-700 px-2 py-1 rounded font-semibold hover:bg-blue-200"
+                        >
+                          {t('common.edit')}
+                        </button>
+                      )}
                     </div>
                   </div>
                 );
@@ -630,16 +646,15 @@ export default function VaccinationSchedulePage() {
 
                 <div>
                   <label className="block text-sm font-semibold text-[#002819] mb-1">{t('vaccination.vaccinationType') || 'Vaccination Type'}</label>
-                  <select
-                    value={formData.vaccination_type}
-                    onChange={(e) => setFormData({ ...formData, vaccination_type: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl border border-[#E3E3DE] bg-white text-[#002819] focus:ring-2 focus:ring-[#002819] focus:border-transparent"
-                  >
-                    <option value="routine">{t('vaccination.typeRoutine') || 'Routine'}</option>
-                    <option value="booster">{t('vaccination.typeBooster') || 'Booster'}</option>
-                    <option value="emergency">{t('vaccination.typeEmergency') || 'Emergency'}</option>
-                    <option value="seasonal">{t('vaccination.typeSeasonal') || 'Seasonal'}</option>
-                  </select>
+                    <select
+                      value={formData.vaccination_type}
+                      onChange={(e) => setFormData({ ...formData, vaccination_type: e.target.value })}
+                      className="w-full px-4 py-3 rounded-xl border border-[#E3E3DE] bg-white text-[#002819] focus:ring-2 focus:ring-[#002819] focus:border-transparent"
+                    >
+                      {vaccinationTypes.map((vt) => (
+                        <option key={vt.slug} value={vt.slug}>{vt.name}</option>
+                      ))}
+                    </select>
                 </div>
 
                 <div>

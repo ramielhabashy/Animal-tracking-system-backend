@@ -5,7 +5,8 @@ import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { MaterialSymbol } from 'react-material-symbols';
-import { apiFetch } from '../utils/api';
+import { apiFetch, storageUrl } from '../utils/api';
+import { useAuth } from '../context/AuthContext';
 import { useI18n } from '../i18n';
 
 const createMarkerIcon = (status) => {
@@ -33,8 +34,10 @@ function MapUpdater({ center, zoom }) {
 export default function AnimalDetails() {
   const { t, dir } = useI18n();
   const isRtl = dir === 'rtl';
+  const { user } = useAuth();
   const { id } = useParams();
   const navigate = useNavigate();
+  const canModify = user?.role !== 'Shepherd' && user?.role !== 'Doctor';
   const [animal, setAnimal] = useState(null);
   const [loading, setLoading] = useState(true);
   const [device, setDevice] = useState(null);
@@ -56,7 +59,7 @@ export default function AnimalDetails() {
       const res = await apiFetch('/api/users?per_page=100');
       if (res.ok) {
         const data = await res.json();
-        const owners = (data.data || []).filter(u => u.role === 'Owner' || u.role === 'owner');
+        const owners = (data.data || []).filter(u => u.role === 'Owner' || u.role === 'Admin');
         setUsers(owners);
       }
     } catch (error) {
@@ -81,7 +84,7 @@ export default function AnimalDetails() {
       const res = await apiFetch(`/api/animals/${id}/transfer-ownership`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: selectedUser }),
+        body: JSON.stringify({ new_owner_id: selectedUser }),
       });
       
       if (res.ok) {
@@ -191,7 +194,7 @@ const fetchAnimal = async () => {
           {/* Main Hero Image */}
           <div className="lg:col-span-8 relative rounded-[2rem] overflow-hidden shadow-2xl h-[400px] group">
             {animal.identification_photo ? (
-              <img src={animal.identification_photo} alt={animal.animal_id} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+              <img src={storageUrl(animal.identification_photo)} alt={animal.animal_id} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
             ) : (
               <div className="w-full h-full bg-gradient-to-br from-emerald-100 to-emerald-200 flex items-center justify-center">
                 <MaterialSymbol icon="pets" size={120} className="text-emerald-300" />
@@ -215,14 +218,18 @@ const fetchAnimal = async () => {
                 </div>
               </div>
               <div className={`flex gap-3 ${isRtl ? 'flex-row-reverse' : ''}`}>
-                <Link to={`/animals/${id}/edit`} className={`bg-white/10 hover:bg-white/20 backdrop-blur-md text-white px-6 py-3 rounded-xl font-bold transition-all border border-white/10 flex items-center gap-2 ${isRtl ? 'flex-row-reverse' : ''}`}>
-                  <MaterialSymbol icon="edit" />
-                  {t('animals.editProfile')}
-                </Link>
-                <Link to={`/auctions/new?animal=${id}`} className={`bg-amber-400 hover:bg-amber-500 text-emerald-950 px-8 py-3 rounded-xl font-bold transition-all shadow-xl shadow-amber-900/20 flex items-center gap-2 ${isRtl ? 'flex-row-reverse' : ''}`}>
-                  <MaterialSymbol icon="gavel" />
-                  {t('animalDetailsPage.sellAnimal')}
-                </Link>
+                {canModify && (
+                  <Link to={`/animals/${id}/edit`} className={`bg-white/10 hover:bg-white/20 backdrop-blur-md text-white px-6 py-3 rounded-xl font-bold transition-all border border-white/10 flex items-center gap-2 ${isRtl ? 'flex-row-reverse' : ''}`}>
+                    <MaterialSymbol icon="edit" />
+                    {t('animals.editProfile')}
+                  </Link>
+                )}
+                {canModify && (
+                  <Link to={`/auctions/new?animal=${id}`} className={`bg-amber-400 hover:bg-amber-500 text-emerald-950 px-8 py-3 rounded-xl font-bold transition-all shadow-xl shadow-amber-900/20 flex items-center gap-2 ${isRtl ? 'flex-row-reverse' : ''}`}>
+                    <MaterialSymbol icon="gavel" />
+                    {t('animalDetailsPage.sellAnimal')}
+                  </Link>
+                )}
               </div>
             </div>
           </div>
@@ -241,10 +248,12 @@ const fetchAnimal = async () => {
                   {owner ? t('animalDetailsPage.legalCustody', { name: owner.name }) : t('animalDetailsPage.noOwner')}
                 </p>
               </div>
-              <button onClick={handleTransferClick} className={`w-full bg-emerald-800 hover:bg-emerald-700 text-amber-400 py-4 rounded-2xl font-bold transition-all mt-6 flex items-center justify-center gap-3 ${isRtl ? 'flex-row-reverse' : ''}`}>
-                <MaterialSymbol icon="swap_horiz" />
-                {t('animalDetailsPage.transferOwnership')}
-              </button>
+              {canModify && (
+                <button onClick={handleTransferClick} className={`w-full bg-emerald-800 hover:bg-emerald-700 text-amber-400 py-4 rounded-2xl font-bold transition-all mt-6 flex items-center justify-center gap-3 ${isRtl ? 'flex-row-reverse' : ''}`}>
+                  <MaterialSymbol icon="swap_horiz" />
+                  {t('animalDetailsPage.transferOwnership')}
+                </button>
+              )}
               <div className={`absolute w-40 h-40 bg-emerald-800/30 rounded-full blur-3xl ${isRtl ? '-left-8 -top-8 right-auto' : '-right-8 -top-8'}`}></div>
             </div>
 

@@ -10,7 +10,7 @@ class GeofenceSeeder extends Seeder
 {
     public function run(): void
     {
-        $users = User::where('role', 'Owner')->get();
+        $users = User::role('Owner')->get();
 
         $geofences = [
             [

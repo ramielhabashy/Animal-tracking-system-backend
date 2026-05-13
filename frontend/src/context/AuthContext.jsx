@@ -19,21 +19,19 @@ export function AuthProvider({ children }) {
 
   const login = async (email, password) => {
     try {
-      const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8050';
-      
-      const response = await fetch(`${API_BASE}/api/auth/login`, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json', 
-          'Accept': 'application/json' 
-        },
-        body: JSON.stringify({ email, password }),
-      });
+       const response = await apiFetch('/api/auth/login', {
+         method: 'POST',
+         headers: { 
+           'Content-Type': 'application/json', 
+           'Accept': 'application/json' 
+         },
+         body: JSON.stringify({ email, password }),
+       });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         console.error('Login failed response:', response.status, errorData);
-        return false;
+        return { error: errorData.error || 'unauthorized', message: errorData.message || 'Login failed' };
       }
       
       const data = await response.json();

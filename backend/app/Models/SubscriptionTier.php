@@ -7,8 +7,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class SubscriptionTier extends Model
 {
-    public $translatable = ['name', 'description'];
-
     protected $fillable = [
         'name',
         'slug',
@@ -21,8 +19,11 @@ class SubscriptionTier extends Model
         'max_users',
         'has_geofencing',
         'has_auctions',
+        'has_medical_records',
+        'has_tasks',
         'has_advanced_reports',
         'has_api_access',
+        'has_ai_assistant',
         'sort_order',
         'is_active',
     ];
@@ -36,8 +37,11 @@ class SubscriptionTier extends Model
         'max_users' => 'integer',
         'has_geofencing' => 'boolean',
         'has_auctions' => 'boolean',
+        'has_medical_records' => 'boolean',
+        'has_tasks' => 'boolean',
         'has_advanced_reports' => 'boolean',
         'has_api_access' => 'boolean',
+        'has_ai_assistant' => 'boolean',
         'sort_order' => 'integer',
         'is_active' => 'boolean',
     ];

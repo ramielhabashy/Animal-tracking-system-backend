@@ -7,35 +7,16 @@ use App\Models\PredefinedTask;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use App\Http\Controllers\Traits\OwnableAuthorization;
 
 class PredefinedTaskController extends Controller
 {
-    private function filterByRole(Request $request, $query)
-    {
-        $userId = $request->header('X-User-Id');
-        $userRole = $request->header('X-User-Role');
-
-        if ($userRole === 'Admin') {
-            return $query;
-        }
-
-        if ($userRole === 'Owner') {
-            return $query->where('owner_id', $userId);
-        }
-
-        if ($userRole === 'Manager') {
-            $managedUserIds = User::where('managed_by', $userId)->pluck('id')->toArray();
-            $managedUserIds[] = $userId;
-            return $query->whereIn('owner_id', $managedUserIds);
-        }
-
-        return $query->where('owner_id', 0);
-    }
+    use OwnableAuthorization;
 
     public function index(Request $request): JsonResponse
     {
         $query = PredefinedTask::query();
-        $query = $this->filterByRole($request, $query);
+        $query = $this->filterByOwner($request, $query);
 
         $tasks = $query->orderBy('title', 'asc')->get();
 
@@ -44,8 +25,8 @@ class PredefinedTaskController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-        $userId = $request->header('X-User-Id');
-        $userRole = $request->header('X-User-Role');
+        $userId = $this->getUserId($request);
+        $userRole = $this->getUserRole($request);
 
         if (!in_array($userRole, ['Admin', 'Owner', 'Manager'])) {
             return response()->json(['message' => 'Unauthorized to create predefined tasks', 'error' => 'unauthorized'], 403);
@@ -55,7 +36,7 @@ class PredefinedTaskController extends Controller
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
             'priority' => 'nullable|in:low,medium,high,urgent',
-            'task_type' => 'nullable|in:inspection,medical,feeding,movement,other',
+            'task_type' => 'nullable|string|exists:task_types,slug',
             'is_recurring' => 'nullable|boolean',
             'recurrence_pattern' => 'nullable|string|in:daily,weekly,monthly,custom',
             'recurrence_interval' => 'nullable|integer|min:1|max:365',
@@ -73,16 +54,15 @@ class PredefinedTaskController extends Controller
 
     public function show(Request $request, PredefinedTask $predefinedTask): JsonResponse
     {
-        $userId = $request->header('X-User-Id');
-        $userRole = $request->header('X-User-Role');
-        $authUser = $request->user();
+        $userId = $this->getUserId($request);
+        $user = $this->getUser($request);
 
-        if ($authUser) {
-            $userRole = $authUser->getPrimaryRoleName();
+        if ($user && $user->hasRole('Admin')) {
+            return response()->json(['data' => $predefinedTask]);
         }
 
-        if ($userRole !== 'Admin' && $predefinedTask->owner_id != $userId) {
-            $manager = User::find($userId);
+        if ($predefinedTask->owner_id != $userId) {
+            $manager = $user;
             if (!$manager || !$manager->hasRole('Manager') || !in_array($predefinedTask->owner_id, User::where('managed_by', $userId)->pluck('id')->toArray())) {
                 return response()->json(['message' => 'Unauthorized', 'error' => 'unauthorized'], 403);
             }
@@ -93,8 +73,8 @@ class PredefinedTaskController extends Controller
 
     public function update(Request $request, PredefinedTask $predefinedTask): JsonResponse
     {
-        $userId = $request->header('X-User-Id');
-        $userRole = $request->header('X-User-Role');
+        $userId = $this->getUserId($request);
+        $userRole = $this->getUserRole($request);
 
         if ($userRole !== 'Admin' && $predefinedTask->owner_id != $userId) {
             return response()->json(['message' => 'Unauthorized', 'error' => 'unauthorized'], 403);
@@ -104,7 +84,7 @@ class PredefinedTaskController extends Controller
             'title' => 'nullable|string|max:255',
             'description' => 'nullable|string',
             'priority' => 'nullable|in:low,medium,high,urgent',
-            'task_type' => 'nullable|in:inspection,medical,feeding,movement,other',
+            'task_type' => 'nullable|string|exists:task_types,slug',
             'is_recurring' => 'nullable|boolean',
             'recurrence_pattern' => 'nullable|string|in:daily,weekly,monthly,custom',
             'recurrence_interval' => 'nullable|integer|min:1|max:365',
@@ -120,8 +100,8 @@ class PredefinedTaskController extends Controller
 
     public function destroy(Request $request, PredefinedTask $predefinedTask): JsonResponse
     {
-        $userId = $request->header('X-User-Id');
-        $userRole = $request->header('X-User-Role');
+        $userId = $this->getUserId($request);
+        $userRole = $this->getUserRole($request);
 
         if ($userRole !== 'Admin' && $predefinedTask->owner_id != $userId) {
             return response()->json(['message' => 'Unauthorized', 'error' => 'unauthorized'], 403);

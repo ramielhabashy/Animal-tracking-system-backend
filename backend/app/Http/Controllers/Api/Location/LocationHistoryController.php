@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Location;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Traits\OwnableAuthorization;
 use App\Models\LocationHistory;
 use App\Models\Animal;
 use App\Models\Device;
@@ -10,10 +11,13 @@ use App\Models\Geofence;
 use App\Models\GeofenceAlert;
 use App\Services\NotificationService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Carbon\Carbon;
 
 class LocationHistoryController extends Controller
 {
+    use OwnableAuthorization;
+
     protected NotificationService $notificationService;
 
     public function __construct(NotificationService $notificationService)
@@ -21,18 +25,22 @@ class LocationHistoryController extends Controller
         $this->notificationService = $notificationService;
     }
 
-    public function index($animalId): JsonResponse
+    public function index(Request $request, $animalId): JsonResponse
     {
         $animal = Animal::findOrFail($animalId);
-        
+
+        if (!$this->canAccessOwner($request, $animal->owner_id)) {
+            return response()->json(['message' => 'Unauthorized', 'error' => 'unauthorized'], 403);
+        }
+
         $hours = request()->get('hours', 48);
         $hoursAgo = Carbon::now()->subHours($hours);
-        
+
         $locations = LocationHistory::where('animal_id', $animalId)
             ->where('recorded_at', '>=', $hoursAgo)
             ->orderBy('recorded_at', 'asc')
             ->get();
-        
+
         return response()->json([
             'animal_id' => $animal->id,
             'animal_code' => $animal->animal_id,
@@ -40,7 +48,7 @@ class LocationHistoryController extends Controller
         ]);
     }
 
-    public function store(\Illuminate\Http\Request $request): JsonResponse
+    public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'device_id' => 'required|exists:devices,id',
@@ -52,11 +60,11 @@ class LocationHistoryController extends Controller
         ]);
 
         $device = Device::findOrFail($validated['device_id']);
-        
+
         if (!$device->animal_id) {
             return response()->json(['message' => 'No animal assigned to this device'], 404);
         }
-        
+
         $animal = Animal::find($device->animal_id);
 
         $location = LocationHistory::create([
@@ -92,7 +100,7 @@ class LocationHistoryController extends Controller
     protected function checkGeofences(Animal $animal, float $lat, float $lng): ?GeofenceAlert
     {
         $geofences = Geofence::where('is_active', true)->get();
-        
+
         if ($animal->owner_id) {
             $geofences = $geofences->filter(function ($geofence) use ($animal) {
                 return $geofence->owner_id === $animal->owner_id || $geofence->owner_id === null;
@@ -106,14 +114,14 @@ class LocationHistoryController extends Controller
         foreach ($geofences as $geofence) {
             $isInside = $geofence->containsPoint($lat, $lng);
             $wasInsideKey = "geofence_{$geofence->id}_animal_{$animal->id}_inside";
-            
+
             $wasInside = cache()->get($wasInsideKey, null);
             if ($wasInside === null) {
                 $wasInside = $isInside;
                 cache()->put($wasInsideKey, $isInside, 86400);
                 continue;
             }
-            
+
             if ($isInside && !$wasInside) {
                 if (in_array($geofence->alert_type, ['entry', 'both'])) {
                     $alert = GeofenceAlert::create([
@@ -124,7 +132,7 @@ class LocationHistoryController extends Controller
                         'longitude' => $lng,
                         'triggered_at' => now(),
                     ]);
-                    
+
                     $this->notificationService->sendGeofenceAlert($alert);
                     $newAlert = $alert;
                 }
@@ -139,7 +147,7 @@ class LocationHistoryController extends Controller
                         'longitude' => $lng,
                         'triggered_at' => now(),
                     ]);
-                    
+
                     $this->notificationService->sendGeofenceAlert($alert);
                     $newAlert = $alert;
                 }

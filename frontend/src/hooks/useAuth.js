@@ -1,6 +1,7 @@
 import { useCallback, useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { getAuthToken, getAuthUser, setAuthUser, setAuthToken, setUserRole, getUserRole, clearAuth, CookieService } from '../utils/cookies';
+import { apiFetch } from '../utils/api';
 import { routeConfig, canAccessRoute } from '../config/routes';
 
 export function useAuth() {
@@ -21,12 +22,11 @@ export function useAuth() {
 
   const login = useCallback(async (email, password) => {
     try {
-      const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8050';
-      const response = await fetch(`${API_BASE}/api/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
+       const response = await apiFetch('/api/auth/login', {
+         method: 'POST',
+         headers: { 'Content-Type': 'application/json' },
+         body: JSON.stringify({ email, password }),
+       });
 
       if (response.ok) {
         const data = await response.json();

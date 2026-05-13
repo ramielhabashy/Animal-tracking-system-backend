@@ -20,7 +20,7 @@ class AnimalResource extends JsonResource
             'date_of_birth' => $this->date_of_birth?->format('Y-m-d'),
             'color_markings' => $this->color_markings,
             'current_weight' => $this->current_weight ? (float) $this->current_weight : null,
-            'identification_photo' => $this->identification_photo,
+            'identification_photo' => $this->identification_photo? url($this->identification_photo): null,
             'baseline_temperature' => $this->baseline_temperature ? (float) $this->baseline_temperature : null,
             'normal_heart_rate' => $this->normal_heart_rate,
             'created_at' => $this->created_at?->toIso8601String(),

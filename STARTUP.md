@@ -10,7 +10,7 @@ C:\animal-tracking-system-head\
 ├── frontend/             # React Dashboard  
 │   └── dist/            # Built React files
 ├── mobile/               # Flutter App
-└── database/            # SQLite database
+└── database/            # Database utilities
 ```
 
 ---

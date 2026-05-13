@@ -12,7 +12,7 @@ class AuctionSeeder extends Seeder
     public function run(): void
     {
         $animals = Animal::take(5)->get();
-        $users = User::where('role', 'Owner')->get();
+        $users = User::role('Owner')->get();
 
         $auctions = [
             [

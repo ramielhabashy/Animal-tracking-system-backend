@@ -49,22 +49,22 @@ trait ApiResponse
 
     public function notFound(string $message = 'Resource not found'): JsonResponse
     {
-        return $this->error($message, 404);
+        return $this->error($message, 404, null, 'not_found');
     }
 
     public function unauthorized(string $message = 'Unauthorized'): JsonResponse
     {
-        return $this->error($message, 401);
+        return $this->error($message, 401, null, 'unauthorized');
     }
 
     public function forbidden(string $message = 'Forbidden'): JsonResponse
     {
-        return $this->error($message, 403);
+        return $this->error($message, 403, null, 'forbidden');
     }
 
     public function validationError(mixed $errors): JsonResponse
     {
-        return $this->error('Validation failed', 422, $errors);
+        return $this->error('Validation failed', 422, $errors, 'validation_error');
     }
 
     public function paginated(LengthAwarePaginator $paginator, string $message = 'Success'): JsonResponse

@@ -1,22 +1,9 @@
-import { getAuthUser } from './storage';
-import { getApiBase } from './api';
-
-const API_BASE = getApiBase();
+import { apiFetch } from './api';
 
 export const exportData = async (endpoint, filename) => {
   try {
-    const user = getAuthUser();
-    
-    const headers = {};
-    
-    if (user) {
-      headers['X-User-Id'] = String(user.id);
-      headers['X-User-Role'] = user.role || 'Owner';
-    }
-
-    const response = await fetch(`${API_BASE}${endpoint}`, {
+    const response = await apiFetch(endpoint, {
       method: 'GET',
-      headers,
     });
 
     if (!response.ok) {
@@ -42,18 +29,8 @@ export const exportData = async (endpoint, filename) => {
 
 export const exportDatabase = async () => {
   try {
-    const user = getAuthUser();
-    
-    const headers = {};
-    
-    if (user) {
-      headers['X-User-Id'] = String(user.id);
-      headers['X-User-Role'] = user.role || 'Owner';
-    }
-
-    const response = await fetch(`${API_BASE}/api/export/database`, {
+    const response = await apiFetch('/api/export/database', {
       method: 'GET',
-      headers,
     });
 
     if (!response.ok) {
@@ -64,7 +41,7 @@ export const exportDatabase = async () => {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `oasis_database_${new Date().toISOString().split('T')[0]}.sqlite`;
+    a.download = `oasis_database_${new Date().toISOString().split('T')[0]}.sql`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);

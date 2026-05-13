@@ -32,9 +32,17 @@ export const getAuthHeaders = () => {
   return headers;
 };
 
-const API_BASE = ''; // Use Vite proxy
+const API_BASE = import.meta.env.VITE_API_URL; // Use Vite proxy
 
 export const getApiBase = () => API_BASE;
+
+export function storageUrl(path) {
+  if (!path || typeof path !== 'string') return path;
+  if (path.startsWith('http://') || path.startsWith('https://') ||
+      path.startsWith('data:') || path.startsWith('blob:')) return path;
+  const base = API_BASE || '';
+  return `${base}${path.startsWith('/') ? path : '/' + path}`;
+}
 
 const buildUrl = (url, options = {}) => {
   if (options.params) {

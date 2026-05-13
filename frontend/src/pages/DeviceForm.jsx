@@ -4,15 +4,24 @@ import { useNavigate } from 'react-router-dom';
 import { MaterialSymbol } from 'react-material-symbols';
 import { apiFetch } from '../utils/api';
 import { useI18n } from '../i18n';
+import { useAuth } from '../context/AuthContext';
 
 export default function DeviceForm() {
   const navigate = useNavigate();
   const { t, dir } = useI18n();
+  const { user } = useAuth();
   const isRtl = dir === 'rtl';
+  const canCreate = user?.role === 'Admin';
+
+  useEffect(() => {
+    if (!canCreate) {
+      navigate('/devices', { replace: true });
+    }
+  }, [canCreate, navigate]);
   const [formData, setFormData] = useState({
     name: '',
     type: 'collar',
-    status: 'inactive',
+    status: 'offline',
     battery_level: 100,
     firmware_version: 'v2.4',
     update_interval: 15,
@@ -31,17 +40,17 @@ export default function DeviceForm() {
 
   const fetchData = async () => {
     try {
-      const [animalsRes, usersRes] = await Promise.all([
+      const [animalsRes, ownersRes] = await Promise.all([
         apiFetch('/api/animals?per_page=100'),
-        apiFetch('/api/users'),
+        apiFetch('/api/users/owners/list'),
       ]);
       if (animalsRes.ok) {
         const data = await animalsRes.json();
         setAnimals(data.data || []);
       }
-      if (usersRes.ok) {
-        const data = await usersRes.json();
-        setOwners((data.data || []).filter(u => u.role === 'Owner'));
+      if (ownersRes.ok) {
+        const data = await ownersRes.json();
+        setOwners(data.data || []);
       }
     } catch (error) {
       console.error('Failed to fetch data:', error);
@@ -204,9 +213,9 @@ export default function DeviceForm() {
                   onChange={handleChange}
                   className="w-full bg-white border-none rounded-xl px-4 py-3 appearance-none focus:ring-2 focus:ring-[#06402b] shadow-sm"
                 >
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                  <option value="maintenance">Maintenance</option>
+                  <option value="online">Online</option>
+                  <option value="offline">Offline</option>
+                  <option value="low_signal">Low Signal</option>
                 </select>
               </div>
             </div>

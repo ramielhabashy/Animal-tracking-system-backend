@@ -39,6 +39,8 @@ class RoleSeeder extends Seeder
             'geofence_view', 'geofence_create', 'geofence_edit', 'geofence_delete',
             'task_view', 'task_create', 'task_complete', 'task_delete',
             'report_view', 'report_export',
+            'medical_record_view', 'medical_record_create', 'medical_record_edit',
+            'vaccination_view', 'vaccination_create', 'vaccination_edit',
         ])->get();
         $owner = Role::firstOrCreate(['name' => 'Owner', 'guard_name' => 'web']);
         $owner->syncPermissions($ownerPerms);
@@ -49,6 +51,8 @@ class RoleSeeder extends Seeder
             'geofence_view', 'geofence_create', 'geofence_edit',
             'task_view', 'task_create', 'task_complete',
             'report_view',
+            'medical_record_view',
+            'vaccination_view',
         ])->get();
         $manager = Role::firstOrCreate(['name' => 'Manager', 'guard_name' => 'web']);
         $manager->syncPermissions($managerPerms);
@@ -63,12 +67,16 @@ class RoleSeeder extends Seeder
         $shepherd->syncPermissions($shepherdPerms);
 
         $doctorPerms = Permission::whereIn('name', [
-            'animal_view',
+            'user_view',
+            'animal_view', 'animal_create', 'animal_edit', 'animal_delete',
             'medical_record_view', 'medical_record_create', 'medical_record_edit',
             'vaccination_view', 'vaccination_create', 'vaccination_edit',
+            'task_view', 'task_complete',
         ])->get();
         $doctor = Role::firstOrCreate(['name' => 'Doctor', 'guard_name' => 'web']);
         $doctor->syncPermissions($doctorPerms);
+
+        app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
 
         echo "RoleSeeder completed. Created 5 roles with permissions.\n";
     }

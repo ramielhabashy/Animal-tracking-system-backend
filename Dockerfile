@@ -1,5 +1,4 @@
-# VERSION: 1.0.3 - Fixed: removed tokenizer (already in PHP 8.1), added libonig-dev
-FROM php:8.1-apache
+FROM php:8.2-fpm
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -10,23 +9,24 @@ RUN apt-get update && apt-get install -y \
     fileinfo pdo_mysql intl \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Disable opcache to prevent segfaults
-RUN echo 'opcache.enable=0' > /usr/local/etc/php/conf.d/opcache.ini \
-    && echo 'memory_limit=512M' > /usr/local/etc/php/conf.d/memory.ini
+# PHP configuration
+RUN echo 'memory_limit=512M' > /usr/local/etc/php/conf.d/memory.ini \
+    && echo 'upload_max_filesize=100M' >> /usr/local/etc/php/conf.d/memory.ini \
+    && echo 'post_max_size=100M' >> /usr/local/etc/php/conf.d/memory.ini
 
-# Install Composer (older version to avoid issues)
+# Install Composer
 COPY --from=composer:2.6 /usr/bin/composer /usr/bin/composer
 
 ENV COMPOSER_ALLOW_SUPERUSER=1
 ENV COMPOSER_NO_INTERACTION=1
 
-WORKDIR /app
+WORKDIR /var/www/html
 
 # Copy backend files
-COPY backend/ .
+COPY backend/ /var/www/html/
 
-# Install composer deps with --no-scripts to avoid segfault
-RUN composer install --no-dev --optimize-autoloader --no-scripts --ignore-platform-reqs
+# Install composer deps
+RUN composer install --no-dev --optimize-autoloader --no-scripts
 
 # Copy frontend files and build
 COPY frontend/ /tmp/frontend/
@@ -35,13 +35,14 @@ RUN cd /tmp/frontend && \
     apt-get update && apt-get install -y nodejs && \
     npm install && \
     npm run build && \
-    cp -r dist/* /app/public/ && \
+    cp -r dist/* /var/www/html/public/ && \
     rm -rf /tmp/frontend
 
-# Configure Apache
-RUN mv /app/public /var/www/html/public && \
-    ln -s /app /var/www/html/laravel && \
-    a2enmod rewrite
+# Generate APP_KEY if not set
+RUN if [ -z "$APP_KEY" ]; then php artisan key:generate --force; fi
 
-EXPOSE 80
-CMD ["apache2-foreground"]
+# Run migrations
+RUN php artisan migrate --force
+
+EXPOSE 9000
+CMD ["php-fpm"]

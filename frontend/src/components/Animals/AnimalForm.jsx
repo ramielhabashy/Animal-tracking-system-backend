@@ -2,7 +2,9 @@ import React from 'react';
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { MaterialSymbol } from 'react-material-symbols';
-import { apiFetch } from '../../utils/api';
+import { apiFetch, storageUrl } from '../../utils/api';
+import { useAuth } from '../../context/AuthContext';
+import { useRole } from '../../hooks/useRole';
 
 const initialFormData = {
   species: 'Camel',
@@ -20,6 +22,8 @@ const initialFormData = {
 export default function AnimalForm() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { isOwner, isManager } = useRole();
   const isEditMode = Boolean(id);
   const fileInputRef = useRef(null);
   const [formData, setFormData] = useState(initialFormData);
@@ -29,6 +33,7 @@ export default function AnimalForm() {
   const [message, setMessage] = useState(null);
   const [availableDevices, setAvailableDevices] = useState([]);
   const [owners, setOwners] = useState([]);
+  const [currentOwner, setCurrentOwner] = useState(null);
   const [devicesLoading, setDevicesLoading] = useState(true);
 
   useEffect(() => {
@@ -54,8 +59,26 @@ export default function AnimalForm() {
       const devices = devicesData.data || [];
       const users = usersData.data || [];
       
-      const ownersList = users.filter(u => u.role === 'Owner');
+      const ownersList = users.filter(u => {
+        const role = u.role || (u.roles && u.roles.name) || (Array.isArray(u.roles) && u.roles[0]?.name);
+        return role === 'Owner' || role === 'Admin';
+      });
       setOwners(ownersList);
+
+      if (!isEditMode) {
+        let assignedOwnerId = '';
+        if (isOwner) {
+          assignedOwnerId = String(user?.id || '');
+        } else if (isManager) {
+          const currentUserInList = users.find(u => u.id === user?.id);
+          assignedOwnerId = String(currentUserInList?.managed_by || '');
+        }
+        if (assignedOwnerId) {
+          setFormData(prev => ({ ...prev, owner_id: assignedOwnerId }));
+          const owner = ownersList.find(u => u.id === parseInt(assignedOwnerId));
+          if (owner) setCurrentOwner(owner);
+        }
+      }
       
       const assignedDeviceIds = animals
         .filter(a => a.device_id && (!isEditMode || a.id !== parseInt(id)))
@@ -89,7 +112,11 @@ export default function AnimalForm() {
         });
         if (data.identification_photo) {
           setExistingImage(data.identification_photo);
-          setImagePreview(data.identification_photo);
+          setImagePreview(storageUrl(data.identification_photo));
+        }
+        if (data.owner_id) {
+          const owner = owners.find(u => u.id === data.owner_id);
+          if (owner) setCurrentOwner(owner);
         }
       }
     } catch (error) {
@@ -277,7 +304,7 @@ export default function AnimalForm() {
             <div className="space-y-4">
               {imagePreview ? (
                 <div className="relative aspect-[4/3] rounded-xl overflow-hidden">
-                  <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
+                  <img src={storageUrl(imagePreview)} alt="Preview" className="w-full h-full object-cover" />
                   <button type="button" onClick={removeImage} className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600">
                     <MaterialSymbol icon="close" size={16} />
                   </button>
@@ -331,17 +358,34 @@ export default function AnimalForm() {
               </div>
             ) : (
               <>
-                <select name="owner_id" value={formData.owner_id} onChange={handleChange} className="w-full bg-[#eeeee9] border-none rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-[#002819]/20">
-                  <option value="">Select Owner</option>
-                  {owners.map(owner => (
-                    <option key={owner.id} value={owner.id}>
-                      {owner.name} ({owner.email})
-                    </option>
-                  ))}
-                </select>
-                <p className="text-xs text-[#717973] mt-2">
-                  {owners.length} owner(s) available
-                </p>
+                {!isOwner && !isManager ? (
+                  <select name="owner_id" value={formData.owner_id} onChange={handleChange} className="w-full bg-[#eeeee9] border-none rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-[#002819]/20">
+                    <option value="">Select Owner</option>
+                    {owners.map(owner => (
+                      <option key={owner.id} value={owner.id}>
+                        {owner.name} ({owner.email})
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input type="hidden" name="owner_id" value={formData.owner_id} />
+                )}
+                {currentOwner && (
+                  <div className="flex items-center gap-3 mt-3">
+                    <div className="w-10 h-10 rounded-full bg-[#06402b]/10 overflow-hidden flex items-center justify-center text-xs font-bold text-[#002819]">
+                      {currentOwner.name?.charAt(0) || '?'}
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-[#002819]">{currentOwner.name}</p>
+                      <p className="text-[10px] text-[#717973]">Primary Owner</p>
+                    </div>
+                  </div>
+                )}
+                {!isOwner && !isManager && (
+                  <p className="text-xs text-[#717973] mt-2">
+                    {owners.length} owner(s) available
+                  </p>
+                )}
               </>
             )}
           </div>

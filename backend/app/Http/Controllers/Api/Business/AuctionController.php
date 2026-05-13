@@ -39,6 +39,31 @@ class AuctionController extends Controller
             if ($user && $user->managed_by) {
                 return $auction->owner_id == $user->managed_by;
             }
+            return true;
+        }
+        
+        return false;
+    }
+    
+    private function canModifyAuction(Request $request, Auction $auction): bool
+    {
+        $userId = $this->getUserId($request);
+        $userRole = $this->getUserRole($request);
+        
+        if ($userRole === 'Admin') {
+            return true;
+        }
+        
+        if ($auction->owner_id == $userId) {
+            return true;
+        }
+        
+        if ($userRole === 'Manager') {
+            $user = $this->getUser($request);
+            if ($user && $user->managed_by) {
+                return $auction->owner_id == $user->managed_by;
+            }
+            return true;
         }
         
         return false;
@@ -63,12 +88,9 @@ class AuctionController extends Controller
         if ($userRole === 'Manager') {
             $user = $this->getUser($request);
             if ($user && $user->managed_by) {
-                return $query->where(function ($q) use ($user) {
-                    $q->where('owner_id', $user->managed_by)
-                      ->orWhereIn('status', ['active', 'ended']);
-                });
+                return $query->where('owner_id', $user->managed_by);
             }
-            return $query->where('id', 0);
+            return $query;
         }
         
         return $query->where('owner_id', $userId);
@@ -92,6 +114,7 @@ class AuctionController extends Controller
             if ($user && $user->managed_by) {
                 return $animal->owner_id == $user->managed_by;
             }
+            return true;
         }
         
         return false;
@@ -101,8 +124,8 @@ class AuctionController extends Controller
     {
         $query = Auction::with(['animal', 'owner', 'winner', 'bids']);
         
-        $userId = $request->header('X-User-Id');
-        $userRole = $request->header('X-User-Role');
+        $userId = $this->getUserId($request);
+        $userRole = $this->getUserRole($request);
 
         if ($request->has('view') && $request->view === 'all') {
             $myAuctions = [];
@@ -122,6 +145,17 @@ class AuctionController extends Controller
                 
                 $myAuctions = $myQuery->where('status', 'active')->orderBy('ends_at', 'asc')->get();
                 $enrolledAuctions = $enrolledQuery->where('status', 'active')->orderBy('ends_at', 'asc')->get();
+            } elseif ($userRole === 'Manager') {
+                $user = $this->getUser($request);
+                if ($user && $user->managed_by) {
+                    $myQuery = clone $query;
+                    $myQuery->where('owner_id', $user->managed_by);
+                    $myAuctions = $myQuery->where('status', 'active')->orderBy('ends_at', 'asc')->get();
+                }
+                
+                $bidAuctionIds = Bid::where('user_id', $userId)->pluck('auction_id')->toArray();
+                $enrolledQuery = clone $query;
+                $enrolledAuctions = $enrolledQuery->whereIn('id', $bidAuctionIds)->where('status', 'active')->orderBy('ends_at', 'asc')->get();
             } else {
                 $bidAuctionIds = Bid::where('user_id', $userId)->pluck('auction_id')->toArray();
                 $enrolledQuery = clone $query;
@@ -189,7 +223,7 @@ class AuctionController extends Controller
 
     public function myBids(Request $request): \Illuminate\Http\Resources\Json\AnonymousResourceCollection
     {
-        $userId = $request->header('X-User-Id');
+        $userId = $this->getUserId($request);
         
         $bids = Bid::with(['auction.animal', 'auction.owner', 'user'])
             ->where('user_id', $userId)
@@ -201,7 +235,7 @@ class AuctionController extends Controller
 
     public function wonAuctions(Request $request): JsonResponse
     {
-        $userId = $request->header('X-User-Id');
+        $userId = $this->getUserId($request);
         
         $auctions = Auction::with(['animal', 'owner', 'winner'])
             ->where('winner_id', $userId)
@@ -222,7 +256,7 @@ class AuctionController extends Controller
 
     public function processStripePayment(Request $request, Auction $auction): JsonResponse
     {
-        $userId = $request->header('X-User-Id');
+        $userId = $this->getUserId($request);
 
         if ($auction->winner_id != $userId) {
             return response()->json(['message' => 'Only the winner can make payment'], 403);
@@ -300,8 +334,8 @@ class AuctionController extends Controller
             'duration_hours' => 'required|integer|min:1|max:168',
         ]);
 
-        $userId = $request->header('X-User-Id');
-        $userRole = $request->header('X-User-Role');
+        $userId = $this->getUserId($request);
+        $userRole = $this->getUserRole($request);
         
         if (!in_array($userRole, ['Admin', 'Owner', 'Manager'])) {
             return response()->json(['message' => 'Unauthorized to create auctions', 'error' => 'unauthorized'], 403);
@@ -315,7 +349,7 @@ class AuctionController extends Controller
         
         $ownerId = $userId;
         if ($userRole === 'Manager') {
-            $user = User::find($userId);
+            $user = $this->getUser($request);
             if ($user && $user->managed_by) {
                 $ownerId = $user->managed_by;
             }
@@ -354,7 +388,7 @@ class AuctionController extends Controller
 
     public function update(Request $request, Auction $auction): JsonResponse
     {
-        if (!$this->canAccessAuction($request, $auction)) {
+        if (!$this->canModifyAuction($request, $auction)) {
             return response()->json(['message' => 'Unauthorized', 'error' => 'unauthorized'], 403);
         }
 
@@ -393,7 +427,7 @@ class AuctionController extends Controller
 
     public function disqualifyBidder(Request $request, Auction $auction, Bid $bid): JsonResponse
     {
-        if (!$this->canAccessAuction($request, $auction)) {
+        if (!$this->canModifyAuction($request, $auction)) {
             return response()->json(['message' => 'Unauthorized', 'error' => 'unauthorized'], 403);
         }
 
@@ -426,7 +460,7 @@ class AuctionController extends Controller
 
     public function destroy(Request $request, Auction $auction): JsonResponse
     {
-        if (!$this->canAccessAuction($request, $auction)) {
+        if (!$this->canModifyAuction($request, $auction)) {
             return response()->json(['message' => 'Unauthorized', 'error' => 'unauthorized'], 403);
         }
 
@@ -447,7 +481,7 @@ class AuctionController extends Controller
             'amount' => "required|numeric|min:{$minimumBid}",
         ]);
 
-        $userId = $request->header('X-User-Id');
+        $userId = $this->getUserId($request);
 
         if ($auction->owner_id == $userId) {
             return response()->json(['message' => 'Cannot bid on your own auction'], 400);
@@ -457,7 +491,7 @@ class AuctionController extends Controller
             return response()->json(['message' => 'Auction is not active'], 400);
         }
 
-        $user = \App\Models\User::find($userId);
+        $user = $this->getUser($request);
 
         $bid = Bid::create([
             'auction_id' => $auction->id,
@@ -481,7 +515,7 @@ class AuctionController extends Controller
 
     public function cancel(Request $request, Auction $auction): JsonResponse
     {
-        if (!$this->canAccessAuction($request, $auction)) {
+        if (!$this->canModifyAuction($request, $auction)) {
             return response()->json(['message' => 'Unauthorized', 'error' => 'unauthorized'], 403);
         }
 
@@ -506,7 +540,7 @@ class AuctionController extends Controller
 
     public function endAuction(Request $request, Auction $auction): JsonResponse
     {
-        if (!$this->canAccessAuction($request, $auction)) {
+        if (!$this->canModifyAuction($request, $auction)) {
             return response()->json(['message' => 'Unauthorized', 'error' => 'unauthorized'], 403);
         }
 
@@ -557,7 +591,7 @@ class AuctionController extends Controller
 
     public function uploadPaymentProof(Request $request, Auction $auction): JsonResponse
     {
-        $userId = $request->header('X-User-Id');
+        $userId = $this->getUserId($request);
 
         if ($auction->winner_id != $userId) {
             return response()->json(['message' => 'Only the winner can upload payment proof'], 403);
@@ -591,8 +625,8 @@ class AuctionController extends Controller
 
     public function verifyPayment(Request $request, Auction $auction, string $status): JsonResponse
     {
-        $userId = $request->header('X-User-Id');
-        $userRole = $request->header('X-User-Role');
+        $userId = $this->getUserId($request);
+        $userRole = $this->getUserRole($request);
 
         if ($userRole !== 'Admin') {
             return response()->json(['message' => 'Only admins can verify payments'], 403);

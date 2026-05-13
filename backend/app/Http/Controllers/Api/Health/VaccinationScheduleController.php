@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Health;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Traits\OwnableAuthorization;
 use App\Models\VaccinationSchedule;
 use App\Models\Task;
 use App\Models\Animal;
@@ -11,14 +12,15 @@ use Illuminate\Support\Facades\Validator;
 
 class VaccinationScheduleController extends Controller
 {
+    use OwnableAuthorization;
     public function index(Request $request)
     {
-        $userId = $request->header('X-User-Id');
-        $userRole = $request->header('X-User-Role');
+        $userId = $this->getUserId($request);
+        $userRole = $this->getUserRole($request);
 
         $query = VaccinationSchedule::with(['animal:id,name,animal_id,identification_photo', 'assignee:id,name'])->latest();
 
-        if ($userRole === 'owner') {
+        if ($userRole === 'Owner') {
             $query->where('owner_id', $userId);
         }
 
@@ -50,12 +52,12 @@ class VaccinationScheduleController extends Controller
 
     public function stats(Request $request)
     {
-        $userId = $request->header('X-User-Id');
-        $userRole = $request->header('X-User-Role');
+        $userId = $this->getUserId($request);
+        $userRole = $this->getUserRole($request);
 
         $query = VaccinationSchedule::query();
 
-        if ($userRole === 'owner') {
+        if ($userRole === 'Owner') {
             $query->where('owner_id', $userId);
         }
 
@@ -78,6 +80,11 @@ class VaccinationScheduleController extends Controller
 
     public function store(Request $request)
     {
+        $userRole = $this->getUserRole($request);
+        if (!in_array($userRole, ['Admin', 'Owner', 'Manager', 'Doctor'])) {
+            return response()->json(['message' => 'Unauthorized', 'error' => 'unauthorized'], 403);
+        }
+
         $validator = Validator::make($request->all(), [
             'animal_id' => 'required|exists:animals,id',
             'vaccine_name' => 'required|string|max:255',
@@ -100,11 +107,27 @@ class VaccinationScheduleController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        $userId = $request->header('X-User-Id');
+        $userId = $this->getUserId($request);
+        $animal = Animal::find($request->animal_id);
+
+        if ($userRole !== 'Admin') {
+            $allowed = $animal && $animal->owner_id == $userId;
+            if ($userRole === 'Doctor' && !$allowed) {
+                $user = \App\Models\User::find($userId);
+                $allowed = $user && $user->managed_by && $animal->owner_id == $user->managed_by;
+            }
+            if ($userRole === 'Manager' && !$allowed) {
+                $user = \App\Models\User::find($userId);
+                $allowed = $user && $user->managed_by && $animal->owner_id == $user->managed_by;
+            }
+            if (!$allowed) {
+                return response()->json(['message' => 'Unauthorized to schedule vaccination for this animal', 'error' => 'unauthorized'], 403);
+            }
+        }
 
         $vaccination = VaccinationSchedule::create([
             'animal_id' => $request->animal_id,
-            'owner_id' => $userId,
+            'owner_id' => $animal->owner_id ?? $userId,
             'vaccine_name' => $request->vaccine_name,
             'vaccination_type' => $request->vaccination_type ?? 'routine',
             'assigned_to' => $request->assigned_to,
@@ -267,11 +290,31 @@ class VaccinationScheduleController extends Controller
 
     protected function authorizeView(Request $request, VaccinationSchedule $vaccinationSchedule): void
     {
-        $userRole = $request->header('X-User-Role');
-        $userId = $request->header('X-User-Id');
+        $userRole = $this->getUserRole($request);
+        $userId = $this->getUserId($request);
 
-        if ($userRole === 'owner' && $vaccinationSchedule->owner_id !== (int) $userId) {
-            abort(403, 'Unauthorized');
+        if ($userRole === 'Admin') {
+            return;
         }
+
+        if ($userRole === 'Owner' && $vaccinationSchedule->owner_id == $userId) {
+            return;
+        }
+
+        if ($userRole === 'Doctor') {
+            $user = \App\Models\User::find($userId);
+            if ($user && $user->managed_by && $vaccinationSchedule->owner_id == $user->managed_by) {
+                return;
+            }
+        }
+
+        if ($userRole === 'Manager') {
+            $user = \App\Models\User::find($userId);
+            if ($user && $user->managed_by && $vaccinationSchedule->owner_id == $user->managed_by) {
+                return;
+            }
+        }
+
+        abort(403, 'Unauthorized');
     }
 }

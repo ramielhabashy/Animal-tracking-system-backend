@@ -1,15 +1,16 @@
 import React from 'react';
 import { MaterialSymbol } from 'react-material-symbols';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { useI18n } from '../../i18n';
 import { useAuth } from '../../context/AuthContext';
 
 export default function Sidebar() {
   const { t, dir } = useI18n();
   const { user } = useAuth();
+  const navigate = useNavigate();
 
-  const isAdminOrOwner = user?.role === 'admin' || user?.role === 'owner';
-  const isAdmin = user?.role === 'admin';
+  const isAdminOrOwner = user?.role === 'Admin' || user?.role === 'Owner';
+  const isAdmin = user?.role === 'Admin';
 
   const navItems = [
     { icon: 'dashboard', label: t('nav.dashboard'), to: '/dashboard' },
@@ -22,7 +23,7 @@ export default function Sidebar() {
     { icon: 'gavel', label: t('nav.auctions'), to: '/auctions' },
     { icon: 'notification_important', label: t('nav.alerts'), to: '/alerts' },
     { icon: 'task', label: t('nav.tasks'), to: '/tasks' },
-    ...(isAdminOrOwner ? [{ icon: 'assessment', label: t('nav.reports'), to: '/reports' }] : []),
+    ...(isAdmin || user?.role === 'Owner' || user?.role === 'Manager' || user?.role === 'Doctor' ? [{ icon: 'assessment', label: t('nav.reports'), to: '/reports' }] : []),
     ...(isAdmin ? [{ icon: 'settings', label: t('common.settings'), to: '/profile' }] : []),
     ...(isAdmin ? [{ icon: 'admin_panel_settings', label: t('nav.roles'), to: '/settings/roles' }] : []),
   ];
@@ -70,12 +71,17 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      <div className="px-6 mt-auto">
-        <button className="w-full py-4 bg-[#735c00] text-white rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-[#735c00]/20 hover:scale-[1.02] transition-transform">
-          <MaterialSymbol icon="add_circle" size={20} />
-          {t('nav.addNewEntry')}
-        </button>
-      </div>
+      {['Admin', 'Owner', 'Manager', 'Shepherd'].includes(user?.role) && (
+        <div className="px-6 mt-auto">
+          <button
+            onClick={() => navigate('/animals/new')}
+            className="w-full py-4 bg-[#735c00] text-white rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-[#735c00]/20 hover:scale-[1.02] transition-transform"
+          >
+            <MaterialSymbol icon="add_circle" size={20} />
+            {t('nav.addNewEntry')}
+          </button>
+        </div>
+      )}
     </aside>
   );
 }

@@ -3,7 +3,7 @@ import { useState, useRef, useEffect } from 'react';
 import { MaterialSymbol } from 'react-material-symbols';
 import { useI18n } from '../i18n';
 import { useAuth } from '../context/AuthContext';
-import { getApiBase } from '../utils/api';
+import { apiFetch } from '../utils/api';
 
 const GEMINI_MODELS = [
   { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', description: 'Fast & capable', context: '1M tokens' },
@@ -55,6 +55,12 @@ export default function AIAssistant() {
   }, [messages]);
 
   useEffect(() => {
+    const handler = () => setIsOpen(prev => !prev);
+    window.addEventListener('toggle-ai-assistant', handler);
+    return () => window.removeEventListener('toggle-ai-assistant', handler);
+  }, []);
+
+  useEffect(() => {
     if (isOpen && user && hasApiKey) {
       fetchUserContext();
     }
@@ -62,18 +68,10 @@ export default function AIAssistant() {
 
   const fetchUserContext = async () => {
     try {
-      const headers = {
-        'Content-Type': 'application/json',
-        'X-User-Id': user?.id?.toString() || '',
-        'X-User-Role': user?.role || '',
-      };
-
-      const API_BASE = getApiBase();
-
       const [animalsRes, alertsRes, geofencesRes] = await Promise.all([
-        fetch(`${API_BASE}/api/animals`, { headers }).catch(() => null),
-        fetch(`${API_BASE}/api/alerts`, { headers }).catch(() => null),
-        fetch(`${API_BASE}/api/geofences`, { headers }).catch(() => null),
+        apiFetch('/api/animals').catch(() => null),
+        apiFetch('/api/alerts').catch(() => null),
+        apiFetch('/api/geofences').catch(() => null),
       ]);
 
       const [animals, alerts, geofences] = await Promise.all([
