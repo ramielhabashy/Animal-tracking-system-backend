@@ -3,63 +3,70 @@
 namespace App\Http\Controllers\Api\Location;
 
 use App\Http\Controllers\Controller;
-use App\Models\Device;
 use App\Models\Animal;
+use App\Models\AnimalGroup;
+use App\Models\Device;
 use App\Models\Geofence;
+use App\Models\GeofenceAlert;
+use App\Models\LocationHistory;
 use App\Models\User;
-use Illuminate\Http\Request;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class MapController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
         $user = $request->user();
-        $userId = $request->header('X-User-Id') ?? $user?->id;
-        $userRole = $request->header('X-User-Role') ?? $user?->getPrimaryRoleName();
+        $userId = $user?->id;
+        $userRole = $user?->getPrimaryRoleName();
 
         $animalIds = null;
+        $ownerIds = null;
 
         if ($userRole !== 'Admin') {
-            if ($userRole === 'Owner') {
-                $animalIds = Animal::where('owner_id', $userId)->pluck('id')->toArray();
-            } elseif ($userRole === 'Manager') {
-                $managedUsers = User::where('managed_by', $userId)->pluck('id')->toArray();
-                $managedUsers[] = $userId;
-                $animalIds = Animal::whereIn('owner_id', $managedUsers)->pluck('id')->toArray();
-            } elseif ($userRole === 'Doctor' || $userRole === 'Shepherd') {
-                $u = User::find($userId);
-                if ($u && $u->managed_by) {
-                    $animalIds = Animal::where('owner_id', $u->managed_by)->pluck('id')->toArray();
-                } else {
-                    $animalIds = [0];
-                }
-            } else {
-                $animalIds = Animal::where('owner_id', $userId)->pluck('id')->toArray();
-            }
+            $ownerIds = match ($userRole) {
+                'Owner' => [$userId],
+                'Manager' => array_merge(
+                    User::where('managed_by', $userId)->pluck('id')->toArray(),
+                    [$userId]
+                ),
+                'Doctor', 'Shepherd' => $user?->managed_by ? [$user->managed_by] : [0],
+                default => [$userId],
+            };
+            $animalIds = Animal::whereIn('owner_id', $ownerIds)->pluck('id')->toArray();
         }
 
-        $deviceQuery = Device::whereNotNull('gps_lat')
-            ->whereNotNull('gps_lng')
-            ->with(['animal.owner', 'animal.locationHistory', 'animal.geofences']);
+        $deviceQuery = Device::whereNotNull('animal_id')
+            ->with(['animal.owner', 'animal.geofences', 'animal.groups']);
 
         if ($animalIds !== null) {
             $deviceQuery->whereIn('animal_id', $animalIds);
         }
 
-        $devices = $deviceQuery->get()->map(function ($device) {
+        $hours = (int) $request->input('hours', 48);
+
+        $devices = $deviceQuery->get()->map(function ($device) use ($hours) {
             $animal = $device->animal;
-            $loc = $animal?->locationHistory;
+            $locationHistory = $animal ? LocationHistory::where('animal_id', $animal->id)
+                ->where('recorded_at', '>=', Carbon::now()->subHours($hours))
+                ->orderBy('recorded_at', 'asc')
+                ->get(['latitude', 'longitude', 'speed', 'heading', 'recorded_at']) : collect();
+
+            $hasGps = !is_null($device->gps_lat) && !is_null($device->gps_lng);
+
             return [
-                'id' => 'device-' . $device->id,
+                'id' => 'device-'.$device->id,
                 'device_id' => $device->device_id,
                 'name' => $device->name,
                 'type' => $device->type,
                 'status' => $device->status,
                 'battery_level' => $device->battery_level,
                 'signal_strength' => $device->signal_strength,
-                'gps_lat' => (float) $device->gps_lat,
-                'gps_lng' => (float) $device->gps_lng,
+                'has_gps' => $hasGps,
+                'gps_lat' => $hasGps ? (float) $device->gps_lat : null,
+                'gps_lng' => $hasGps ? (float) $device->gps_lng : null,
                 'last_ping' => $device->last_ping?->toISOString(),
                 'animal' => $animal ? [
                     'id' => $animal->id,
@@ -68,39 +75,45 @@ class MapController extends Controller
                     'species' => $animal->species,
                     'breed' => $animal->breed,
                     'gender' => $animal->gender,
-                    'current_weight' => $animal->current_weight,
-                    'baseline_temperature' => $animal->baseline_temperature,
+                    'date_of_birth' => $animal->date_of_birth?->format('Y-m-d'),
+                    'color_markings' => $animal->color_markings,
+                    'current_weight' => $animal->current_weight ? (float) $animal->current_weight : null,
+                    'baseline_temperature' => $animal->baseline_temperature ? (float) $animal->baseline_temperature : null,
+                    'normal_heart_rate' => $animal->normal_heart_rate,
                     'owner_id' => $animal->owner_id,
                     'owner_name' => $animal->owner?->name,
                     'geofence_ids' => $animal->geofences->pluck('id')->toArray(),
+                    'groups' => $animal->groups->map(fn ($g) => [
+                        'id' => $g->id,
+                        'name' => $g->name,
+                        'color' => $g->color,
+                    ]),
                 ] : null,
-                'location_history' => $loc ? [
+                'location_history' => $locationHistory->map(fn ($loc) => [
                     'latitude' => (float) $loc->latitude,
                     'longitude' => (float) $loc->longitude,
                     'speed' => $loc->speed,
                     'heading' => $loc->heading,
                     'recorded_at' => $loc->recorded_at?->toISOString(),
-                ] : null,
+                ]),
             ];
         });
 
-        $geofenceQuery = Geofence::with(['animals', 'owner']);
-
-        if ($animalIds !== null) {
-            $u = User::find($userId);
-            $ownerIds = [$userId];
-            if (in_array($userRole, ['Doctor', 'Shepherd']) && $u && $u->managed_by) {
-                $ownerIds = [$u->managed_by];
-            } elseif ($userRole === 'Manager') {
-                $managedUsers = User::where('managed_by', $userId)->pluck('id')->toArray();
-                $managedUsers[] = $userId;
-                $ownerIds = $managedUsers;
-            }
-            $geofenceQuery->whereIn('owner_id', $ownerIds);
-        }
-
-        $geofences = $geofenceQuery->get()->map(function ($geofence) {
-            return [
+        $geofences = Geofence::withCount('animals')
+            ->with('owner:id,name')
+            ->when($animalIds !== null, function ($q) use ($userRole, $userId, $user) {
+                $ownerIds = match ($userRole) {
+                    'Doctor', 'Shepherd' => $user?->managed_by ? [$user->managed_by] : [0],
+                    'Manager' => array_merge(
+                        User::where('managed_by', $userId)->pluck('id')->toArray(),
+                        [$userId]
+                    ),
+                    default => [$userId],
+                };
+                $q->whereIn('owner_id', $ownerIds);
+            })
+            ->get()
+            ->map(fn ($geofence) => [
                 'id' => $geofence->id,
                 'name' => $geofence->name,
                 'coordinates' => $geofence->coordinates,
@@ -109,33 +122,61 @@ class MapController extends Controller
                 'is_active' => $geofence->is_active,
                 'owner_id' => $geofence->owner_id,
                 'owner_name' => $geofence->owner?->name,
-                'animal_count' => $geofence->animals->count(),
-            ];
-        });
+                'animal_count' => $geofence->animals_count,
+            ]);
 
-        $ownerInfo = null;
-        if ($userId) {
-            $ownerUser = User::with('animals')->find($userId);
-            if ($ownerUser) {
-                $ownerInfo = [
-                    'id' => $ownerUser->id,
-                    'name' => $ownerUser->name,
-                    'email' => $ownerUser->email,
-                    'location' => $ownerUser->location,
-                    'animal_count' => $ownerUser->animals->count(),
-                ];
-            }
-        }
+        $alerts = GeofenceAlert::where('is_acknowledged', false)
+            ->when($animalIds !== null, fn ($q) => $q->whereIn('animal_id', $animalIds))
+            ->count();
+
+        $groups = AnimalGroup::query()
+            ->when($ownerIds !== null, fn ($q) => $q->whereIn('owner_id', $ownerIds))
+            ->get(['id', 'name', 'color', 'owner_id']);
+
+        $users = User::query()
+            ->when($userRole !== 'Admin', function ($q) use ($userRole, $userId, $user) {
+                if ($userRole === 'Owner') {
+                    $q->where(function ($sq) use ($userId) {
+                        $sq->where('managed_by', $userId)->orWhere('id', $userId);
+                    });
+                } elseif ($userRole === 'Manager' || $userRole === 'Doctor' || $userRole === 'Shepherd') {
+                    if ($user?->managed_by) {
+                        $q->where(function ($sq) use ($user) {
+                            $sq->where('id', $user->managed_by)
+                                ->orWhere('managed_by', $user->managed_by)
+                                ->orWhere('id', $user->id);
+                        });
+                    } else {
+                        $q->where('id', $user->id);
+                    }
+                } else {
+                    $q->where('id', $userId);
+                }
+            })
+            ->get(['id', 'name', 'email']);
+
+        $ownerInfo = $userId ? [
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'location' => $user->location,
+            'animal_count' => $user->animals()->count(),
+        ] : null;
+
+        $devicesWithGps = $devices->filter(fn ($d) => $d['has_gps']);
 
         return response()->json([
             'markers' => $devices,
             'geofences' => $geofences,
+            'alerts' => ['unacknowledged_count' => $alerts],
+            'groups' => $groups,
+            'users' => $users,
             'owner' => $ownerInfo,
             'bounds' => [
-                'north' => $devices->isNotEmpty() ? $devices->max('gps_lat') : 25.0,
-                'south' => $devices->isNotEmpty() ? $devices->min('gps_lat') : 24.0,
-                'east' => $devices->isNotEmpty() ? $devices->max('gps_lng') : 56.0,
-                'west' => $devices->isNotEmpty() ? $devices->min('gps_lng') : 51.0,
+                'north' => $devicesWithGps->isNotEmpty() ? $devicesWithGps->max('gps_lat') : 25.0,
+                'south' => $devicesWithGps->isNotEmpty() ? $devicesWithGps->min('gps_lat') : 24.0,
+                'east' => $devicesWithGps->isNotEmpty() ? $devicesWithGps->max('gps_lng') : 56.0,
+                'west' => $devicesWithGps->isNotEmpty() ? $devicesWithGps->min('gps_lng') : 51.0,
             ],
         ]);
     }

@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Laravel\Sanctum\HasApiTokens;
+use Spatie\Permission\Models\Role;
 use Spatie\Permission\Traits\HasRoles;
 
 /**
@@ -101,10 +102,17 @@ class User extends Authenticatable
 
     public function canManage(User $user): bool
     {
-        if ($this->hasRole('Admin')) return true;
+        if ($this->isAdmin()) return true;
+        if ($this->isStaff()) return true;
         if ($this->hasRole('Owner') && $user->managed_by === $this->id) return true;
         if ($this->hasRole('Manager') && $user->managed_by === $this->id) return true;
         return false;
+    }
+
+    public function isStaff(): bool
+    {
+        $role = Role::where('name', $this->getPrimaryRoleName())->first();
+        return $role && $role->type === 'admin';
     }
 
     public function getAnimalCount(): int

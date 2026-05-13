@@ -61,6 +61,10 @@ class LocationHistoryController extends Controller
 
         $device = Device::findOrFail($validated['device_id']);
 
+        if (!$this->canAccessOwner($request, $device->owner_id)) {
+            return response()->json(['message' => 'Unauthorized', 'error' => 'unauthorized'], 403);
+        }
+
         if (!$device->animal_id) {
             return response()->json(['message' => 'No animal assigned to this device'], 404);
         }

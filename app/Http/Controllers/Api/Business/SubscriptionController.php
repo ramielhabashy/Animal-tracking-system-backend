@@ -11,9 +11,11 @@ use Stripe\Stripe;
 use Stripe\Charge;
 use Stripe\Token;
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Traits\SendsEmailNotifications;
 
 class SubscriptionController extends Controller
 {
+    use SendsEmailNotifications;
     private function getRequestUser(Request $request): ?User
     {
         if ($request->user()) {
@@ -303,6 +305,19 @@ class SubscriptionController extends Controller
         if ($freeTier) {
             $user->update(['subscription_tier_id' => $freeTier->id]);
         }
+
+        $this->sendNotificationMail(
+            $user,
+            'subscription',
+            'Subscription Cancelled',
+            [
+                'Your subscription has been cancelled successfully.',
+                'You have been moved to the Free plan.',
+                'You can reactivate anytime from your subscription page.',
+            ],
+            rtrim(env('FRONTEND_URL', config('app.url')), '/') . '/subscription',
+            'View Subscription',
+        );
 
         return response()->json([
             'message' => 'Subscription cancelled successfully',
@@ -738,6 +753,18 @@ class SubscriptionController extends Controller
             'payment_reference' => asset('storage/' . $path),
         ]);
 
+        $this->sendNotificationMail(
+            $user,
+            'subscription',
+            'Payment Proof Received',
+            [
+                "Your payment proof for the {$tier->name} plan has been received.",
+                'It will be reviewed by an administrator and you will be notified once approved.',
+            ],
+            rtrim(env('FRONTEND_URL', config('app.url')), '/') . '/subscription',
+            'View Subscription',
+        );
+
         return response()->json([
             'message' => 'Bank transfer proof uploaded. You will be notified once approved.',
         ]);
@@ -775,6 +802,21 @@ class SubscriptionController extends Controller
 
         $user->update(['subscription_tier_id' => $tier->id]);
 
+        if ($user) {
+            $this->sendNotificationMail(
+                $user,
+                'subscription',
+                'Payment Approved – ' . ($tier->name ?? 'Subscription') . ' Plan Activated',
+                [
+                    'Your payment has been approved and your subscription is now active.',
+                    "Plan: {$tier->name}",
+                    "Valid until: {$subscription->ends_at?->format('M d, Y')}",
+                ],
+                rtrim(env('FRONTEND_URL', config('app.url')), '/') . '/subscription',
+                'View Subscription',
+            );
+        }
+
         return response()->json([
             'message' => 'Payment approved and subscription activated',
             'data' => $subscription->load(['user', 'tier']),
@@ -794,6 +836,21 @@ class SubscriptionController extends Controller
         }
 
         $subscription->update(['status' => 'rejected']);
+
+        $user = User::find($subscription->user_id);
+        if ($user) {
+            $this->sendNotificationMail(
+                $user,
+                'subscription',
+                'Payment Rejected',
+                [
+                    'Your payment for the subscription has been rejected.',
+                    'Please contact support or try a different payment method.',
+                ],
+                rtrim(env('FRONTEND_URL', config('app.url')), '/') . '/subscription',
+                'View Subscription',
+            );
+        }
 
         return response()->json([
             'message' => 'Payment rejected',
@@ -838,6 +895,18 @@ class SubscriptionController extends Controller
             'paused_at' => now(),
         ]);
 
+        $this->sendNotificationMail(
+            $user,
+            'subscription',
+            'Subscription Paused',
+            [
+                'Your subscription has been paused by an administrator.',
+                'You can reactivate it anytime by contacting support.',
+            ],
+            rtrim(env('FRONTEND_URL', config('app.url')), '/') . '/subscription',
+            'View Subscription',
+        );
+
         return response()->json([
             'message' => 'Subscription paused successfully',
             'data' => $subscription->fresh()->load('tier'),
@@ -869,6 +938,19 @@ class SubscriptionController extends Controller
 
         $user->update(['subscription_tier_id' => $subscription->tier_id]);
 
+        $tierName = $subscription->tier?->name ?? 'Subscription';
+        $this->sendNotificationMail(
+            $user,
+            'subscription',
+            "Subscription Reactivated – {$tierName}",
+            [
+                "Your {$tierName} plan has been reactivated by an administrator.",
+                "You now have full access to your plan features.",
+            ],
+            rtrim(env('FRONTEND_URL', config('app.url')), '/') . '/subscription',
+            'View Subscription',
+        );
+
         return response()->json([
             'message' => 'Subscription reactivated successfully',
             'data' => $subscription->fresh()->load('tier'),
@@ -899,6 +981,19 @@ class SubscriptionController extends Controller
 
         $freeTier = SubscriptionTier::where('slug', 'free')->first();
         $user->update(['subscription_tier_id' => $freeTier?->id]);
+
+        $tierName = $subscription->tier?->name ?? 'Subscription';
+        $this->sendNotificationMail(
+            $user,
+            'subscription',
+            "Subscription Cancelled – {$tierName}",
+            [
+                "Your {$tierName} subscription has been cancelled by an administrator.",
+                'You have been moved to the Free plan.',
+            ],
+            rtrim(env('FRONTEND_URL', config('app.url')), '/') . '/subscription',
+            'View Subscription',
+        );
 
         return response()->json([
             'message' => 'Subscription cancelled successfully',
@@ -949,6 +1044,19 @@ class SubscriptionController extends Controller
         $subscription->update([
             'ends_at' => now()->add($period),
         ]);
+
+        $tierName = $subscription->tier?->name ?? 'Subscription';
+        $this->sendNotificationMail(
+            $user,
+            'subscription',
+            "Subscription Renewed – {$tierName}",
+            [
+                "Your {$tierName} plan has been renewed successfully.",
+                "New expiry date: {$subscription->ends_at?->format('M d, Y')}",
+            ],
+            rtrim(env('FRONTEND_URL', config('app.url')), '/') . '/subscription',
+            'View Subscription',
+        );
 
         return response()->json([
             'message' => 'Subscription renewed successfully',

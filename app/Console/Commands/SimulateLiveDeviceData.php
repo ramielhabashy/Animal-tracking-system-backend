@@ -32,8 +32,8 @@ class SimulateLiveDeviceData extends Command
             $this->info("\nStopping simulation...");
         });
 
-        $baseLat = 24.4539;
-        $baseLng = 54.3773;
+        $baseLat = 24.7136;
+        $baseLng = 46.6753;
 
         while ($this->running) {
             $startTime = microtime(true);
@@ -59,8 +59,8 @@ class SimulateLiveDeviceData extends Command
                         $newLat = $lastLocation->latitude + $latOffset;
                         $newLng = $lastLocation->longitude + $lngOffset;
                     } else {
-                        $baseLat = 24.4539 + (rand(-100, 100) / 10000);
-                        $baseLng = 54.3773 + (rand(-100, 100) / 10000);
+                        $baseLat = 24.7136 + (rand(-100, 100) / 10000);
+                        $baseLng = 46.6753 + (rand(-100, 100) / 10000);
                         $newLat = $device->gps_lat ?? $baseLat;
                         $newLng = $device->gps_lng ?? $baseLng;
                     }

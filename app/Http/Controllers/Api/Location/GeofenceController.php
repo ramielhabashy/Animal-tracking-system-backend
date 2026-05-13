@@ -385,15 +385,13 @@ class GeofenceController extends Controller
 
     public function availableAnimals(Request $request, Geofence $geofence): JsonResponse
     {
-        $authUser = $request->user();
-        $role = $authUser ? $this->getUserRole($request) : $request->header('X-User-Role');
+        $role = $this->getUserRole($request);
         
         $geofenceOwnerId = $geofence->owner_id;
         
         $query = Animal::with('device');
         
-        if ($role === 'Admin') {
-        } else {
+        if ($role !== 'Admin') {
             $query->where('owner_id', $geofenceOwnerId);
         }
 
@@ -456,15 +454,13 @@ class GeofenceController extends Controller
 
     public function availableGroups(Request $request, Geofence $geofence): JsonResponse
     {
-        $authUser = $request->user();
-        $role = $authUser ? $this->getUserRole($request) : $request->header('X-User-Role');
+        $role = $this->getUserRole($request);
         
         $geofenceOwnerId = $geofence->owner_id;
         
         $query = AnimalGroup::with('animals');
         
-        if ($role === 'Admin') {
-        } else {
+        if ($role !== 'Admin') {
             $query->where('owner_id', $geofenceOwnerId);
         }
 

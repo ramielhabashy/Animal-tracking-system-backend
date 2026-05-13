@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Traits\SendsEmailNotifications;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -17,6 +18,7 @@ use Laravel\Sanctum\PersonalAccessToken;
  */
 class AuthController extends Controller
 {
+    use SendsEmailNotifications;
     /**
      * User Login
      * Validates credentials, checks account status, and returns auth token
@@ -110,6 +112,18 @@ class AuthController extends Controller
 
         // Generate auth token for immediate login after registration
         $token = $user->createToken('auth-token')->plainTextToken;
+
+        $this->sendNotificationMail(
+            $user,
+            'welcome',
+            'Welcome to ' . config('app.name', 'Oasis Trace'),
+            [
+                'Your account has been created successfully.',
+                'You can now log in and start managing your livestock with all the features available to you.',
+            ],
+            rtrim(env('FRONTEND_URL', config('app.url')), '/') . '/login',
+            'Go to Dashboard',
+        );
 
         return response()->json([
             'user' => [

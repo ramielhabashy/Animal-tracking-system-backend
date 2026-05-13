@@ -29,6 +29,10 @@ use App\Http\Controllers\Api\Health\HealthCheckController;
 use App\Http\Controllers\Api\Webhook\StripeWebhookController;
 use App\Http\Controllers\DashboardController;
 
+// Invitation routes (public)
+Route::get('/invitations/{token}', [App\Http\Controllers\Api\InvitationController::class, 'show']);
+Route::post('/invitations/{token}/accept', [App\Http\Controllers\Api\InvitationController::class, 'accept']);
+
 // Public routes
 Route::post('/auth/login', [AuthController::class, 'login'])->name('login')->middleware('throttle:30,1');
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:30,1');
@@ -75,12 +79,21 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/reports', [ReportsController::class, 'index'])->middleware('throttle:60,1');
 
     // Animals
+    Route::get('/animals/stats', [AnimalController::class, 'stats'])->middleware(['limits:animals', 'throttle:60,1']);
     Route::apiResource('animals', AnimalController::class)->middleware(['limits:animals', 'throttle:60,1']);
     Route::get('/animals/{id}/location-history', [LocationHistoryController::class, 'index'])->middleware('throttle:60,1');
     Route::post('/animals/{animal}/transfer-ownership', [AnimalController::class, 'transferOwnership'])->middleware('throttle:60,1');
 
     // Devices
     Route::apiResource('devices', DeviceController::class)->middleware(['limits:devices', 'throttle:60,1']);
+    Route::post('/devices/provision', [DeviceController::class, 'provision'])->middleware(['limits:devices', 'throttle:60,1']);
+    Route::post('/devices/batch', [DeviceController::class, 'batchStore'])->middleware(['limits:devices', 'throttle:60,1']);
+
+    // Invitations
+    Route::get('/invitations', [App\Http\Controllers\Api\InvitationController::class, 'index']);
+    Route::post('/invitations', [App\Http\Controllers\Api\InvitationController::class, 'store']);
+    Route::post('/invitations/{id}/resend', [App\Http\Controllers\Api\InvitationController::class, 'resend']);
+    Route::delete('/invitations/{id}', [App\Http\Controllers\Api\InvitationController::class, 'cancel']);
 
     // Users - explicit routes instead of apiResource for debugging
     Route::get('/users', [UserController::class, 'index']);
@@ -247,6 +260,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/notifications/unread-count', [App\Http\Controllers\Api\Notifications\NotificationController::class, 'unreadCount'])->middleware('throttle:60,1');
     Route::patch('/notifications/{notification}/read', [App\Http\Controllers\Api\Notifications\NotificationController::class, 'markAsRead'])->middleware('throttle:60,1');
     Route::post('/notifications/read-all', [App\Http\Controllers\Api\Notifications\NotificationController::class, 'markAllAsRead'])->middleware('throttle:60,1');
+
+    // Translation
+    Route::post('/translate', [App\Http\Controllers\Api\TranslationController::class, 'translate'])->middleware('throttle:30,1');
+    Route::post('/translate/batch', [App\Http\Controllers\Api\TranslationController::class, 'translateBatch'])->middleware('throttle:10,1');
 });
 
 // Admin-only routes
@@ -303,12 +320,29 @@ Route::middleware(['auth:sanctum', 'role:Admin'])->group(function () {
     Route::get('/admin/settings/notifications', [AdminSettingsController::class, 'getNotificationSettings'])->middleware('throttle:60,1');
     Route::post('/admin/settings/notifications', [AdminSettingsController::class, 'saveNotificationSettings'])->middleware('throttle:60,1');
 
+    // Translation Settings
+    Route::get('/admin/settings/translation', [AdminSettingsController::class, 'getTranslationSettings'])->middleware('throttle:60,1');
+    Route::post('/admin/settings/translation', [AdminSettingsController::class, 'saveTranslationSettings'])->middleware('throttle:60,1');
+
+    // Email Notification Preferences
+    Route::get('/admin/settings/email-preferences', [AdminSettingsController::class, 'getEmailNotificationPreferences'])->middleware('throttle:60,1');
+    Route::post('/admin/settings/email-preferences', [AdminSettingsController::class, 'saveEmailNotificationPreferences'])->middleware('throttle:60,1');
+
     // Export
     Route::get('/export/animals', [ExportController::class, 'exportAnimals'])->middleware('throttle:60,1');
     Route::get('/export/devices', [ExportController::class, 'exportDevices'])->middleware('throttle:60,1');
     Route::get('/export/geofences', [ExportController::class, 'exportGeofences'])->middleware('throttle:60,1');
     Route::get('/export/users', [ExportController::class, 'exportUsers'])->middleware('throttle:60,1');
     Route::get('/export/database', [ExportController::class, 'exportDatabase'])->middleware('throttle:60,1');
+
+    // Simulator
+    Route::get('/simulator/devices', [App\Http\Controllers\Api\Admin\SimulatorController::class, 'devices'])->middleware('throttle:60,1');
+    Route::post('/simulator/move', [App\Http\Controllers\Api\Admin\SimulatorController::class, 'move'])->middleware('throttle:60,1');
+    Route::post('/simulator/batch', [App\Http\Controllers\Api\Admin\SimulatorController::class, 'batch'])->middleware('throttle:60,1');
+    Route::post('/simulator/recharge', [App\Http\Controllers\Api\Admin\SimulatorController::class, 'recharge'])->middleware('throttle:60,1');
+    Route::post('/simulator/teleport', [App\Http\Controllers\Api\Admin\SimulatorController::class, 'teleport'])->middleware('throttle:60,1');
+    Route::post('/simulator/demo-seed', [App\Http\Controllers\Api\Admin\SimulatorController::class, 'demoSeed'])->middleware('throttle:60,1');
+    Route::post('/simulator/demo-reset', [App\Http\Controllers\Api\Admin\SimulatorController::class, 'demoReset'])->middleware('throttle:60,1');
 
     // Role Management
     Route::post('/admin/roles', [RoleManagementController::class, 'storeRole'])->middleware('throttle:60,1');

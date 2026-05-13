@@ -11,11 +11,12 @@ use Illuminate\Http\JsonResponse;
 use App\Http\Resources\AuctionResource;
 use App\Http\Resources\BidResource;
 use App\Http\Controllers\Traits\OwnableAuthorization;
+use App\Http\Controllers\Traits\SendsEmailNotifications;
 use App\Http\Controllers\Controller;
 
 class AuctionController extends Controller
 {
-    use OwnableAuthorization;
+    use OwnableAuthorization, SendsEmailNotifications;
     
     private function canAccessAuction(Request $request, Auction $auction): bool
     {
@@ -372,14 +373,32 @@ class AuctionController extends Controller
         $auction->time_remaining = $auction->timeRemaining();
         $auction->bid_count = 0;
 
+        $adminUsers = User::role('Admin')->get();
+        foreach ($adminUsers as $admin) {
+            \App\Models\Notification::create([
+                'user_id' => $admin->id,
+                'type' => 'auction_new',
+                'title' => 'New auction created',
+                'body' => "A new auction \"{$auction->title}\" has been started by {$auction->owner->name}.",
+                'data' => [
+                    'auction_id' => $auction->id,
+                    'link' => "/auctions/{$auction->id}",
+                ],
+            ]);
+        }
+
         return response()->json([
             'message' => 'Auction created successfully',
             'data' => new AuctionResource($auction),
         ], 201);
     }
 
-    public function show(Auction $auction)
+    public function show(Request $request, Auction $auction)
     {
+        if (!$this->canAccessAuction($request, $auction)) {
+            return response()->json(['message' => 'Unauthorized', 'error' => 'unauthorized'], 403);
+        }
+
         $auction->load(['animal', 'owner', 'bids.user']);
         $auction->time_remaining = $auction->timeRemaining();
         $auction->bid_count = $auction->bidCount();
@@ -435,7 +454,9 @@ class AuctionController extends Controller
             return response()->json(['message' => 'Bid does not belong to this auction'], 400);
         }
 
+        $disqualifiedUserId = $bid->user_id;
         $wasWinning = $bid->is_winning;
+        $bidAmount = $bid->amount;
         $bid->delete();
 
         if ($wasWinning) {
@@ -447,6 +468,17 @@ class AuctionController extends Controller
                 $auction->update(['current_price' => $auction->starting_price]);
             }
         }
+
+        \App\Models\Notification::create([
+            'user_id' => $disqualifiedUserId,
+            'type' => 'bidder_disqualified',
+            'title' => 'You\'ve been disqualified',
+            'body' => "Your bid of {$bidAmount} SAR on \"{$auction->title}\" has been disqualified.",
+            'data' => [
+                'auction_id' => $auction->id,
+                'link' => "/auctions/{$auction->id}",
+            ],
+        ]);
 
         $auction->load(['animal', 'owner', 'bids']);
         $auction->time_remaining = $auction->timeRemaining();
@@ -493,16 +525,79 @@ class AuctionController extends Controller
 
         $user = $this->getUser($request);
 
+        $previousHighestBid = $auction->highestBid();
+
         $bid = Bid::create([
             'auction_id' => $auction->id,
             'user_id' => $userId,
             'amount' => $validated['amount'],
             'bidder_name' => $user->name ?? 'Anonymous',
             'bid_at' => now(),
+            'is_winning' => true,
         ]);
+
+        if ($previousHighestBid) {
+            $previousHighestBid->update(['is_winning' => false]);
+
+            if ($previousHighestBid->user_id != $userId) {
+                \App\Models\Notification::create([
+                    'user_id' => $previousHighestBid->user_id,
+                    'type' => 'auction_outbid',
+                    'title' => 'You\'ve been outbid!',
+                    'body' => "Someone placed a higher bid ({$bid->amount} SAR) on \"{$auction->title}\".",
+                    'data' => [
+                        'auction_id' => $auction->id,
+                        'link' => "/auctions/{$auction->id}",
+                    ],
+                ]);
+
+                $previousBidder = User::find($previousHighestBid->user_id);
+                if ($previousBidder) {
+                    $this->sendNotificationMail(
+                        $previousBidder,
+                        'auction_bid',
+                        "You've Been Outbid – {$auction->title}",
+                        [
+                            "Someone placed a higher bid of {$bid->amount} SAR on \"{$auction->title}\".",
+                            'Place a new bid to regain the winning position.',
+                        ],
+                        rtrim(env('FRONTEND_URL', config('app.url')), '/') . "/auctions/{$auction->id}",
+                        'View Auction',
+                    );
+                }
+            }
+        }
 
         $auction->update(['current_price' => $validated['amount']]);
         $auction->load(['animal', 'owner', 'bids.user']);
+
+        \App\Models\Notification::create([
+            'user_id' => $auction->owner_id,
+            'type' => 'auction_bid',
+            'title' => 'New bid on your auction',
+            'body' => "{$user->name} placed a bid of {$bid->amount} SAR on \"{$auction->title}\".",
+            'data' => [
+                'auction_id' => $auction->id,
+                'bid_id' => $bid->id,
+                'link' => "/auctions/{$auction->id}",
+            ],
+        ]);
+
+        $auctionOwner = User::find($auction->owner_id);
+        if ($auctionOwner) {
+            $this->sendNotificationMail(
+                $auctionOwner,
+                'auction_bid',
+                "New Bid on Your Auction – {$auction->title}",
+                [
+                    "{$user->name} placed a bid of {$bid->amount} SAR on \"{$auction->title}\".",
+                    'Check your auction for the latest activity.',
+                ],
+                rtrim(env('FRONTEND_URL', config('app.url')), '/') . "/auctions/{$auction->id}",
+                'View Auction',
+            );
+        }
+
         $auction->time_remaining = $auction->timeRemaining();
         $auction->bid_count = $auction->bidCount();
 
@@ -523,10 +618,24 @@ class AuctionController extends Controller
             return response()->json(['message' => 'Cannot cancel a sold auction'], 400);
         }
 
+        $bidderIds = $auction->bids()->pluck('user_id')->unique()->toArray();
+
         $auction->update([
             'status' => 'cancelled',
             'ended_at' => now(),
         ]);
+
+        foreach ($bidderIds as $bidderId) {
+            \App\Models\Notification::create([
+                'user_id' => $bidderId,
+                'type' => 'auction_cancelled',
+                'title' => 'Auction cancelled',
+                'body' => "The auction \"{$auction->title}\" has been cancelled.",
+                'data' => [
+                    'auction_id' => $auction->id,
+                ],
+            ]);
+        }
 
         $auction->load(['animal', 'owner', 'bids']);
         $auction->time_remaining = $auction->timeRemaining();
@@ -566,17 +675,95 @@ class AuctionController extends Controller
                     'payment_expires_at' => now()->addHours(24),
                     'payment_status' => 'pending',
                 ]);
+
+                \App\Models\Notification::create([
+                    'user_id' => $highestBid->user_id,
+                    'type' => 'auction_won',
+                    'title' => 'You won the auction!',
+                    'body' => "Congratulations! You won \"{$auction->title}\" for {$highestBid->amount} SAR. Complete payment within 24 hours.",
+                    'data' => [
+                        'auction_id' => $auction->id,
+                        'link' => "/auctions/{$auction->id}",
+                    ],
+                ]);
+
+                $winner = User::find($highestBid->user_id);
+                if ($winner) {
+                    $this->sendNotificationMail(
+                        $winner,
+                        'auction_won',
+                        "Congratulations! You Won – {$auction->title}",
+                        [
+                            "You won \"{$auction->title}\" with a bid of {$highestBid->amount} SAR.",
+                            'Please complete your payment within 24 hours to secure the animal.',
+                        ],
+                        rtrim(env('FRONTEND_URL', config('app.url')), '/') . "/auctions/{$auction->id}",
+                        'Complete Payment',
+                    );
+                }
             } else {
                 $auction->update([
                     'status' => 'ended',
                     'ended_at' => now(),
                 ]);
+
+                \App\Models\Notification::create([
+                    'user_id' => $auction->owner_id,
+                    'type' => 'auction_ended',
+                    'title' => 'Auction ended - reserve not met',
+                    'body' => "Your auction \"{$auction->title}\" ended without meeting the reserve price.",
+                    'data' => [
+                        'auction_id' => $auction->id,
+                        'link' => "/auctions/{$auction->id}",
+                    ],
+                ]);
+
+                $owner = User::find($auction->owner_id);
+                if ($owner) {
+                    $this->sendNotificationMail(
+                        $owner,
+                        'auction_bid',
+                        "Auction Ended – Reserve Not Met – {$auction->title}",
+                        [
+                            "Your auction \"{$auction->title}\" has ended.",
+                            'The highest bid did not meet the reserve price. No sale was made.',
+                        ],
+                        rtrim(env('FRONTEND_URL', config('app.url')), '/') . "/auctions/{$auction->id}",
+                        'View Auction',
+                    );
+                }
             }
         } else {
             $auction->update([
                 'status' => 'ended',
                 'ended_at' => now(),
             ]);
+
+            \App\Models\Notification::create([
+                'user_id' => $auction->owner_id,
+                'type' => 'auction_ended',
+                'title' => 'Auction ended - no bids',
+                'body' => "Your auction \"{$auction->title}\" ended with no bids placed.",
+                'data' => [
+                    'auction_id' => $auction->id,
+                    'link' => "/auctions/{$auction->id}",
+                ],
+            ]);
+
+            $owner = User::find($auction->owner_id);
+            if ($owner) {
+                $this->sendNotificationMail(
+                    $owner,
+                    'auction_bid',
+                    "Auction Ended – No Bids – {$auction->title}",
+                    [
+                        "Your auction \"{$auction->title}\" has ended with no bids placed.",
+                        'You can relist the auction or adjust the pricing.',
+                    ],
+                    rtrim(env('FRONTEND_URL', config('app.url')), '/') . "/auctions/{$auction->id}",
+                    'View Auction',
+                );
+            }
         }
 
         $auction->load(['animal', 'owner', 'winner', 'secondWinner', 'bids']);
@@ -617,6 +804,20 @@ class AuctionController extends Controller
             'payment_status' => 'submitted',
         ]);
 
+        $adminUsers = User::role('Admin')->get();
+        foreach ($adminUsers as $admin) {
+            \App\Models\Notification::create([
+                'user_id' => $admin->id,
+                'type' => 'payment_proof_submitted',
+                'title' => 'Payment proof submitted',
+                'body' => "Payment proof has been uploaded for auction \"{$auction->title}\" by {$user->name}.",
+                'data' => [
+                    'auction_id' => $auction->id,
+                    'link' => "/auctions/{$auction->id}",
+                ],
+            ]);
+        }
+
         return response()->json([
             'message' => 'Payment proof uploaded successfully',
             'data' => new AuctionResource($auction->load(['animal', 'owner', 'winner', 'secondWinner', 'bids'])),
@@ -656,6 +857,34 @@ class AuctionController extends Controller
                     'owner_id' => $auction->winner_id,
                 ]);
             }
+
+            if ($auction->winner_id) {
+                \App\Models\Notification::create([
+                    'user_id' => $auction->winner_id,
+                    'type' => 'auction_payment_verified',
+                    'title' => 'Payment verified!',
+                    'body' => "Your payment for \"{$auction->title}\" has been verified. The animal ownership has been transferred.",
+                    'data' => [
+                        'auction_id' => $auction->id,
+                        'link' => "/auctions/{$auction->id}",
+                    ],
+                ]);
+
+                $winner = User::find($auction->winner_id);
+                if ($winner) {
+                    $this->sendNotificationMail(
+                        $winner,
+                        'auction_payment',
+                        "Payment Verified – {$auction->title}",
+                        [
+                            "Your payment for \"{$auction->title}\" has been verified.",
+                            'The ownership of the animal has been transferred to you.',
+                        ],
+                        rtrim(env('FRONTEND_URL', config('app.url')), '/') . "/auctions/{$auction->id}",
+                        'View Auction',
+                    );
+                }
+            }
         } else {
             $auction->update([
                 'payment_status' => 'rejected',
@@ -664,6 +893,35 @@ class AuctionController extends Controller
                 'payment_expires_at' => now()->addHours(24),
             ]);
 
+            if ($auction->winner_id) {
+                $oldWinner = User::find($auction->winner_id);
+
+                \App\Models\Notification::create([
+                    'user_id' => $auction->winner_id,
+                    'type' => 'auction_payment_rejected',
+                    'title' => 'Payment rejected',
+                    'body' => 'Your payment proof for "' . $auction->title . '" was rejected.' . ($notes ? " Reason: {$notes}" : ''),
+                    'data' => [
+                        'auction_id' => $auction->id,
+                        'link' => "/auctions/{$auction->id}",
+                    ],
+                ]);
+
+                if ($oldWinner) {
+                    $this->sendNotificationMail(
+                        $oldWinner,
+                        'auction_payment',
+                        "Payment Rejected – {$auction->title}",
+                        [
+                            'Your payment proof for "' . $auction->title . '" was rejected.' . ($notes ? " Reason: {$notes}" : ''),
+                            'Please upload a valid payment proof within 24 hours.',
+                        ],
+                        rtrim(env('FRONTEND_URL', config('app.url')), '/') . "/auctions/{$auction->id}",
+                        'View Auction',
+                    );
+                }
+            }
+
             $secondWinner = $auction->secondWinner;
             if ($secondWinner) {
                 $auction->update([
@@ -671,6 +929,29 @@ class AuctionController extends Controller
                     'second_winner_id' => null,
                     'payment_status' => 'pending',
                 ]);
+
+                \App\Models\Notification::create([
+                    'user_id' => $secondWinner->id,
+                    'type' => 'auction_won',
+                    'title' => 'You\'re the new winner!',
+                    'body' => "The previous winner didn't complete payment. You've been promoted to winner for \"{$auction->title}\".",
+                    'data' => [
+                        'auction_id' => $auction->id,
+                        'link' => "/auctions/{$auction->id}",
+                    ],
+                ]);
+
+                $this->sendNotificationMail(
+                    $secondWinner,
+                    'auction_won',
+                    "You're the New Winner! – {$auction->title}",
+                    [
+                        "The previous winner didn't complete payment. You've been promoted to winner for \"{$auction->title}\".",
+                        'Please complete your payment within 24 hours.',
+                    ],
+                    rtrim(env('FRONTEND_URL', config('app.url')), '/') . "/auctions/{$auction->id}",
+                    'Complete Payment',
+                );
             }
         }
 
@@ -692,6 +973,8 @@ class AuctionController extends Controller
         foreach ($expiredAuctions as $auction) {
             $secondWinner = $auction->secondWinner;
             
+            $oldWinnerId = $auction->winner_id;
+
             if ($secondWinner) {
                 $auction->update([
                     'winner_id' => $secondWinner->id,
@@ -699,11 +982,84 @@ class AuctionController extends Controller
                     'payment_expires_at' => now()->addHours(24),
                     'payment_status' => 'pending',
                 ]);
+
+                $oldWinner = User::find($oldWinnerId);
+
+                \App\Models\Notification::create([
+                    'user_id' => $oldWinnerId,
+                    'type' => 'auction_payment_rejected',
+                    'title' => 'Payment deadline passed',
+                    'body' => "Your payment deadline for \"{$auction->title}\" has expired. You've lost the winning position.",
+                    'data' => ['auction_id' => $auction->id],
+                ]);
+
+                if ($oldWinner) {
+                    $this->sendNotificationMail(
+                        $oldWinner,
+                        'auction_payment',
+                        "Payment Deadline Passed – {$auction->title}",
+                        [
+                            "Your payment deadline for \"{$auction->title}\" has expired.",
+                            "You've lost the winning position.",
+                        ],
+                        rtrim(env('FRONTEND_URL', config('app.url')), '/') . "/auctions/{$auction->id}",
+                        'View Auction',
+                    );
+                }
+
+                \App\Models\Notification::create([
+                    'user_id' => $secondWinner->id,
+                    'type' => 'auction_won',
+                    'title' => 'You\'re the new winner!',
+                    'body' => "The previous winner didn't pay on time. You've been promoted to winner for \"{$auction->title}\".",
+                    'data' => [
+                        'auction_id' => $auction->id,
+                        'link' => "/auctions/{$auction->id}",
+                    ],
+                ]);
+
+                $this->sendNotificationMail(
+                    $secondWinner,
+                    'auction_won',
+                    "You're the New Winner! – {$auction->title}",
+                    [
+                        "The previous winner didn't pay on time.",
+                        "You've been promoted to winner for \"{$auction->title}\". Please complete payment within 24 hours.",
+                    ],
+                    rtrim(env('FRONTEND_URL', config('app.url')), '/') . "/auctions/{$auction->id}",
+                    'Complete Payment',
+                );
             } else {
                 $auction->update([
                     'status' => 'ended',
                     'payment_status' => 'expired',
                 ]);
+
+                if ($oldWinnerId) {
+                    $oldWinnerUser = User::find($oldWinnerId);
+
+                    \App\Models\Notification::create([
+                        'user_id' => $oldWinnerId,
+                        'type' => 'auction_payment_rejected',
+                        'title' => 'Payment deadline passed',
+                        'body' => "Your payment deadline for \"{$auction->title}\" has expired. The auction has been ended.",
+                        'data' => ['auction_id' => $auction->id],
+                    ]);
+
+                    if ($oldWinnerUser) {
+                        $this->sendNotificationMail(
+                            $oldWinnerUser,
+                            'auction_payment',
+                            "Payment Deadline Passed – {$auction->title}",
+                            [
+                                "Your payment deadline for \"{$auction->title}\" has expired.",
+                                'The auction has been ended.',
+                            ],
+                            rtrim(env('FRONTEND_URL', config('app.url')), '/') . "/auctions/{$auction->id}",
+                            'View Auction',
+                        );
+                    }
+                }
             }
             
             $processed++;

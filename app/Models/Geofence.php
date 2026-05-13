@@ -56,6 +56,25 @@ class Geofence extends Model
         return $coords;
     }
 
+    public function getCenter(): ?array
+    {
+        $coords = $this->coordinates_array ?? $this->coordinates;
+        if (is_string($coords)) {
+            $coords = json_decode($coords, true);
+        }
+        if (!$coords || !is_array($coords) || count($coords) < 3) {
+            return null;
+        }
+        $latSum = 0;
+        $lngSum = 0;
+        $n = count($coords);
+        foreach ($coords as $c) {
+            $latSum += $c[0];
+            $lngSum += $c[1];
+        }
+        return [$latSum / $n, $lngSum / $n];
+    }
+
     public function containsPoint($lat, $lng)
     {
         $coordinates = $this->coordinates_array ?? $this->coordinates;

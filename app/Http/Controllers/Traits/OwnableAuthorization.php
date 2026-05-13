@@ -7,46 +7,27 @@ use Illuminate\Http\Request;
 
 trait OwnableAuthorization
 {
-    /**
-     * Get authenticated user ID from request
-     * Tries: Sanctum user, then X-User-Id header
-     */
     private function getUserId(Request $request): ?string
     {
-        if ($request->user()) {
-            return (string) $request->user()->id;
-        }
-        return $request->header('X-User-Id');
+        return $request->user()?->id ? (string) $request->user()->id : null;
     }
 
-    /**
-     * Get authenticated user's primary role from request
-     * Tries: Sanctum user, then X-User-Role header
-     */
     private function getUserRole(Request $request): ?string
     {
-        if ($request->user()) {
-            return $request->user()->getPrimaryRoleName();
-        }
-        return $request->header('X-User-Role');
+        return $request->user()?->getPrimaryRoleName();
     }
 
-    /**
-     * Get full User model from request
-     * Tries: Sanctum user, then lookup by X-User-Id header
-     */
     private function getUser(Request $request): ?User
     {
-        if ($request->user()) {
-            return $request->user();
-        }
-        $userId = $request->header('X-User-Id');
-        return $userId ? User::find($userId) : null;
+        return $request->user();
     }
 
-    /**
-     * Check if user can ACCESS (view) resources belonging to a specific owner
-     */
+    private function isAdminOrStaff(Request $request): bool
+    {
+        $user = $this->getUser($request);
+        return $user && ($user->hasRole('Admin') || $user->isStaff());
+    }
+
     protected function canAccessOwner(Request $request, ?int $ownerId): bool
     {
         $user = $this->getUser($request);
@@ -55,7 +36,7 @@ trait OwnableAuthorization
             return $ownerId === null;
         }
 
-        if ($user->hasRole('Admin')) {
+        if ($this->isAdminOrStaff($request)) {
             return true;
         }
 
@@ -83,9 +64,6 @@ trait OwnableAuthorization
         return false;
     }
 
-    /**
-     * Check if user can MODIFY (edit/delete) resources belonging to a specific owner
-     */
     protected function canModifyOwner(Request $request, ?int $ownerId): bool
     {
         $user = $this->getUser($request);
@@ -94,7 +72,7 @@ trait OwnableAuthorization
             return $ownerId === null;
         }
 
-        if ($user->hasRole('Admin')) {
+        if ($this->isAdminOrStaff($request)) {
             return true;
         }
 
@@ -122,9 +100,6 @@ trait OwnableAuthorization
         return false;
     }
 
-    /**
-     * Filter an Eloquent query by user's accessible resources
-     */
     protected function filterByOwner(Request $request, $query)
     {
         $user = $this->getUser($request);
@@ -133,7 +108,7 @@ trait OwnableAuthorization
             return $query;
         }
 
-        if ($user->hasRole('Admin')) {
+        if ($this->isAdminOrStaff($request)) {
             return $query;
         }
 
@@ -162,21 +137,15 @@ trait OwnableAuthorization
         return $query;
     }
 
-    /**
-     * Check if user has owner-level access
-     */
     protected function canAccessAsOwner(Request $request): bool
     {
         $user = $this->getUser($request);
-        return $user && $user->hasAnyRole(['Admin', 'Owner', 'Manager']);
+        return $user && ($user->hasAnyRole(['Admin', 'Owner', 'Manager']) || $user->isStaff());
     }
 
-    /**
-     * Check if user can create resources as an owner
-     */
     protected function canCreateAsOwner(Request $request): bool
     {
         $user = $this->getUser($request);
-        return $user && $user->hasAnyRole(['Admin', 'Owner', 'Manager']);
+        return $user && ($user->hasAnyRole(['Admin', 'Owner', 'Manager']) || $user->isStaff());
     }
 }
