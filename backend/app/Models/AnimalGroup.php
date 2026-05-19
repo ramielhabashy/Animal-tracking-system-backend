@@ -33,4 +33,10 @@ class AnimalGroup extends Model
         return $this->belongsToMany(Geofence::class, 'animal_group_geofence')
             ->withTimestamps();
     }
+
+    public function shepherds(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'group_shepherd', 'animal_group_id', 'shepherd_id')
+            ->withTimestamps();
+    }
 }

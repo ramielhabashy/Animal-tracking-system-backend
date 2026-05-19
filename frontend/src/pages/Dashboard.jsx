@@ -104,8 +104,8 @@ export default function Dashboard() {
           lat = parseFloat(animal.device.gps_lat);
           lng = parseFloat(animal.device.gps_lng);
         } else {
-          lat = 24.4539 + (index * 0.002) - 0.004;
-          lng = 54.3773 + (index * 0.003) - 0.003;
+          lat = 24.7136 + (index * 0.002) - 0.004;
+          lng = 46.6753 + (index * 0.003) - 0.003;
         }
 
         const path = history
@@ -127,11 +127,15 @@ export default function Dashboard() {
       if (geofenceAlerts && geofenceAlerts.length > 0) {
         geofenceAlerts.slice(0, 10).forEach(alert => {
           const severity = alert.type === 'exit' ? 'High' : alert.type === 'temperature' ? 'Medium' : 'Medium';
+          const isTemp = alert.type === 'temperature';
           dashboardAlerts.push({
             id: alert.id,
             severity,
+            type: alert.type,
             animal: alert.animal?.animal_id || alert.animal_id || 'Unknown',
-            message: alert.type === 'entry' ? `Entry: ${alert.geofence?.name || 'Geofence'}` : alert.type === 'exit' ? `Exit: ${alert.geofence?.name || 'Geofence'}` : alert.type,
+            message: isTemp
+              ? `Temperature: ${parseFloat(alert.temperature || alert.value || 0).toFixed(1)}°C`
+              : alert.type === 'entry' ? `Entry: ${alert.geofence?.name || 'Geofence'}` : alert.type === 'exit' ? `Exit: ${alert.geofence?.name || 'Geofence'}` : alert.type,
             time: alert.triggered_at ? new Date(alert.triggered_at).toLocaleTimeString() : 'Now',
             isAcknowledged: alert.is_acknowledged,
           });

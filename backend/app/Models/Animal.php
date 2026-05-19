@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
@@ -80,5 +81,22 @@ class Animal extends Model
     {
         return $this->belongsToMany(AnimalGroup::class, 'animal_group_member')
             ->withTimestamps();
+    }
+
+    public function documents(): HasMany
+    {
+        return $this->hasMany(AnimalDocument::class);
+    }
+
+    public function ownershipHistory(): HasMany
+    {
+        return $this->hasMany(OwnershipHistory::class);
+    }
+
+    public function activeTransfer()
+    {
+        return $this->belongsToMany(OwnershipTransfer::class, 'ownership_transfer_animals')
+            ->wherePivot('animal_id', $this->id)
+            ->whereIn('status', ['pending', 'accepted']);
     }
 }

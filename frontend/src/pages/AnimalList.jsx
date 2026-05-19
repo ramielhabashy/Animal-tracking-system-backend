@@ -7,6 +7,7 @@ import { exportData } from '../utils/export';
 import { useAuth } from '../context/AuthContext';
 import { useI18n } from '../i18n';
 import Pagination from '../components/Pagination';
+import TransferCreateModal from '../components/Transfers/TransferCreateModal';
 
 export default function AnimalList() {
   const { user } = useAuth();
@@ -25,6 +26,8 @@ export default function AnimalList() {
   const [assigning, setAssigning] = useState(false);
   const [message, setMessage] = useState(null);
   const [exporting, setExporting] = useState(false);
+  const [showTransfer, setShowTransfer] = useState(false);
+  const [transferAnimalId, setTransferAnimalId] = useState(null);
   const [speciesFilter, setSpeciesFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [deviceFilter, setDeviceFilter] = useState('all');
@@ -47,6 +50,7 @@ export default function AnimalList() {
   
   const canModify = user?.role !== 'Shepherd' && user?.role !== 'Doctor';
   const isAdmin = user?.role === 'Admin';
+  const canTransfer = user?.role === 'Admin' || user?.role === 'Owner';
 
   const extractList = (res) => Array.isArray(res.data) ? res.data : (res.data?.data || []);
 
@@ -104,31 +108,15 @@ export default function AnimalList() {
 
   const fetchStats = async () => {
     try {
-      const [animalsRes, devicesRes] = await Promise.all([
-        apiFetch('/api/animals?per_page=1000'),
-        apiFetch('/api/devices?per_page=1000'),
-      ]);
-      
-      if (animalsRes.ok && devicesRes.ok) {
-        const animalsData = await animalsRes.json();
-        const allAnimals = extractList(animalsData);
-        
-        let assigned = 0, healthy = 0, warning = 0, critical = 0;
-        for (const a of allAnimals) {
-          const hasDevice = a.device?.device_id || a.device_id;
-          if (hasDevice) assigned++;
-          const temp = parseFloat(a.baseline_temperature) || 38.5;
-          if (temp > 39.5) critical++;
-          else if (temp > 39) warning++;
-          else healthy++;
-        }
-        
+      const res = await apiFetch('/api/animals/stats');
+      if (res.ok) {
+        const data = await res.json();
         setStats({
-          assigned,
-          unassigned: allAnimals.length - assigned,
-          healthy,
-          warning,
-          critical,
+          assigned: data.assigned,
+          unassigned: data.unassigned,
+          healthy: data.healthy,
+          warning: data.warning,
+          critical: data.critical,
         });
       }
     } catch (error) {
@@ -137,7 +125,7 @@ export default function AnimalList() {
   };
 
   const getAnimalStatus = (animal) => {
-    const temp = parseFloat(animal.baseline_temperature) || 38.5;
+    const temp = parseFloat(animal.device?.temperature ?? animal.baseline_temperature) || 38.5;
     if (temp > 39.5) return 'critical';
     if (temp > 39) return 'warning';
     return 'healthy';
@@ -195,8 +183,11 @@ export default function AnimalList() {
 
   const speciesOptions = [...new Set(animals.map(a => a.species).filter(Boolean))];
   const ownerOptions = users.filter(u => u.role === 'Owner' || u.role === 'Admin');
-  const assignedCount = stats.assigned;
-  const unassignedCount = stats.unassigned;
+  const filteredAssigned = filteredAnimals.filter(a => a.device?.device_id || a.device_id).length;
+  const filteredUnassigned = filteredAnimals.filter(a => !(a.device?.device_id || a.device_id)).length;
+  const filteredHealthy = filteredAnimals.filter(a => getAnimalStatus(a) === 'healthy').length;
+  const filteredWarning = filteredAnimals.filter(a => getAnimalStatus(a) === 'warning').length;
+  const filteredCritical = filteredAnimals.filter(a => getAnimalStatus(a) === 'critical').length;
 
   const assignedDeviceIds = animals
     .map(a => a.device?.device_id || a.device_id)
@@ -369,21 +360,21 @@ export default function AnimalList() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white p-5 rounded-2xl shadow-sm">
           <p className="text-xs font-bold text-[#717973] uppercase">{t('animals.title')}</p>
-          <p className="text-3xl font-black text-[#002819] mt-1">{totalAnimals}</p>
+          <p className="text-3xl font-black text-[#002819] mt-1">{debouncedSearch || speciesFilter !== 'all' || statusFilter !== 'all' || deviceFilter !== 'all' || ownerFilter !== 'all' ? filteredAnimals.length : totalAnimals}</p>
         </div>
         <div className="bg-[#002819] p-5 rounded-2xl">
           <p className="text-xs font-bold text-white/60 uppercase">{t('devices.assigned')}</p>
-          <p className="text-3xl font-black text-white mt-1">{assignedCount}</p>
+          <p className="text-3xl font-black text-white mt-1">{filteredAssigned}</p>
         </div>
         <div className="bg-white p-5 rounded-2xl shadow-sm">
           <p className="text-xs font-bold text-[#717973] uppercase">{t('animals.noDeviceAssigned')}</p>
-          <p className="text-3xl font-black text-[#BA1A1A] mt-1">{unassignedCount}</p>
+          <p className="text-3xl font-black text-[#BA1A1A] mt-1">{filteredUnassigned}</p>
         </div>
         <div className="bg-[#D4AF37]/10 p-5 rounded-2xl">
           <p className="text-xs font-bold text-[#735C00] uppercase">{t('animals.health')}</p>
-          <p className="text-3xl font-black text-[#735C00] mt-1">{stats.healthy ?? 0}</p>
+          <p className="text-3xl font-black text-[#735C00] mt-1">{filteredHealthy}</p>
           <p className="text-xs text-[#735C00]/60 mt-1">
-            {stats.warning ?? 0} {t('alertsPage.warning')} &middot; {stats.critical ?? 0} {t('dashboard.critical')}
+            {filteredWarning} {t('alertsPage.warning')} &middot; {filteredCritical} {t('dashboard.critical')}
           </p>
         </div>
       </div>
@@ -404,6 +395,7 @@ export default function AnimalList() {
                 <th className="text-center py-3 px-4 font-bold text-[#002819] text-xs uppercase tracking-wider">{t('animals.device')}</th>
                 <th className="text-left py-3 px-4 font-bold text-[#002819] text-xs uppercase tracking-wider">{t('animals.owner')}</th>
                 <th className="text-center py-3 px-4 font-bold text-[#002819] text-xs uppercase tracking-wider">{t('common.status')}</th>
+                <th className="text-center py-3 px-4 font-bold text-[#002819] text-xs uppercase tracking-wider">{t('animals.temperature')}</th>
                 <th className="text-right py-3 px-5 font-bold text-[#002819] text-xs uppercase tracking-wider">{t('common.actions')}</th>
               </tr>
             </thead>
@@ -450,6 +442,21 @@ export default function AnimalList() {
                         {animalStatus}
                       </span>
                     </td>
+                    <td className="text-center py-3 px-4">
+                      {(() => {
+                        const liveTemp = animal.device?.temperature ?? animal.baseline_temperature;
+                        return liveTemp ? (
+                          <span className={`text-xs font-medium ${
+                            parseFloat(liveTemp) > 39.5 ? 'text-[#BA1A1A]' :
+                            parseFloat(liveTemp) > 39 ? 'text-[#735C00]' : 'text-[#10B981]'
+                          }`}>
+                            {parseFloat(liveTemp).toFixed(1)}°C
+                          </span>
+                        ) : (
+                          <span className="text-xs text-[#717973]">-</span>
+                        );
+                      })()}
+                    </td>
                     <td className="text-right py-3 px-5">
                       <div className={`flex items-center justify-end gap-1 ${isRtl ? 'flex-row-reverse' : ''}`}>
                         <Link to={`/animals/${animal.id}`} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500" title={t('common.view')}>
@@ -460,6 +467,11 @@ export default function AnimalList() {
                             <Link to={`/animals/${animal.id}/edit`} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500" title={t('common.edit')}>
                               <MaterialSymbol icon="edit" size={16} />
                             </Link>
+                            {canTransfer && (
+                              <button onClick={() => { setTransferAnimalId(animal.id); setShowTransfer(true); }} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500" title="Transfer">
+                                <MaterialSymbol icon="swap_horiz" size={16} />
+                              </button>
+                            )}
                             {!animalDeviceId && (
                               <button onClick={() => openAssignModal(animal)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500" title={t('animals.assignDevice')}>
                                 <MaterialSymbol icon="sensors" size={16} />
@@ -527,6 +539,21 @@ return (
                       <p className="font-semibold text-[#002819]">{animal.current_weight ? `${animal.current_weight} ${t('common.kg')}` : '-'}</p>
                     </div>
                     <div className="bg-[#F4F4EF] rounded-xl p-3">
+                      <p className="text-xs text-[#717973]">{t('animals.temperature')}</p>
+                      {(() => {
+                        const liveTemp = animal.device?.temperature ?? animal.baseline_temperature;
+                        return (
+                          <p className={`font-semibold flex items-center gap-1 ${
+                            parseFloat(liveTemp) > 39.5 ? 'text-[#BA1A1A]' :
+                            parseFloat(liveTemp) > 39 ? 'text-[#735C00]' : 'text-[#10B981]'
+                          }`}>
+                            <MaterialSymbol icon="device_thermostat" size={16} />
+                            {liveTemp ? `${parseFloat(liveTemp).toFixed(1)}°C` : '-'}
+                          </p>
+                        );
+                      })()}
+                    </div>
+                    <div className="bg-[#F4F4EF] rounded-xl p-3">
                       <p className="text-xs text-[#717973]">{t('animals.device')}</p>
                       <p className="font-semibold text-[#002819] text-xs">
                         {animal.device?.device_id ? animal.device.device_id : 
@@ -588,6 +615,15 @@ return (
                           >
                             {t('common.edit')}
                           </Link>
+                          {canTransfer && (
+                            <button 
+                              onClick={() => { setTransferAnimalId(animal.id); setShowTransfer(true); }}
+                              className="flex-1 py-3 text-center text-sm font-semibold text-[#717473] hover:bg-[#F4F4EF] hover:text-[#002819] transition-colors border-x border-[#F4F4EF]"
+                            >
+                              <MaterialSymbol icon="swap_horiz" size={16} />
+                              Transfer
+                            </button>
+                          )}
                           {!animalDeviceId && (
                             <button 
                               onClick={() => openAssignModal(animal)}
@@ -667,6 +703,14 @@ return (
             </div>
           </div>
         </div>
+      )}
+
+      {showTransfer && (
+        <TransferCreateModal
+          preselectedAnimalIds={[transferAnimalId]}
+          onClose={() => { setShowTransfer(false); setTransferAnimalId(null); }}
+          onCreated={() => { fetchData(); }}
+        />
       )}
     </div>
   );

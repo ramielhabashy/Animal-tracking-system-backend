@@ -8,6 +8,7 @@ use App\Models\Animal;
 use App\Models\LocationHistory;
 use App\Models\Geofence;
 use App\Models\GeofenceAlert;
+use App\Models\User;
 use App\Services\NotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -40,6 +41,8 @@ class SimulatorController extends Controller
             'speed' => 'nullable|numeric|min:0',
             'heading' => 'nullable|numeric|between:0,360',
             'recorded_at' => 'nullable|date',
+            'battery_drain' => 'nullable|numeric|min:0|max:100',
+            'temperature' => 'nullable|numeric|min:20|max:45',
         ]);
 
         $device = Device::findOrFail($validated['device_id']);
@@ -60,12 +63,27 @@ class SimulatorController extends Controller
             'recorded_at' => $validated['recorded_at'] ?? now(),
         ]);
 
-        $device->update([
+        $batteryDrain = $validated['battery_drain'] ?? 0;
+        $newBattery = max(0, ($device->battery_level ?? 100) - $batteryDrain);
+
+        $updateData = [
             'gps_lat' => $validated['latitude'],
             'gps_lng' => $validated['longitude'],
+            'battery_level' => $newBattery,
             'last_ping' => now(),
-            'status' => 'online',
-        ]);
+            'status' => $newBattery > 0 ? 'online' : 'offline',
+        ];
+
+        if (isset($validated['speed'])) {
+            $updateData['speed'] = $validated['speed'];
+        }
+
+        if (isset($validated['temperature'])) {
+            $updateData['temperature'] = $validated['temperature'];
+            $updateData['last_temperature_update'] = now();
+        }
+
+        $device->update($updateData);
 
         $alert = $this->checkGeofences($animal, $validated['latitude'], $validated['longitude']);
 
@@ -77,6 +95,9 @@ class SimulatorController extends Controller
             'message' => 'Location recorded',
             'alert_triggered' => $alert ? true : false,
             'alert_type' => $alert?->type,
+            'battery_level' => $newBattery,
+            'temperature' => $device->fresh()->temperature,
+            'speed' => $device->fresh()->speed,
         ]);
     }
 
@@ -89,6 +110,8 @@ class SimulatorController extends Controller
             'moves.*.longitude' => 'required|numeric|between:-180,180',
             'moves.*.speed' => 'nullable|numeric|min:0',
             'moves.*.heading' => 'nullable|numeric|between:0,360',
+            'moves.*.battery_drain' => 'nullable|numeric|min:0|max:100',
+            'moves.*.temperature' => 'nullable|numeric|min:20|max:45',
         ]);
 
         $results = [];
@@ -116,12 +139,27 @@ class SimulatorController extends Controller
                 'recorded_at' => $move['recorded_at'] ?? now(),
             ]);
 
-            $device->update([
+            $batteryDrain = $move['battery_drain'] ?? 0;
+            $newBattery = max(0, ($device->battery_level ?? 100) - $batteryDrain);
+
+            $updateData = [
                 'gps_lat' => $move['latitude'],
                 'gps_lng' => $move['longitude'],
+                'battery_level' => $newBattery,
                 'last_ping' => now(),
-                'status' => 'online',
-            ]);
+                'status' => $newBattery > 0 ? 'online' : 'offline',
+            ];
+
+            if (isset($move['speed'])) {
+                $updateData['speed'] = $move['speed'];
+            }
+
+            if (isset($move['temperature'])) {
+                $updateData['temperature'] = $move['temperature'];
+                $updateData['last_temperature_update'] = now();
+            }
+
+            $device->update($updateData);
 
             $alert = $this->checkGeofences($animal, $move['latitude'], $move['longitude']);
 
@@ -134,6 +172,7 @@ class SimulatorController extends Controller
                 'success' => true,
                 'alert_triggered' => $alert ? true : false,
                 'alert_type' => $alert?->type,
+                'battery_level' => $newBattery,
             ];
         }
 
@@ -199,5 +238,331 @@ class SimulatorController extends Controller
         }
 
         return $newAlert;
+    }
+
+    public function recharge(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'device_id' => 'required|exists:devices,id',
+            'level' => 'nullable|numeric|min:0|max:100',
+        ]);
+
+        $level = $validated['level'] ?? 100;
+        $device = Device::findOrFail($validated['device_id']);
+
+        $device->update([
+            'battery_level' => $level,
+            'status' => $level > 0 ? 'online' : 'offline',
+        ]);
+
+        return response()->json([
+            'message' => "Battery set to {$level}%",
+            'battery_level' => $level,
+        ]);
+    }
+
+    public function teleport(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'device_ids' => 'required|array',
+            'device_ids.*' => 'exists:devices,id',
+            'latitude' => 'required|numeric|between:-90,90',
+            'longitude' => 'required|numeric|between:-180,180',
+            'battery_drain' => 'nullable|numeric|min:0|max:100',
+            'speed' => 'nullable|numeric|min:0',
+            'temperature' => 'nullable|numeric|min:20|max:45',
+        ]);
+
+        $batteryDrain = $validated['battery_drain'] ?? 0;
+        $results = [];
+
+        foreach ($validated['device_ids'] as $deviceId) {
+            $device = Device::find($deviceId);
+            if (!$device || !$device->animal_id) {
+                $results[] = ['device_id' => $deviceId, 'success' => false, 'message' => 'No animal assigned'];
+                continue;
+            }
+
+            $animal = Animal::find($device->animal_id);
+            $newBattery = max(0, ($device->battery_level ?? 100) - $batteryDrain);
+
+            $updateData = [
+                'gps_lat' => $validated['latitude'],
+                'gps_lng' => $validated['longitude'],
+                'battery_level' => $newBattery,
+                'last_ping' => now(),
+                'status' => $newBattery > 0 ? 'online' : 'offline',
+            ];
+
+            if (isset($validated['speed'])) {
+                $updateData['speed'] = $validated['speed'];
+            }
+
+            if (isset($validated['temperature'])) {
+                $updateData['temperature'] = $validated['temperature'];
+                $updateData['last_temperature_update'] = now();
+            }
+
+            $device->update($updateData);
+
+            LocationHistory::create([
+                'device_id' => $device->id,
+                'animal_id' => $animal->id,
+                'latitude' => $validated['latitude'],
+                'longitude' => $validated['longitude'],
+                'speed' => $validated['speed'] ?? 0,
+                'heading' => 0,
+                'recorded_at' => now(),
+            ]);
+
+            $alert = $this->checkGeofences($animal, $validated['latitude'], $validated['longitude']);
+
+            $results[] = [
+                'device_id' => $deviceId,
+                'success' => true,
+                'alert_triggered' => $alert ? true : false,
+                'alert_type' => $alert?->type,
+                'battery_level' => $newBattery,
+            ];
+        }
+
+        return response()->json(['results' => $results]);
+    }
+
+    public function demoSeed(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'owner_id' => 'nullable|exists:users,id',
+        ]);
+
+        $ownerId = $validated['owner_id'] ?? null;
+
+        $unassigned = Animal::whereDoesntHave('device')
+            ->when($ownerId, fn($q) => $q->where('owner_id', $ownerId))
+            ->limit(10)
+            ->get();
+
+        if ($unassigned->isEmpty()) {
+            return response()->json(['message' => 'No unassigned animals found', 'count' => 0, 'device_ids' => []]);
+        }
+
+        $createdIds = [];
+        foreach ($unassigned as $animal) {
+            $geofence = Geofence::where('owner_id', $animal->owner_id)
+                ->where('is_active', true)
+                ->first();
+            $lat = 24.7136;
+            $lng = 46.6753;
+            if ($geofence) {
+                $center = $geofence->getCenter();
+                if ($center) {
+                    $lat = $center[0];
+                    $lng = $center[1];
+                }
+            }
+
+            $species = strtolower($animal->species ?? 'camel');
+            $baseTemp = match ($species) {
+                'camel' => 37.0 + (rand(-5, 5) / 10),
+                'goat' => 38.5 + (rand(-5, 5) / 10),
+                'sheep' => 38.5 + (rand(-5, 5) / 10),
+                default => 38.0 + (rand(-5, 5) / 10),
+            };
+
+            $device = Device::create([
+                'device_id' => 'DEMO-' . str_pad($animal->id, 4, '0', STR_PAD_LEFT) . '-' . strtoupper(substr(md5($animal->id . time()), 0, 1)),
+                'name' => 'Demo ' . ($animal->name ?? $animal->animal_id),
+                'type' => 'collar',
+                'status' => 'online',
+                'battery_level' => rand(60, 100),
+                'temperature' => $baseTemp,
+                'speed' => 0,
+                'is_lost' => false,
+                'firmware_version' => 'v4.2.1-stable',
+                'update_interval' => 15,
+                'gps_lat' => $lat + (rand(-100, 100) / 10000),
+                'gps_lng' => $lng + (rand(-100, 100) / 10000),
+                'last_ping' => now(),
+                'last_temperature_update' => now(),
+                'animal_id' => $animal->id,
+                'owner_id' => $animal->owner_id,
+            ]);
+
+            $now = now();
+            for ($i = 5; $i >= 0; $i--) {
+                LocationHistory::create([
+                    'device_id' => $device->id,
+                    'animal_id' => $animal->id,
+                    'latitude' => $device->gps_lat + (rand(-50, 50) / 10000),
+                    'longitude' => $device->gps_lng + (rand(-50, 50) / 10000),
+                    'speed' => rand(1, 15),
+                    'heading' => rand(0, 360),
+                    'recorded_at' => (clone $now)->subMinutes($i * 5),
+                ]);
+            }
+
+            $createdIds[] = $device->id;
+        }
+
+        return response()->json([
+            'message' => 'Demo mode activated with ' . count($createdIds) . ' devices',
+            'count' => count($createdIds),
+            'device_ids' => $createdIds,
+        ]);
+    }
+
+    public function demoReset(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'device_ids' => 'required|array',
+            'device_ids.*' => 'exists:devices,id',
+        ]);
+
+        $count = 0;
+        foreach ($validated['device_ids'] as $id) {
+            $device = Device::find($id);
+            if ($device) {
+                LocationHistory::where('device_id', $device->id)->delete();
+                $device->delete();
+                $count++;
+            }
+        }
+
+        return response()->json([
+            'message' => "Removed {$count} demo devices",
+            'deleted' => $count,
+        ]);
+    }
+
+    public function update(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'device_id' => 'required|exists:devices,id',
+            'temperature' => 'nullable|numeric|min:20|max:45',
+            'speed' => 'nullable|numeric|min:0|max:120',
+            'is_lost' => 'nullable|boolean',
+            'battery_level' => 'nullable|integer|min:0|max:100',
+            'signal_strength' => 'nullable|integer|min:0|max:100',
+        ]);
+
+        $device = Device::findOrFail($validated['device_id']);
+        $updateData = [];
+
+        if (isset($validated['temperature'])) {
+            $updateData['temperature'] = $validated['temperature'];
+            $updateData['last_temperature_update'] = now();
+        }
+
+        if (isset($validated['speed'])) {
+            $updateData['speed'] = $validated['speed'];
+        }
+
+        if (isset($validated['is_lost'])) {
+            $updateData['is_lost'] = $validated['is_lost'];
+        }
+
+        if (isset($validated['battery_level'])) {
+            $updateData['battery_level'] = $validated['battery_level'];
+            $updateData['status'] = $validated['battery_level'] > 0 ? 'online' : 'offline';
+        }
+
+        if (isset($validated['signal_strength'])) {
+            $updateData['signal_strength'] = $validated['signal_strength'];
+        }
+
+        $device->update($updateData);
+
+        return response()->json([
+            'message' => 'Device updated',
+            'device' => $device->fresh(),
+        ]);
+    }
+
+    public function toggleLost(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'device_id' => 'required|exists:devices,id',
+            'is_lost' => 'required|boolean',
+        ]);
+
+        $device = Device::findOrFail($validated['device_id']);
+        $device->update(['is_lost' => $validated['is_lost']]);
+
+        if ($validated['is_lost']) {
+            GeofenceAlert::create([
+                'geofence_id' => null,
+                'animal_id' => $device->animal_id,
+                'device_id' => $device->id,
+                'type' => 'lost',
+                'latitude' => $device->gps_lat,
+                'longitude' => $device->gps_lng,
+                'is_acknowledged' => false,
+                'triggered_at' => now(),
+            ]);
+        }
+
+        return response()->json([
+            'message' => $validated['is_lost'] ? 'Animal marked as lost' : 'Animal unmarked as lost',
+            'is_lost' => $validated['is_lost'],
+        ]);
+    }
+
+    public function setTemperature(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'device_id' => 'required|exists:devices,id',
+            'temperature' => 'required|numeric|min:20|max:45',
+        ]);
+
+        $device = Device::findOrFail($validated['device_id']);
+        $device->update([
+            'temperature' => $validated['temperature'],
+            'last_temperature_update' => now(),
+        ]);
+
+        return response()->json([
+            'message' => 'Temperature set',
+            'temperature' => (float) $validated['temperature'],
+        ]);
+    }
+
+    public function batchSettings(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'device_ids' => 'nullable|array',
+            'device_ids.*' => 'exists:devices,id',
+            'temperature' => 'nullable|numeric|min:20|max:45',
+            'speed' => 'nullable|numeric|min:0|max:120',
+            'is_lost' => 'nullable|boolean',
+            'battery_level' => 'nullable|integer|min:0|max:100',
+        ]);
+
+        $query = Device::whereNotNull('animal_id');
+        if (!empty($validated['device_ids'])) {
+            $query->whereIn('id', $validated['device_ids']);
+        }
+
+        $updateData = [];
+        if (isset($validated['temperature'])) {
+            $updateData['temperature'] = $validated['temperature'];
+            $updateData['last_temperature_update'] = now();
+        }
+        if (isset($validated['speed'])) {
+            $updateData['speed'] = $validated['speed'];
+        }
+        if (isset($validated['is_lost'])) {
+            $updateData['is_lost'] = $validated['is_lost'];
+        }
+        if (isset($validated['battery_level'])) {
+            $updateData['battery_level'] = $validated['battery_level'];
+            $updateData['status'] = $validated['battery_level'] > 0 ? 'online' : 'offline';
+        }
+
+        $count = $query->update($updateData);
+
+        return response()->json([
+            'message' => "Updated {$count} devices",
+            'count' => $count,
+        ]);
     }
 }

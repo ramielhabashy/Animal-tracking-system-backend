@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Health;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Traits\SendsEmailNotifications;
 use App\Models\MedicalRecord;
 use App\Models\MedicalRecordAttachment;
 use App\Models\Animal;
@@ -14,7 +15,7 @@ use App\Http\Controllers\Traits\OwnableAuthorization;
 
 class MedicalRecordController extends Controller
 {
-    use OwnableAuthorization;
+    use OwnableAuthorization, SendsEmailNotifications;
 
     private function getAnimalIdsForUser(Request $request): array
     {
@@ -246,6 +247,24 @@ class MedicalRecordController extends Controller
                     'link' => '/medical-records',
                 ],
             ]);
+
+            $owner = User::find($ownerId);
+            if ($owner) {
+                $animalName = $animal->name ?? 'Your Animal';
+                $recordType = $recordData['record_type'] ?? 'medical';
+                $description = $recordData['description'] ?? '';
+                $this->sendNotificationMail(
+                    $owner,
+                    'medical',
+                    "New Medical Record – {$animalName}",
+                    [
+                        "A {$recordType} record was added for {$animalName}.",
+                        $description ? "Details: {$description}" : '',
+                    ],
+                    rtrim(env('FRONTEND_URL', config('app.url')), '/') . '/medical-records',
+                    'View Records',
+                );
+            }
         }
 
         return response()->json([

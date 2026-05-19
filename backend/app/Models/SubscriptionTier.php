@@ -26,6 +26,8 @@ class SubscriptionTier extends Model
         'has_ai_assistant',
         'sort_order',
         'is_active',
+        'is_featured',
+        'is_yearly_only',
     ];
 
     protected $casts = [
@@ -44,6 +46,8 @@ class SubscriptionTier extends Model
         'has_ai_assistant' => 'boolean',
         'sort_order' => 'integer',
         'is_active' => 'boolean',
+        'is_featured' => 'boolean',
+        'is_yearly_only' => 'boolean',
     ];
 
     public function users(): HasMany

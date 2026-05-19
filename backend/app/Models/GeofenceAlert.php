@@ -15,6 +15,9 @@ class GeofenceAlert extends Model
         'animal_id',
         'device_id',
         'type',
+        'severity',
+        'message',
+        'resolved',
         'latitude',
         'longitude',
         'is_acknowledged',
@@ -25,6 +28,7 @@ class GeofenceAlert extends Model
 
     protected $casts = [
         'is_acknowledged' => 'boolean',
+        'resolved' => 'boolean',
         'triggered_at' => 'datetime',
     ];
 

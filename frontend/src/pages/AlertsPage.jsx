@@ -53,17 +53,38 @@ export default function AlertsPage() {
     setError(null);
     try {
       const params = buildParams();
-      const response = await apiFetch(`/api/geofence-alerts?${params}`);
-      if (response.ok) {
-        const data = await response.json();
-        const alertsArray = data.data || [];
-        setAlerts(alertsArray);
-        setTotalAlerts(data.total || 0);
-        setUnresolvedCount(data.unresolved_count ?? alertsArray.filter(a => !a.is_acknowledged).length);
-      } else {
-        const errData = await response.json().catch(() => ({}));
-        setError(errData.message || 'Failed to fetch alerts');
+      const [geofenceRes, tempRes] = await Promise.all([
+        apiFetch(`/api/geofence-alerts?${params}`),
+        apiFetch(`/api/alerts/temperature?${params}`),
+      ]);
+
+      let allAlerts = [];
+      let total = 0;
+
+      if (geofenceRes.ok) {
+        const data = await geofenceRes.json();
+        allAlerts = data.data || [];
+        total = data.total || allAlerts.length;
       }
+
+      if (tempRes.ok) {
+        const data = await tempRes.json();
+        const tempAlerts = data.data || [];
+        allAlerts = [...allAlerts, ...tempAlerts];
+        total += data.total || tempAlerts.length;
+      }
+
+      if (typeFilter === 'temperature') {
+        allAlerts = allAlerts.filter(a => a.type === 'temperature');
+      } else if (typeFilter === 'geofence') {
+        allAlerts = allAlerts.filter(a => a.type === 'entry' || a.type === 'exit');
+      } else if (typeFilter !== 'all') {
+        allAlerts = allAlerts.filter(a => a.type === typeFilter);
+      }
+
+      setAlerts(allAlerts);
+      setTotalAlerts(allAlerts.length);
+      setUnresolvedCount(allAlerts.filter(a => !a.is_acknowledged).length);
     } catch (error) {
       console.error('Failed to fetch alerts:', error);
       setError(error.message || 'Failed to fetch alerts');

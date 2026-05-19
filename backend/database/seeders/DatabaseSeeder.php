@@ -35,6 +35,11 @@ class DatabaseSeeder extends Seeder
             \Database\Seeders\BidSeeder::class,
             \Database\Seeders\GeofenceAlertSeeder::class,
             \Database\Seeders\TaskSeeder::class,
+            \Database\Seeders\SubscriptionOrderSeeder::class,
+            \Database\Seeders\BannerSeeder::class,
+
+            // Always last: clears old content data and creates fresh demo data
+            \Database\Seeders\DemoDataSeeder::class,
         ]);
     }
 }

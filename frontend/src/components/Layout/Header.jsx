@@ -4,8 +4,10 @@ import { MaterialSymbol } from 'react-material-symbols';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useI18n } from '../../i18n';
+import { usePlatform } from '../../context/PlatformContext';
 import LanguageSwitcher from '../../i18n/LanguageSwitcher';
-import { apiFetch } from '../../utils/api';
+import { apiFetch, storageUrl } from '../../utils/api';
+import TranslateButton from '../TranslateButton';
 
 export default function Header() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -18,6 +20,7 @@ export default function Header() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const { t, dir } = useI18n();
+  const { logoUrl, platformName } = usePlatform();
 
   const isRtl = dir === 'rtl';
 
@@ -91,7 +94,17 @@ export default function Header() {
 
   return (
     <header className={`sticky top-0 z-40 glass-nav border-b border-[#002819]/5 px-8 py-5 flex justify-between items-center ${isRtl ? 'flex-row-reverse' : ''}`}>
-      <div className={`flex items-center flex-1 ${isRtl ? 'flex-row-reverse' : ''}`}>
+      <div className={`flex items-center flex-1 gap-4 ${isRtl ? 'flex-row-reverse' : ''}`}>
+        <Link to="/dashboard" className="flex items-center gap-2 group flex-shrink-0">
+          {logoUrl ? (
+            <img src={storageUrl(logoUrl)} alt={platformName} className="w-9 h-9 object-contain rounded-lg flex-shrink-0" />
+          ) : (
+            <div className="w-9 h-9 bg-gradient-to-br from-[#002819] to-[#06402B] rounded-lg flex items-center justify-center flex-shrink-0">
+              <MaterialSymbol icon="eco" size={18} className="text-[#D4AF37]" fill />
+            </div>
+          )}
+          <span className="text-sm font-bold text-[#002819] hidden sm:block group-hover:text-[#06402B] transition-colors">{platformName}</span>
+        </Link>
         <div className="relative w-full max-w-lg">
           <MaterialSymbol
             icon="search"
@@ -207,14 +220,30 @@ export default function Header() {
                   <p className="text-sm text-[#717973] text-center py-4">{t('common.noNotifications') || 'No notifications'}</p>
                  ) : (
                    notifications.slice(0, 5).map((n) => {
-                     const icons = { task_assigned: 'assignment', medical_record_added: 'vaccines', subscription_expiring: 'timer', task_completed: 'check_circle', geofence_alert: 'warning' };
-                     const colors = { 
-                       task_assigned: 'bg-blue-100 text-blue-600', 
-                       medical_record_added: 'bg-emerald-100 text-emerald-600', 
-                       subscription_expiring: 'bg-amber-100 text-amber-600',
-                       task_completed: 'bg-green-100 text-green-600',
-                       geofence_alert: 'bg-red-100 text-red-600'
-                     };
+                        const icons = { task_assigned: 'assignment', medical_record_added: 'vaccines', subscription_expiring: 'timer', subscription_purchased: 'credit_score', task_completed: 'check_circle', geofence_alert: 'warning', invitation_accepted: 'person_add', auction_new: 'gavel', auction_bid: 'add', auction_outbid: 'trending_down', auction_won: 'emoji_events', auction_ended: 'timer_off', auction_cancelled: 'block', auction_payment_verified: 'verified', auction_payment_rejected: 'block', bidder_disqualified: 'person_remove', payment_proof_submitted: 'upload', order_shipped: 'local_shipping', order_delivered: 'inventory_2', new_message: 'chat', new_ticket: 'support_agent' };
+                      const colors = { 
+                        task_assigned: 'bg-blue-100 text-blue-600', 
+                        medical_record_added: 'bg-emerald-100 text-emerald-600', 
+                         subscription_expiring: 'bg-amber-100 text-amber-600',
+                         subscription_purchased: 'bg-emerald-100 text-emerald-600',
+                        task_completed: 'bg-green-100 text-green-600',
+                        geofence_alert: 'bg-red-100 text-red-600',
+                        invitation_accepted: 'bg-purple-100 text-purple-600',
+                        auction_new: 'bg-amber-100 text-amber-600',
+                        auction_bid: 'bg-blue-100 text-blue-600',
+                        auction_outbid: 'bg-red-100 text-red-600',
+                        auction_won: 'bg-yellow-100 text-yellow-700',
+                        auction_ended: 'bg-gray-100 text-gray-600',
+                        auction_cancelled: 'bg-red-100 text-red-600',
+                        auction_payment_verified: 'bg-emerald-100 text-emerald-600',
+                        auction_payment_rejected: 'bg-rose-100 text-rose-600',
+                        bidder_disqualified: 'bg-pink-100 text-pink-600',
+                        payment_proof_submitted: 'bg-blue-100 text-blue-600',
+                        order_shipped: 'bg-blue-100 text-blue-600',
+                        order_delivered: 'bg-emerald-100 text-emerald-600',
+                        new_message: 'bg-teal-100 text-teal-600',
+                        new_ticket: 'bg-amber-100 text-amber-700'
+                      };
                      const handleNotificationClick = () => {
                        setShowNotifications(false);
                        apiFetch(`/api/notifications/${n.id}/read`, { method: 'PATCH' }).then(fetchNotifications);
@@ -230,8 +259,8 @@ export default function Header() {
                            <MaterialSymbol icon={icons[n.type] || 'notifications'} size={18} />
                          </div>
                          <div className={`flex-1 min-w-0 ${isRtl ? 'text-right' : ''}`}>
-                           <p className="text-sm font-semibold text-[#002819]">{n.title}</p>
-                           <p className="text-xs text-[#717973] mt-0.5 line-clamp-2">{n.body}</p>
+                            <p className="text-sm font-semibold text-[#002819]">{n.title} <TranslateButton text={n.title} /></p>
+                            <p className="text-xs text-[#717973] mt-0.5 line-clamp-2">{n.body} <TranslateButton text={n.body} /></p>
                            <p className="text-[10px] text-[#717973] mt-1">{new Date(n.created_at).toLocaleDateString()}</p>
                          </div>
                          {!n.read_at && (

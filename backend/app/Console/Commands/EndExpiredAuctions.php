@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\Auction;
+use App\Models\User;
 use Illuminate\Console\Command;
 
 class EndExpiredAuctions extends Command
@@ -36,12 +37,34 @@ class EndExpiredAuctions extends Command
                         'payment_expires_at' => now()->addHours(24),
                         'payment_status' => 'pending',
                     ]);
+
+                    \App\Models\Notification::create([
+                        'user_id' => $highestBid->user_id,
+                        'type' => 'auction_won',
+                        'title' => 'You won the auction!',
+                        'body' => "Congratulations! You won \"{$auction->title}\" for {$highestBid->amount} SAR. Complete payment within 24 hours.",
+                        'data' => [
+                            'auction_id' => $auction->id,
+                            'link' => "/auctions/{$auction->id}",
+                        ],
+                    ]);
                     
                     $this->info("Auction #{$auction->id} sold to user #{$highestBid->user_id}");
                 } else {
                     $auction->update([
                         'status' => 'ended',
                         'ended_at' => now(),
+                    ]);
+
+                    \App\Models\Notification::create([
+                        'user_id' => $auction->owner_id,
+                        'type' => 'auction_ended',
+                        'title' => 'Auction ended - reserve not met',
+                        'body' => "Your auction \"{$auction->title}\" ended without meeting the reserve price.",
+                        'data' => [
+                            'auction_id' => $auction->id,
+                            'link' => "/auctions/{$auction->id}",
+                        ],
                     ]);
                     
                     $this->info("Auction #{$auction->id} ended (reserve not met)");
@@ -50,6 +73,17 @@ class EndExpiredAuctions extends Command
                 $auction->update([
                     'status' => 'ended',
                     'ended_at' => now(),
+                ]);
+
+                \App\Models\Notification::create([
+                    'user_id' => $auction->owner_id,
+                    'type' => 'auction_ended',
+                    'title' => 'Auction ended - no bids',
+                    'body' => "Your auction \"{$auction->title}\" ended with no bids placed.",
+                    'data' => [
+                        'auction_id' => $auction->id,
+                        'link' => "/auctions/{$auction->id}",
+                    ],
                 ]);
                 
                 $this->info("Auction #{$auction->id} ended (no bids)");

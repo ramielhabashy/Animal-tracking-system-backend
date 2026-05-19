@@ -5,6 +5,7 @@ import { MaterialSymbol } from 'react-material-symbols';
 import { apiFetch, storageUrl } from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import { useI18n } from '../i18n';
+import TranslateButton from '../components/TranslateButton';
 
 export default function AuctionDetails() {
   const { id } = useParams();
@@ -144,6 +145,42 @@ export default function AuctionDetails() {
     }
   };
 
+  const approveAuction = async () => {
+    try {
+      const response = await apiFetch(`/api/admin/auctions/${id}/approve`, {
+        method: 'POST',
+      });
+      if (response.ok) {
+        setMessage({ type: 'success', text: 'Auction approved successfully!' });
+        fetchAuction();
+      } else {
+        const data = await response.json();
+        setMessage({ type: 'error', text: data.message || 'Failed to approve auction' });
+      }
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Failed to approve auction' });
+    }
+  };
+
+  const rejectAuction = async () => {
+    try {
+      const response = await apiFetch(`/api/admin/auctions/${id}/reject`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notes: verifyNotes }),
+      });
+      if (response.ok) {
+        setMessage({ type: 'success', text: 'Auction rejected' });
+        fetchAuction();
+      } else {
+        const data = await response.json();
+        setMessage({ type: 'error', text: data.message || 'Failed to reject auction' });
+      }
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Failed to reject auction' });
+    }
+  };
+
   const disqualifyBidder = async (bidId) => {
     if (!confirm('Disqualify this bidder?')) return;
     
@@ -273,6 +310,39 @@ export default function AuctionDetails() {
             : 'bg-red-100 text-red-800'
         }`}>
           {message.text}
+        </div>
+      )}
+
+      {/* Pending Approval Section */}
+      {auction.status === 'draft' && (
+        <div className="p-6 rounded-2xl bg-amber-50 border border-amber-200">
+          <div className={`flex items-center gap-4 ${isRtl ? 'flex-row-reverse' : ''}`}>
+            <div className="w-16 h-16 rounded-full bg-amber-500 flex items-center justify-center">
+              <MaterialSymbol icon="hourglass" size={32} className="text-white" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-xl font-bold text-[#002819]">Pending Approval</h3>
+              <p className="text-[#404943]">This auction is awaiting admin approval to go live.</p>
+            </div>
+          </div>
+          {isAdmin && (
+            <div className="mt-4 flex gap-3">
+              <button
+                onClick={approveAuction}
+                className="px-6 py-2 bg-emerald-600 text-white rounded-xl font-bold text-sm hover:bg-emerald-700"
+              >
+                <MaterialSymbol icon="check" size={16} className="inline mr-1" />
+                Approve
+              </button>
+              <button
+                onClick={() => { setShowVerifyModal(true); setVerifyAction('rejected'); }}
+                className="px-6 py-2 bg-red-600 text-white rounded-xl font-bold text-sm hover:bg-red-700"
+              >
+                <MaterialSymbol icon="close" size={16} className="inline mr-1" />
+                Reject
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -448,7 +518,7 @@ export default function AuctionDetails() {
               <p className="text-[#D4AF37] text-sm font-bold uppercase tracking-widest mb-2">
                 {auction.animal?.animal_id || 'No ID'}
               </p>
-              <h1 className="text-4xl font-bold font-['Manrope'] mb-2">{auction.title}</h1>
+              <h1 className="text-4xl font-bold font-['Manrope'] mb-2">{auction.title} <TranslateButton text={auction.title} /></h1>
               <p className="text-white/70">
                 {auction.animal?.species} {auction.animal?.breed && `• ${auction.animal.breed}`} 
                 {' • '} {auction.animal?.gender}
@@ -460,7 +530,7 @@ export default function AuctionDetails() {
           <div className="bg-white rounded-[2rem] p-8 shadow-sm">
             <h3 className="text-xl font-bold text-[#002819] font-['Manrope'] mb-4">About This Animal</h3>
             <p className="text-[#404943] leading-relaxed">
-              {auction.description || 'No description provided for this auction.'}
+              {auction.description || 'No description provided for this auction.'} <TranslateButton text={auction.description || 'No description provided for this auction.'} />
             </p>
             
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8 pt-8 border-t border-[#eeeee9]">

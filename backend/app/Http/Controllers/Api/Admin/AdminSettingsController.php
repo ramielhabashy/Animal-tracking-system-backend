@@ -73,6 +73,7 @@ class AdminSettingsController extends Controller
                 'default_language' => $settings['general_default_language'] ?? 'en',
                 'logo' => $settings['general_logo'] ?? '',
                 'favicon' => $settings['general_favicon'] ?? '',
+                'login_background' => $settings['general_login_background'] ?? '',
                 'copyright_text' => $settings['general_copyright_text'] ?? 'Digital Majlis.',
             ]
         ]);
@@ -114,6 +115,14 @@ class AdminSettingsController extends Controller
             $settings['general_favicon'] = '/storage/' . $faviconPath;
         } elseif ($request->has('favicon') && empty($request->input('favicon'))) {
             $settings['general_favicon'] = '';
+        }
+
+        if ($request->hasFile('login_background')) {
+            $bg = $request->file('login_background');
+            $bgPath = $bg->store('settings', 'public');
+            $settings['general_login_background'] = '/storage/' . $bgPath;
+        } elseif ($request->has('login_background') && empty($request->input('login_background'))) {
+            $settings['general_login_background'] = '';
         }
 
         foreach ($settings as $key => $value) {
@@ -334,5 +343,170 @@ class AdminSettingsController extends Controller
         }
 
         return response()->json(['message' => 'Notification settings saved']);
+    }
+
+    public function getTranslationSettings(): JsonResponse
+    {
+        $settings = DB::table('settings')->where('key', 'like', 'translation_%')->pluck('value', 'key')->toArray();
+
+        return response()->json([
+            'data' => [
+                'deepl_api_key' => $settings['translation_deepl_api_key'] ?? '',
+                'google_api_key' => $settings['translation_google_api_key'] ?? '',
+            ]
+        ]);
+    }
+
+    public function saveTranslationSettings(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'deepl_api_key' => 'nullable|string',
+            'google_api_key' => 'nullable|string',
+        ]);
+
+        $settings = [
+            'translation_deepl_api_key' => $validated['deepl_api_key'] ?? '',
+            'translation_google_api_key' => $validated['google_api_key'] ?? '',
+        ];
+
+        foreach ($settings as $key => $value) {
+            DB::table('settings')->updateOrInsert(
+                ['key' => $key],
+                ['value' => $value, 'updated_at' => now()]
+            );
+        }
+
+        return response()->json(['message' => 'Translation settings saved successfully']);
+    }
+
+    public function getCountrySettings(): JsonResponse
+    {
+        $countries = DB::table('settings')->where('key', 'checkout_countries')->value('value');
+        $list = $countries ? json_decode($countries, true) : ['Saudi Arabia'];
+
+        return response()->json(['data' => $list]);
+    }
+
+    public function saveCountrySettings(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'countries' => 'required|array|min:1',
+            'countries.*' => 'required|string|max:255',
+        ]);
+
+        DB::table('settings')->updateOrInsert(
+            ['key' => 'checkout_countries'],
+            ['value' => json_encode($validated['countries']), 'updated_at' => now()]
+        );
+
+        return response()->json(['message' => 'Countries saved successfully']);
+    }
+
+    public function getEmailNotificationPreferences(): JsonResponse
+    {
+        $prefs = DB::table('settings')->where('key', 'like', 'email_notify_%')->pluck('value', 'key')->toArray();
+
+        return response()->json([
+            'data' => [
+                'welcome' => filter_var($prefs['email_notify_welcome'] ?? true, FILTER_VALIDATE_BOOLEAN),
+                'invitation' => filter_var($prefs['email_notify_invitation'] ?? true, FILTER_VALIDATE_BOOLEAN),
+                'subscription' => filter_var($prefs['email_notify_subscription'] ?? true, FILTER_VALIDATE_BOOLEAN),
+                'auction_won' => filter_var($prefs['email_notify_auction_won'] ?? true, FILTER_VALIDATE_BOOLEAN),
+                'auction_bid' => filter_var($prefs['email_notify_auction_bid'] ?? true, FILTER_VALIDATE_BOOLEAN),
+                'auction_payment' => filter_var($prefs['email_notify_auction_payment'] ?? true, FILTER_VALIDATE_BOOLEAN),
+                'task_assigned' => filter_var($prefs['email_notify_task_assigned'] ?? true, FILTER_VALIDATE_BOOLEAN),
+                'medical' => filter_var($prefs['email_notify_medical'] ?? true, FILTER_VALIDATE_BOOLEAN),
+            ]
+        ]);
+    }
+
+    public function saveEmailNotificationPreferences(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'welcome' => 'boolean',
+            'invitation' => 'boolean',
+            'subscription' => 'boolean',
+            'auction_won' => 'boolean',
+            'auction_bid' => 'boolean',
+            'auction_payment' => 'boolean',
+            'task_assigned' => 'boolean',
+            'medical' => 'boolean',
+        ]);
+
+        foreach ($validated as $key => $value) {
+            DB::table('settings')->updateOrInsert(
+                ['key' => 'email_notify_' . $key],
+                ['value' => $value ? '1' : '0', 'updated_at' => now()]
+            );
+        }
+
+        return response()->json(['message' => 'Email notification preferences saved']);
+    }
+
+    public function getAuctionSettings(): JsonResponse
+    {
+        return response()->json([
+            'data' => [
+                'auto_approve' => filter_var(DB::table('settings')->where('key', 'auction_auto_approve')->value('value') ?? false, FILTER_VALIDATE_BOOLEAN),
+                'commission_enabled' => filter_var(DB::table('settings')->where('key', 'transfer_commission_enabled')->value('value') ?? false, FILTER_VALIDATE_BOOLEAN),
+                'commission_type' => DB::table('settings')->where('key', 'transfer_commission_type')->value('value') ?? 'percentage',
+                'commission_percentage' => (float) (DB::table('settings')->where('key', 'transfer_commission_percentage')->value('value') ?? 5),
+                'commission_fixed' => (float) (DB::table('settings')->where('key', 'transfer_commission_fixed')->value('value') ?? 0),
+            ]
+        ]);
+    }
+
+    public function saveAuctionSettings(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'auto_approve' => 'boolean',
+        ]);
+
+        DB::table('settings')->updateOrInsert(
+            ['key' => 'auction_auto_approve'],
+            ['value' => $validated['auto_approve'] ?? false, 'updated_at' => now()]
+        );
+
+        return response()->json(['message' => 'Auction settings saved successfully']);
+    }
+
+    public function getTransferCommissionSettings(): JsonResponse
+    {
+        $settings = DB::table('settings')->where('key', 'like', 'transfer_commission_%')->pluck('value', 'key')->toArray();
+
+        return response()->json([
+            'data' => [
+                'enabled' => filter_var($settings['transfer_commission_enabled'] ?? false, FILTER_VALIDATE_BOOLEAN),
+                'type' => $settings['transfer_commission_type'] ?? 'percentage',
+                'percentage' => (float) ($settings['transfer_commission_percentage'] ?? 5.00),
+                'fixed' => (float) ($settings['transfer_commission_fixed'] ?? 0.00),
+            ]
+        ]);
+    }
+
+    public function saveTransferCommissionSettings(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'enabled' => 'boolean',
+            'type' => 'in:percentage,fixed',
+            'percentage' => 'numeric|min:0|max:100',
+            'fixed' => 'numeric|min:0',
+        ]);
+
+        $settings = [
+            'transfer_commission_enabled' => $validated['enabled'] ?? false,
+            'transfer_commission_type' => $validated['type'] ?? 'percentage',
+            'transfer_commission_percentage' => $validated['percentage'] ?? 5.00,
+            'transfer_commission_fixed' => $validated['fixed'] ?? 0.00,
+        ];
+
+        foreach ($settings as $key => $value) {
+            DB::table('settings')->updateOrInsert(
+                ['key' => $key],
+                ['value' => $value, 'updated_at' => now()]
+            );
+        }
+
+        return response()->json(['message' => 'Transfer commission settings saved successfully']);
     }
 }

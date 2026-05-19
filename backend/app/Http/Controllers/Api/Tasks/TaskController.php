@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Tasks;
 
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Traits\ApiResponse;
+use App\Http\Controllers\Traits\SendsEmailNotifications;
 use App\Models\Task;
 use App\Models\User;
 use App\Models\Animal;
@@ -15,7 +16,7 @@ use Illuminate\Http\JsonResponse;
 
 class TaskController extends Controller
 {
-    use ApiResponse;
+    use ApiResponse, SendsEmailNotifications;
 
     private function canAccessTask(Request $request, Task $task): bool
     {
@@ -103,7 +104,7 @@ class TaskController extends Controller
             return $this->forbidden('Unauthorized to view tasks');
         }
 
-        $query = Task::with(['owner', 'assignee', 'animal', 'geofence']);
+        $query = Task::with(['owner', 'assignee', 'animal', 'geofence'])->withCount('logs');
         $query = $this->filterByRole($request, $query);
 
         if ($request->has('status') && $request->status !== 'all') {
@@ -205,6 +206,23 @@ class TaskController extends Controller
                     'link' => '/tasks',
                 ],
             ]);
+
+            $assignee = User::find($task->assigned_to);
+            if ($assignee) {
+                $this->sendNotificationMail(
+                    $assignee,
+                    'task_assigned',
+                    "New Task Assigned – {$task->title}",
+                    [
+                        "You have been assigned a new task: {$task->title}",
+                        $task->description ? "Description: {$task->description}" : '',
+                        $task->due_date ? "Due date: {$task->due_date->format('M d, Y')}" : '',
+                        "Priority: {$task->priority}",
+                    ],
+                    rtrim(env('FRONTEND_URL', config('app.url')), '/') . '/tasks',
+                    'View Tasks',
+                );
+            }
         }
 
         return $this->created($task->load(['owner', 'assignee', 'animal', 'geofence']), 'Task created successfully');
@@ -367,6 +385,20 @@ class TaskController extends Controller
                     'link' => '/tasks',
                 ],
             ]);
+
+            $owner = User::find($task->owner_id);
+            if ($owner) {
+                $this->sendNotificationMail(
+                    $owner,
+                    'task_assigned',
+                    "Task Completed – {$task->title}",
+                    [
+                        "{$user->name} has completed the task: {$task->title}",
+                    ],
+                    rtrim(env('FRONTEND_URL', config('app.url')), '/') . '/tasks',
+                    'View Tasks',
+                );
+            }
         }
 
         // Notify assignee if completed by someone else (e.g. owner marking assignee's task as done)
@@ -384,6 +416,20 @@ class TaskController extends Controller
                     'link' => '/tasks',
                 ],
             ]);
+
+            $assignee = User::find($task->assigned_to);
+            if ($assignee) {
+                $this->sendNotificationMail(
+                    $assignee,
+                    'task_assigned',
+                    "Task Marked Complete – {$task->title}",
+                    [
+                        "Your task \"{$task->title}\" has been marked complete by {$user->name}.",
+                    ],
+                    rtrim(env('FRONTEND_URL', config('app.url')), '/') . '/tasks',
+                    'View Tasks',
+                );
+            }
         }
 
         return $this->success($task->load(['owner', 'assignee', 'animal', 'geofence']), 'Task completed');

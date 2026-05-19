@@ -71,6 +71,16 @@ export default function AnimalEdit() {
   const [currentOwner, setCurrentOwner] = useState(null);
   const [devicesLoading, setDevicesLoading] = useState(true);
 
+  const [existingDocuments, setExistingDocuments] = useState([]);
+  const [newDocuments, setNewDocuments] = useState([]);
+  const [deleteDocumentIds, setDeleteDocumentIds] = useState([]);
+
+  const DOCUMENT_TYPES = [
+    { value: 'registration_proof', label: 'Registration Proof' },
+    { value: 'health_certificate', label: 'Health Certificate' },
+    { value: 'other', label: 'Other' },
+  ];
+
   useEffect(() => {
     fetchData();
   }, [id]);
@@ -173,6 +183,9 @@ export default function AnimalEdit() {
           const owner = users.find(u => u.id === currentAnimal.owner_id);
           if (owner) setCurrentOwner(owner);
         }
+        if (currentAnimal.documents) {
+          setExistingDocuments(currentAnimal.documents);
+        }
       }
     } catch (error) {
       console.error('Failed to fetch data:', error);
@@ -229,6 +242,56 @@ export default function AnimalEdit() {
     }
   };
 
+  const addDocument = () => {
+    setNewDocuments(prev => [...prev, { file: null, type: 'other', notes: '', preview: null }]);
+  };
+
+  const removeNewDocument = (index) => {
+    setNewDocuments(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleNewDocumentFile = (index, file) => {
+    setNewDocuments(prev => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], file };
+      if (file) {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setNewDocuments(docs => {
+            const d = [...docs];
+            d[index] = { ...d[index], preview: reader.result };
+            return d;
+          });
+        };
+        reader.readAsDataURL(file);
+      } else {
+        updated[index] = { ...updated[index], preview: null };
+      }
+      return updated;
+    });
+  };
+
+  const handleNewDocumentType = (index, type) => {
+    setNewDocuments(prev => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], type };
+      return updated;
+    });
+  };
+
+  const handleNewDocumentNotes = (index, notes) => {
+    setNewDocuments(prev => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], notes };
+      return updated;
+    });
+  };
+
+  const markDeleteDocument = (docId) => {
+    setDeleteDocumentIds(prev => [...prev, docId]);
+    setExistingDocuments(prev => prev.filter(d => d.id !== docId));
+  };
+
   const validate = () => {
     const newErrors = {};
     if (!formData.species && !formData.custom_species) newErrors.species = 'Species is required';
@@ -276,6 +339,22 @@ export default function AnimalEdit() {
 
       if (formData.identification_photo instanceof File) {
         submitData.append('identification_photo', formData.identification_photo);
+      }
+
+      newDocuments.forEach((doc, index) => {
+        if (doc.file) {
+          submitData.append(`documents[${index}][file]`, doc.file);
+          submitData.append(`documents[${index}][type]`, doc.type);
+          if (doc.notes) {
+            submitData.append(`documents[${index}][notes]`, doc.notes);
+          }
+        }
+      });
+
+      if (!isNewAnimal && deleteDocumentIds.length > 0) {
+        deleteDocumentIds.forEach(id => {
+          submitData.append('delete_document_ids[]', id);
+        });
       }
 
       const response = await apiFetch(url, {
@@ -553,6 +632,56 @@ export default function AnimalEdit() {
               </div>
             </section>
 
+            {/* Documents */}
+            <section className="bg-white p-8 rounded-xl shadow-sm">
+              <div className={`flex items-center gap-3 mb-6 ${isRtl ? 'flex-row-reverse' : ''}`}>
+                <MaterialSymbol icon="description" className="text-[#735c00]" />
+                <h3 className="text-xl font-bold text-emerald-900">Documents</h3>
+              </div>
+
+              {existingDocuments.length > 0 && (
+                <div className="mb-4 space-y-2">
+                  <p className="text-[11px] font-bold text-stone-500 uppercase tracking-widest px-1">Current Documents</p>
+                  {existingDocuments.map(doc => (
+                    <div key={doc.id} className={`flex items-center gap-3 bg-stone-50 p-3 rounded-xl ${isRtl ? 'flex-row-reverse' : ''}`}>
+                      <MaterialSymbol icon="file_present" className="text-emerald-700" />
+                      <a href={doc.file_url} target="_blank" rel="noopener noreferrer" className={`flex-1 text-sm font-semibold text-emerald-900 hover:underline ${isRtl ? 'text-right' : ''}`}>
+                        {doc.original_name}
+                      </a>
+                      <span className="text-[10px] text-stone-400 font-medium uppercase">{doc.type.replace(/_/g, ' ')}</span>
+                      <button type="button" onClick={() => markDeleteDocument(doc.id)} className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 transition-colors">
+                        <MaterialSymbol icon="close" size={16} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {newDocuments.map((doc, index) => (
+                <div key={index} className={`flex flex-wrap items-start gap-3 p-4 bg-stone-50 rounded-xl mb-3 ${isRtl ? 'flex-row-reverse' : ''}`}>
+                  <div className="flex-1 min-w-[200px] space-y-2">
+                    <input type="file" onChange={e => handleNewDocumentFile(index, e.target.files[0])} className="w-full text-sm text-stone-600 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-[#002819] file:text-white hover:file:bg-[#06402b]" />
+                    <div className={`flex gap-2 ${isRtl ? 'flex-row-reverse' : ''}`}>
+                      <select value={doc.type} onChange={e => handleNewDocumentType(index, e.target.value)} className="bg-white border border-stone-200 rounded-xl px-3 py-2 text-xs font-semibold text-emerald-900">
+                        {DOCUMENT_TYPES.map(t => (
+                          <option key={t.value} value={t.value}>{t.label}</option>
+                        ))}
+                      </select>
+                      <input type="text" value={doc.notes} onChange={e => handleNewDocumentNotes(index, e.target.value)} placeholder="Notes" className="flex-1 bg-white border border-stone-200 rounded-xl px-3 py-2 text-xs font-medium text-emerald-900 placeholder:text-stone-400" />
+                    </div>
+                  </div>
+                  <button type="button" onClick={() => removeNewDocument(index)} className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 transition-colors mt-1">
+                    <MaterialSymbol icon="delete" size={18} />
+                  </button>
+                </div>
+              ))}
+
+              <button type="button" onClick={addDocument} className="flex items-center gap-2 px-4 py-2.5 rounded-xl border-2 border-dashed border-stone-300 text-sm font-bold text-stone-500 hover:border-emerald-400 hover:text-emerald-700 transition-all">
+                <MaterialSymbol icon="add" size={18} />
+                Add Document
+              </button>
+            </section>
+
             {/* Danger Zone */}
             {!isNewAnimal && (
               <div className="bg-red-50/50 p-8 rounded-xl border border-red-100/50">
@@ -638,7 +767,7 @@ export default function AnimalEdit() {
                     </>
                   )}
                 </div>
-              </section>
+            </section>
             )}
 
               {/* Device Connectivity */}
@@ -715,14 +844,8 @@ export default function AnimalEdit() {
               )}
             </section>
 
-              {/* Quick Tips */}
-            <section className="bg-stone-900 p-6 rounded-xl text-stone-300 relative overflow-hidden">
-              <MaterialSymbol icon="lightbulb" className={`absolute text-white/5 text-8xl rotate-12 ${isRtl ? '-left-4 -bottom-4 right-auto' : '-right-4 -bottom-4'}`} />
-              <h4 className={`text-xs font-bold text-amber-400 uppercase tracking-widest mb-2 ${isRtl ? 'text-right' : ''}`}>{t('animals.systemInsight')}</h4>
-              <p className={`text-xs leading-relaxed font-medium ${isRtl ? 'text-right' : ''}`}>
-                Regular updates to animal health benchmarks ensure AI anomaly detection remains accurate. We recommend auditing these fields every 3 months.
-              </p>
-            </section>
+              {/* Quick Tips - Dynamic from banners */}
+            <DynamicInsightBanner isRtl={isRtl} />
           </div>
         </div>
       </div>
@@ -750,6 +873,29 @@ export default function AnimalEdit() {
         </div>
       </div>
     </form>
+  );
+}
+
+function DynamicInsightBanner({ isRtl }) {
+  const { t } = useI18n();
+  const [banner, setBanner] = useState(null);
+  useEffect(() => {
+    let cancelled = false;
+    apiFetch('/api/banners/active?type=insight').then(res => {
+      if (cancelled) return;
+      if (res.ok) res.json().then(d => { if (!cancelled && d.data?.[0]) setBanner(d.data[0]); }).catch(() => {});
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+  if (!banner) return null;
+  return (
+    <section className="bg-stone-900 p-6 rounded-xl text-stone-300 relative overflow-hidden">
+      <MaterialSymbol icon={banner.icon || 'lightbulb'} className={`absolute text-white/5 text-8xl rotate-12 ${isRtl ? '-left-4 -bottom-4 right-auto' : '-right-4 -bottom-4'}`} />
+      <h4 className={`text-xs font-bold text-amber-400 uppercase tracking-widest mb-2 ${isRtl ? 'text-right' : ''}`}>{banner.title || t('animals.systemInsight')}</h4>
+      <p className={`text-xs leading-relaxed font-medium ${isRtl ? 'text-right' : ''}`}>
+        {banner.description || 'Regular updates to animal health benchmarks ensure AI anomaly detection remains accurate. We recommend auditing these fields every 3 months.'}
+      </p>
+    </section>
   );
 }
 

@@ -11,6 +11,7 @@ class Kernel extends ConsoleKernel
     {
         $schedule->command('auctions:end-expired')->everyMinute();
         $schedule->command('devices:update-live-data')->everyMinute();
+        $schedule->command('alerts:check-temperature')->everyFiveMinutes();
     }
 
     protected function commands(): void

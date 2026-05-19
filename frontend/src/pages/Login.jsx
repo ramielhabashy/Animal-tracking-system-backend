@@ -1,6 +1,6 @@
 import React from 'react';
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { MaterialSymbol } from 'react-material-symbols';
 import { useAuth as useAuthContext } from '../context/AuthContext';
 import { useI18n } from '../i18n';
@@ -11,7 +11,7 @@ import { storageUrl } from '../utils/api';
 
 export default function Login() {
   const { t, dir } = useI18n();
-  const { platformName, logoUrl, copyrightText } = usePlatform();
+  const { platformName, logoUrl, loginBackgroundUrl, copyrightText } = usePlatform();
   const isRtl = dir === 'rtl';
 
   const [isLogin, setIsLogin] = useState(true);
@@ -25,6 +25,7 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { login } = useAuthContext();
 
 const handleSubmit = async (e) => {
@@ -37,7 +38,7 @@ const handleSubmit = async (e) => {
       const result = await login(email, password);
       console.log('Login result:', result);
       if (result === true) {
-        navigate('/dashboard');
+        navigate(searchParams.get('redirect') || '/dashboard');
       } else {
         const errorCode = result?.error || 'unauthorized';
         setError(t(`errors.${errorCode}`) || result?.message || t('errors.unauthorized'));
@@ -66,7 +67,7 @@ const handleSubmit = async (e) => {
           setAuthUser({ ...data.user, role: userRole });
           setUserRole(userRole);
           setPendingSubscription(true);
-          navigate('/subscription/select');
+          navigate(searchParams.get('redirect') || '/subscription/select');
         } else {
           const data = await response.json();
           setError(t(`errors.${data.error}`) || data.message || data.errors?.email?.[0] || t('errors.serverError'));
@@ -86,7 +87,10 @@ const handleSubmit = async (e) => {
       <div className="absolute inset-0 z-0">
         <div className="absolute inset-0 bg-[#eeeee9]/30" />
         <div
-          className="w-full h-full bg-[linear-gradient(135deg,rgba(0,40,25,0.85),rgba(6,64,43,0.7)),url(https://images.unsplash.com/photo-1542332213-31f87348057f?q=80&w=2070&auto=format&fit=crop)] bg-cover bg-center"
+          className="w-full h-full bg-cover bg-center"
+          style={{
+            backgroundImage: `linear-gradient(135deg,rgba(0,40,25,0.85),rgba(6,64,43,0.7)),url(${loginBackgroundUrl ? storageUrl(loginBackgroundUrl) : 'https://images.unsplash.com/photo-1542332213-31f87348057f?q=80&w=2070&auto=format&fit=crop'})`
+          }}
         />
       </div>
 
@@ -106,6 +110,16 @@ const handleSubmit = async (e) => {
             </h1>
             <p className="text-[#404943] font-medium">{platformName}</p>
           </div>
+
+          {searchParams.get('invitation') && (
+            <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3">
+              <MaterialSymbol icon="info" size={20} className="text-amber-600 mt-0.5 shrink-0" />
+              <div className="text-sm text-amber-800">
+                <p className="font-semibold mb-1">{t('invitations.invalidOrExpired')}</p>
+                <p className="text-amber-700">{t('common.contactAdmin')}</p>
+              </div>
+            </div>
+          )}
 
           <form className="space-y-5" onSubmit={handleSubmit}>
             {!isLogin && (
@@ -209,12 +223,16 @@ const handleSubmit = async (e) => {
                     isRtl ? 'pr-14 pl-5' : 'pl-14 pr-14'
                   }`}
                 />
-                <MaterialSymbol
-                  icon={showPassword ? 'visibility_off' : 'visibility'}
-                  size={20}
+                <button
+                  type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className={`absolute top-1/2 -translate-y-1/2 text-[#717973] cursor-pointer hover:text-[#002819] ${isRtl ? 'left-5 right-auto' : 'right-5'}`}
-                />
+                  className={`absolute top-1/2 -translate-y-1/2 flex items-center justify-center w-10 h-10 text-[#717973] hover:text-[#002819] ${isRtl ? 'left-2 right-auto' : 'right-2'}`}
+                >
+                  <MaterialSymbol
+                    icon={showPassword ? 'visibility_off' : 'visibility'}
+                    size={20}
+                  />
+                </button>
               </div>
             </div>
 

@@ -11,9 +11,12 @@ use Stripe\Stripe;
 use Stripe\Charge;
 use Stripe\Token;
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Traits\SendsEmailNotifications;
+use App\Services\FeatureGate;
 
 class SubscriptionController extends Controller
 {
+    use SendsEmailNotifications;
     private function getRequestUser(Request $request): ?User
     {
         if ($request->user()) {
@@ -104,7 +107,7 @@ class SubscriptionController extends Controller
             ->where('status', 'active')
             ->first();
 
-        $tier = $user->subscriptionTier;
+        $tier = FeatureGate::getUserTier($user);
 
         $limits = [
             'animals' => [
@@ -304,6 +307,19 @@ class SubscriptionController extends Controller
             $user->update(['subscription_tier_id' => $freeTier->id]);
         }
 
+        $this->sendNotificationMail(
+            $user,
+            'subscription',
+            'Subscription Cancelled',
+            [
+                'Your subscription has been cancelled successfully.',
+                'You have been moved to the Free plan.',
+                'You can reactivate anytime from your subscription page.',
+            ],
+            rtrim(env('FRONTEND_URL', config('app.url')), '/') . '/subscription',
+            'View Subscription',
+        );
+
         return response()->json([
             'message' => 'Subscription cancelled successfully',
             'data' => $subscription->load('tier'),
@@ -361,6 +377,7 @@ class SubscriptionController extends Controller
             ->get()
             ->map(function ($user) {
                 $sub = $user->subscription->sortByDesc('created_at')->first();
+                $effectiveTier = FeatureGate::getUserTier($user);
                 $nextBillingDate = null;
                 if ($sub?->ends_at) {
                     $nextBillingDate = $sub->ends_at;
@@ -383,6 +400,7 @@ class SubscriptionController extends Controller
                     ],
                     'tier_id' => $user->subscription_tier_id,
                     'tier' => $user->subscriptionTier,
+                    'effective_tier' => $effectiveTier,
                     'status' => $sub?->status ?? 'active',
                     'created_at' => $sub?->created_at?->toISOString(),
                     'started_at' => $sub?->started_at?->toISOString(),
@@ -394,15 +412,15 @@ class SubscriptionController extends Controller
                     'usage' => [
                         'animals' => [
                             'used' => $user->animals_count,
-                            'max' => $user->subscriptionTier?->max_animals ?? 0,
+                            'max' => $effectiveTier?->max_animals ?? 0,
                         ],
                         'devices' => [
                             'used' => $user->devices_count,
-                            'max' => $user->subscriptionTier?->max_devices ?? 0,
+                            'max' => $effectiveTier?->max_devices ?? 0,
                         ],
                         'team' => [
                             'used' => $user->shepherds_count,
-                            'max' => $user->subscriptionTier?->max_users ?? 0,
+                            'max' => $effectiveTier?->max_users ?? 0,
                         ],
                     ],
                 ];
@@ -547,8 +565,13 @@ class SubscriptionController extends Controller
             'has_auctions' => 'nullable|boolean',
             'has_advanced_reports' => 'nullable|boolean',
             'has_api_access' => 'nullable|boolean',
+            'is_featured' => 'nullable|boolean',
+            'is_yearly_only' => 'nullable|boolean',
             'sort_order' => 'nullable|integer',
         ]);
+
+        $validated['is_featured'] = $request->boolean('is_featured');
+        $validated['is_yearly_only'] = $request->boolean('is_yearly_only');
 
         $tier = SubscriptionTier::create($validated);
 
@@ -580,9 +603,14 @@ class SubscriptionController extends Controller
             'has_auctions' => 'nullable|boolean',
             'has_advanced_reports' => 'nullable|boolean',
             'has_api_access' => 'nullable|boolean',
+            'is_featured' => 'nullable|boolean',
+            'is_yearly_only' => 'nullable|boolean',
             'sort_order' => 'nullable|integer',
             'is_active' => 'nullable|boolean',
         ]);
+
+        $validated['is_featured'] = $request->boolean('is_featured');
+        $validated['is_yearly_only'] = $request->boolean('is_yearly_only');
 
         $tier->update($validated);
 
@@ -738,6 +766,18 @@ class SubscriptionController extends Controller
             'payment_reference' => asset('storage/' . $path),
         ]);
 
+        $this->sendNotificationMail(
+            $user,
+            'subscription',
+            'Payment Proof Received',
+            [
+                "Your payment proof for the {$tier->name} plan has been received.",
+                'It will be reviewed by an administrator and you will be notified once approved.',
+            ],
+            rtrim(env('FRONTEND_URL', config('app.url')), '/') . '/subscription',
+            'View Subscription',
+        );
+
         return response()->json([
             'message' => 'Bank transfer proof uploaded. You will be notified once approved.',
         ]);
@@ -775,6 +815,21 @@ class SubscriptionController extends Controller
 
         $user->update(['subscription_tier_id' => $tier->id]);
 
+        if ($user) {
+            $this->sendNotificationMail(
+                $user,
+                'subscription',
+                'Payment Approved – ' . ($tier->name ?? 'Subscription') . ' Plan Activated',
+                [
+                    'Your payment has been approved and your subscription is now active.',
+                    "Plan: {$tier->name}",
+                    "Valid until: {$subscription->ends_at?->format('M d, Y')}",
+                ],
+                rtrim(env('FRONTEND_URL', config('app.url')), '/') . '/subscription',
+                'View Subscription',
+            );
+        }
+
         return response()->json([
             'message' => 'Payment approved and subscription activated',
             'data' => $subscription->load(['user', 'tier']),
@@ -794,6 +849,21 @@ class SubscriptionController extends Controller
         }
 
         $subscription->update(['status' => 'rejected']);
+
+        $user = User::find($subscription->user_id);
+        if ($user) {
+            $this->sendNotificationMail(
+                $user,
+                'subscription',
+                'Payment Rejected',
+                [
+                    'Your payment for the subscription has been rejected.',
+                    'Please contact support or try a different payment method.',
+                ],
+                rtrim(env('FRONTEND_URL', config('app.url')), '/') . '/subscription',
+                'View Subscription',
+            );
+        }
 
         return response()->json([
             'message' => 'Payment rejected',
@@ -838,6 +908,18 @@ class SubscriptionController extends Controller
             'paused_at' => now(),
         ]);
 
+        $this->sendNotificationMail(
+            $user,
+            'subscription',
+            'Subscription Paused',
+            [
+                'Your subscription has been paused by an administrator.',
+                'You can reactivate it anytime by contacting support.',
+            ],
+            rtrim(env('FRONTEND_URL', config('app.url')), '/') . '/subscription',
+            'View Subscription',
+        );
+
         return response()->json([
             'message' => 'Subscription paused successfully',
             'data' => $subscription->fresh()->load('tier'),
@@ -869,6 +951,19 @@ class SubscriptionController extends Controller
 
         $user->update(['subscription_tier_id' => $subscription->tier_id]);
 
+        $tierName = $subscription->tier?->name ?? 'Subscription';
+        $this->sendNotificationMail(
+            $user,
+            'subscription',
+            "Subscription Reactivated – {$tierName}",
+            [
+                "Your {$tierName} plan has been reactivated by an administrator.",
+                "You now have full access to your plan features.",
+            ],
+            rtrim(env('FRONTEND_URL', config('app.url')), '/') . '/subscription',
+            'View Subscription',
+        );
+
         return response()->json([
             'message' => 'Subscription reactivated successfully',
             'data' => $subscription->fresh()->load('tier'),
@@ -899,6 +994,19 @@ class SubscriptionController extends Controller
 
         $freeTier = SubscriptionTier::where('slug', 'free')->first();
         $user->update(['subscription_tier_id' => $freeTier?->id]);
+
+        $tierName = $subscription->tier?->name ?? 'Subscription';
+        $this->sendNotificationMail(
+            $user,
+            'subscription',
+            "Subscription Cancelled – {$tierName}",
+            [
+                "Your {$tierName} subscription has been cancelled by an administrator.",
+                'You have been moved to the Free plan.',
+            ],
+            rtrim(env('FRONTEND_URL', config('app.url')), '/') . '/subscription',
+            'View Subscription',
+        );
 
         return response()->json([
             'message' => 'Subscription cancelled successfully',
@@ -949,6 +1057,19 @@ class SubscriptionController extends Controller
         $subscription->update([
             'ends_at' => now()->add($period),
         ]);
+
+        $tierName = $subscription->tier?->name ?? 'Subscription';
+        $this->sendNotificationMail(
+            $user,
+            'subscription',
+            "Subscription Renewed – {$tierName}",
+            [
+                "Your {$tierName} plan has been renewed successfully.",
+                "New expiry date: {$subscription->ends_at?->format('M d, Y')}",
+            ],
+            rtrim(env('FRONTEND_URL', config('app.url')), '/') . '/subscription',
+            'View Subscription',
+        );
 
         return response()->json([
             'message' => 'Subscription renewed successfully',

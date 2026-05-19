@@ -56,8 +56,8 @@ class UserController extends Controller
         $role = $this->getAuthRole($request);
         $targetRole = $targetUser->getPrimaryRoleName();
 
-        // Admin can access anyone
-        if ($role === 'Admin') {
+        // Admin and staff can access anyone
+        if ($role === 'Admin' || $authUser->isStaff()) {
             return true;
         }
 
@@ -101,8 +101,8 @@ class UserController extends Controller
 
         $role = $authUser->getPrimaryRoleName();
 
-        // Admin sees everything
-        if ($role === 'Admin') {
+        // Admin and staff see everything across owners
+        if ($role === 'Admin' || $authUser->isStaff()) {
             return $query;
         }
 

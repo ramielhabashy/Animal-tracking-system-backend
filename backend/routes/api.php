@@ -1,33 +1,54 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use Illuminate\Http\Request;
+use App\Http\Controllers\Api\Admin\AdminSettingsController;
+use App\Http\Controllers\Api\Admin\ExportController;
+use App\Http\Controllers\Api\Admin\LanguageController;
+use App\Http\Controllers\Api\Admin\MedicalRecordTypeController;
+use App\Http\Controllers\Api\Admin\ReportsController;
+use App\Http\Controllers\Api\Admin\SimulatorController;
+use App\Http\Controllers\Api\Admin\TaskTypeController;
+use App\Http\Controllers\Api\Ai\AIController;
 use App\Http\Controllers\Api\Auth\AuthController;
-use App\Http\Controllers\Api\Resources\AnimalController;
-use App\Http\Controllers\Api\Resources\DeviceController;
-use App\Http\Controllers\Api\Users\UserController;
-use App\Http\Controllers\Api\Location\MapController;
-use App\Http\Controllers\Api\Location\LocationHistoryController;
-use App\Http\Controllers\Api\Location\GeofenceController;
 use App\Http\Controllers\Api\Business\AuctionController;
-use App\Http\Controllers\Api\Resources\AnimalGroupController;
 use App\Http\Controllers\Api\Business\SubscriptionController;
+use App\Http\Controllers\Api\CheckoutController;
+use App\Http\Controllers\Api\WorkflowTestController;
+use App\Http\Controllers\Api\Communication\ConversationController;
+use App\Http\Controllers\Api\Communication\MessageController;
+use App\Http\Controllers\Api\MenuController;
+use App\Http\Controllers\Api\OwnershipTransferController;
+use App\Http\Controllers\Api\Admin\MenuItemController;
+use App\Http\Controllers\Api\Health\HealthCheckController;
+use App\Http\Controllers\Api\Health\MedicalRecordController;
+use App\Http\Controllers\Api\Health\VaccinationScheduleController;
+use App\Http\Controllers\Api\InvitationController;
+use App\Http\Controllers\Api\Location\GeofenceController;
+use App\Http\Controllers\Api\Location\LocationHistoryController;
+use App\Http\Controllers\Api\Location\MapController;
+use App\Http\Controllers\Api\Notifications\NotificationController;
+use App\Http\Controllers\Api\PublicSettingsController;
+use App\Http\Controllers\Api\Resources\AnimalController;
+use App\Http\Controllers\Api\Resources\AnimalGroupController;
+use App\Http\Controllers\Api\Resources\DeviceController;
+use App\Http\Controllers\Api\Resources\SpeciesController;
+use App\Http\Controllers\Api\SearchController;
+use App\Http\Controllers\Api\Tasks\PredefinedTaskController;
 use App\Http\Controllers\Api\Tasks\TaskController;
 use App\Http\Controllers\Api\Tasks\TaskLogController;
-use App\Http\Controllers\Api\Admin\ReportsController;
-use App\Http\Controllers\Api\Tasks\PredefinedTaskController;
-use App\Http\Controllers\Api\Health\MedicalRecordController;
-use App\Http\Controllers\Api\Admin\AdminSettingsController;
-use App\Http\Controllers\Api\Health\VaccinationScheduleController;
-use App\Http\Controllers\Api\Admin\ExportController;
-use App\Http\Controllers\Api\Ai\AIController;
-use App\Http\Controllers\Api\Admin\LanguageController;
+use App\Http\Controllers\Api\TranslationController;
 use App\Http\Controllers\Api\Users\RoleManagementController;
-use App\Http\Controllers\Api\PublicSettingsController;
-use App\Http\Controllers\Api\Resources\SpeciesController;
-use App\Http\Controllers\Api\Health\HealthCheckController;
+use App\Http\Controllers\Api\Users\UserController;
 use App\Http\Controllers\Api\Webhook\StripeWebhookController;
 use App\Http\Controllers\DashboardController;
+use Illuminate\Support\Facades\Route;
+
+// Embed public routes
+Route::get('/embed/auctions', [\App\Http\Controllers\Api\EmbedController::class, 'auctions']);
+Route::get('/embed/animals', [\App\Http\Controllers\Api\EmbedController::class, 'animals']);
+
+// Invitation routes (public)
+Route::get('/invitations/{token}', [InvitationController::class, 'show']);
+Route::post('/invitations/{token}/accept', [InvitationController::class, 'accept']);
 
 // Public routes
 Route::post('/auth/login', [AuthController::class, 'login'])->name('login')->middleware('throttle:30,1');
@@ -40,7 +61,6 @@ Route::get('/subscription/tiers', [SubscriptionController::class, 'tiers']);
 Route::get('/subscription/tiers/{tier}', [SubscriptionController::class, 'showTier']);
 
 Route::get('/ai/status', [AIController::class, 'status']);
-Route::post('/ai/chat', [AIController::class, 'chat']);
 
 Route::get('/species', [SpeciesController::class, 'index']);
 Route::get('/languages', [LanguageController::class, 'index']);
@@ -54,6 +74,17 @@ Route::get('/health/database', [HealthCheckController::class, 'database']);
 Route::get('/health/redis', [HealthCheckController::class, 'redis']);
 
 Route::post('/stripe/webhook', [StripeWebhookController::class, 'handle']);
+
+// Public settings (no auth — used by guest checkout)
+Route::get('/settings/countries', function () {
+    $countries = DB::table('settings')->where('key', 'checkout_countries')->value('value');
+    return response()->json(['data' => $countries ? json_decode($countries) : ['Saudi Arabia']]);
+})->middleware('throttle:60,1');
+
+Route::get('/settings/stripe-status', function () {
+    $enabled = \App\Models\Setting::getBoolean('stripe_enabled', false);
+    return response()->json(['data' => ['enabled' => $enabled]]);
+})->middleware('throttle:60,1');
 
 // Authenticated routes
 Route::middleware('auth:sanctum')->group(function () {
@@ -72,23 +103,41 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/admin/roles', [RoleManagementController::class, 'index'])->middleware('throttle:60,1');
 
     // Reports
-    Route::get('/reports', [ReportsController::class, 'index'])->middleware('throttle:60,1');
+    Route::get('/reports', [ReportsController::class, 'index'])->middleware(['feature:advanced_reports', 'throttle:60,1']);
 
     // Animals
+    Route::get('/animals/stats', [AnimalController::class, 'stats'])->middleware(['limits:animals', 'throttle:60,1']);
     Route::apiResource('animals', AnimalController::class)->middleware(['limits:animals', 'throttle:60,1']);
     Route::get('/animals/{id}/location-history', [LocationHistoryController::class, 'index'])->middleware('throttle:60,1');
-    Route::post('/animals/{animal}/transfer-ownership', [AnimalController::class, 'transferOwnership'])->middleware('throttle:60,1');
+    // Ownership Transfers
+    Route::get('/transfers', [OwnershipTransferController::class, 'index']);
+    Route::post('/transfers', [OwnershipTransferController::class, 'store']);
+    Route::get('/transfers/history', [OwnershipTransferController::class, 'history']);
+    Route::get('/transfers/stats', [OwnershipTransferController::class, 'stats']);
+    Route::get('/transfers/{transfer}', [OwnershipTransferController::class, 'show']);
+    Route::post('/transfers/{transfer}/accept', [OwnershipTransferController::class, 'accept']);
+    Route::post('/transfers/{transfer}/reject', [OwnershipTransferController::class, 'reject']);
+    Route::post('/transfers/{transfer}/cancel', [OwnershipTransferController::class, 'cancel']);
+    Route::post('/animals/{animal}/transfer-ownership', [OwnershipTransferController::class, 'legacyTransfer'])->middleware('throttle:60,1');
 
     // Devices
     Route::apiResource('devices', DeviceController::class)->middleware(['limits:devices', 'throttle:60,1']);
+    Route::post('/devices/provision', [DeviceController::class, 'provision'])->middleware(['limits:devices', 'throttle:60,1']);
+    Route::post('/devices/batch', [DeviceController::class, 'batchStore'])->middleware(['limits:devices', 'throttle:60,1']);
+
+    // Invitations
+    Route::get('/invitations', [InvitationController::class, 'index']);
+    Route::post('/invitations', [InvitationController::class, 'store']);
+    Route::post('/invitations/{id}/resend', [InvitationController::class, 'resend']);
+    Route::delete('/invitations/{id}', [InvitationController::class, 'cancel']);
 
     // Users - explicit routes instead of apiResource for debugging
     Route::get('/users', [UserController::class, 'index']);
     Route::post('/users', [UserController::class, 'store'])->middleware(['limits:users', 'throttle:60,1']);
-    Route::get('/users/{user}', [UserController::class, 'show'])->middleware(['limits:users', 'throttle:60,1']);
-    Route::put('/users/{user}', [UserController::class, 'update'])->middleware(['limits:users', 'throttle:60,1']);
-    Route::patch('/users/{user}', [UserController::class, 'update'])->middleware(['limits:users', 'throttle:60,1']);
-    Route::delete('/users/{user}', [UserController::class, 'destroy'])->middleware(['limits:users', 'throttle:60,1']);
+    Route::get('/users/{user}', [UserController::class, 'show'])->middleware('throttle:60,1');
+    Route::put('/users/{user}', [UserController::class, 'update'])->middleware('throttle:60,1');
+    Route::patch('/users/{user}', [UserController::class, 'update'])->middleware('throttle:60,1');
+    Route::delete('/users/{user}', [UserController::class, 'destroy'])->middleware('throttle:60,1');
     Route::patch('/users/{user}/toggle-status', [UserController::class, 'toggleStatus'])->middleware('throttle:60,1');
     Route::get('/users/doctors/list', [UserController::class, 'doctors'])->middleware('throttle:60,1');
     Route::get('/users/owners/list', [UserController::class, 'owners'])->middleware('throttle:60,1');
@@ -108,6 +157,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Geofence Alerts
     Route::get('/geofence-alerts', [GeofenceController::class, 'alerts'])->middleware('throttle:60,1');
+    Route::get('/alerts/temperature', [GeofenceController::class, 'temperatureAlerts'])->middleware('throttle:60,1');
     Route::patch('/geofence-alerts/{alert}/acknowledge', [GeofenceController::class, 'acknowledgeAlert'])->middleware('throttle:60,1');
     Route::delete('/geofence-alerts/{alert}', [GeofenceController::class, 'deleteAlert'])->middleware('throttle:60,1');
     Route::post('/geofence-alerts/deactivate-all', [GeofenceController::class, 'deactivateAlerts'])->middleware('throttle:60,1');
@@ -123,6 +173,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/animal-groups/{animalGroup}/add-animals', [AnimalGroupController::class, 'addAnimals'])->middleware('throttle:60,1');
     Route::post('/animal-groups/{animalGroup}/remove-animals', [AnimalGroupController::class, 'removeAnimals'])->middleware('throttle:60,1');
     Route::get('/animal-groups/{animalGroup}/available-animals', [AnimalGroupController::class, 'availableAnimals'])->middleware('throttle:60,1');
+    Route::get('/animal-groups/{animalGroup}/shepherds', [AnimalGroupController::class, 'getShepherds'])->middleware('throttle:60,1');
+    Route::post('/animal-groups/{animalGroup}/shepherds', [AnimalGroupController::class, 'assignShepherds'])->middleware('throttle:60,1');
+    Route::delete('/animal-groups/{animalGroup}/shepherds/{shepherd}', [AnimalGroupController::class, 'removeShepherd'])->middleware('throttle:60,1');
 
     // Map and Location
     Route::get('/map', [MapController::class, 'index'])->middleware('throttle:60,1');
@@ -149,22 +202,26 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     // Medical Records
-    Route::get('/medical-records', [MedicalRecordController::class, 'index'])->middleware('throttle:60,1');
-    Route::get('/medical-records/stats', [MedicalRecordController::class, 'stats'])->middleware('throttle:60,1');
-    Route::post('/medical-records', [MedicalRecordController::class, 'store'])->middleware('throttle:60,1');
-    Route::get('/medical-records/{medicalRecord}', [MedicalRecordController::class, 'show'])->middleware('throttle:60,1');
-    Route::put('/medical-records/{medicalRecord}', [MedicalRecordController::class, 'update'])->middleware('throttle:60,1');
-    Route::delete('/medical-records/{medicalRecord}', [MedicalRecordController::class, 'destroy'])->middleware('throttle:60,1');
+    Route::middleware('feature:medical_records')->group(function () {
+        Route::get('/medical-records', [MedicalRecordController::class, 'index'])->middleware('throttle:60,1');
+        Route::get('/medical-records/stats', [MedicalRecordController::class, 'stats'])->middleware('throttle:60,1');
+        Route::post('/medical-records', [MedicalRecordController::class, 'store'])->middleware('throttle:60,1');
+        Route::get('/medical-records/{medicalRecord}', [MedicalRecordController::class, 'show'])->middleware('throttle:60,1');
+        Route::put('/medical-records/{medicalRecord}', [MedicalRecordController::class, 'update'])->middleware('throttle:60,1');
+        Route::delete('/medical-records/{medicalRecord}', [MedicalRecordController::class, 'destroy'])->middleware('throttle:60,1');
+    });
 
     // Vaccination Schedules
-    Route::get('/vaccination-schedules', [VaccinationScheduleController::class, 'index'])->middleware('throttle:60,1');
-    Route::get('/vaccination-schedules/stats', [VaccinationScheduleController::class, 'stats'])->middleware('throttle:60,1');
-    Route::post('/vaccination-schedules', [VaccinationScheduleController::class, 'store'])->middleware('throttle:60,1');
-    Route::get('/vaccination-schedules/{vaccinationSchedule}', [VaccinationScheduleController::class, 'show'])->middleware('throttle:60,1');
-    Route::put('/vaccination-schedules/{vaccinationSchedule}', [VaccinationScheduleController::class, 'update'])->middleware('throttle:60,1');
-    Route::post('/vaccination-schedules/{vaccinationSchedule}/administer', [VaccinationScheduleController::class, 'administer'])->middleware('throttle:60,1');
-    Route::post('/vaccination-schedules/{vaccinationSchedule}/cancel', [VaccinationScheduleController::class, 'cancel'])->middleware('throttle:60,1');
-    Route::delete('/vaccination-schedules/{vaccinationSchedule}', [VaccinationScheduleController::class, 'destroy'])->middleware('throttle:60,1');
+    Route::middleware('feature:medical_records')->group(function () {
+        Route::get('/vaccination-schedules', [VaccinationScheduleController::class, 'index'])->middleware('throttle:60,1');
+        Route::get('/vaccination-schedules/stats', [VaccinationScheduleController::class, 'stats'])->middleware('throttle:60,1');
+        Route::post('/vaccination-schedules', [VaccinationScheduleController::class, 'store'])->middleware('throttle:60,1');
+        Route::get('/vaccination-schedules/{vaccinationSchedule}', [VaccinationScheduleController::class, 'show'])->middleware('throttle:60,1');
+        Route::put('/vaccination-schedules/{vaccinationSchedule}', [VaccinationScheduleController::class, 'update'])->middleware('throttle:60,1');
+        Route::post('/vaccination-schedules/{vaccinationSchedule}/administer', [VaccinationScheduleController::class, 'administer'])->middleware('throttle:60,1');
+        Route::post('/vaccination-schedules/{vaccinationSchedule}/cancel', [VaccinationScheduleController::class, 'cancel'])->middleware('throttle:60,1');
+        Route::delete('/vaccination-schedules/{vaccinationSchedule}', [VaccinationScheduleController::class, 'destroy'])->middleware('throttle:60,1');
+    });
 
     // Subscription
     Route::get('/subscription/current', [SubscriptionController::class, 'userSubscription'])->middleware('throttle:60,1');
@@ -178,38 +235,51 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/subscription/process-payment', [SubscriptionController::class, 'processPayment'])->middleware('throttle:60,1');
     Route::post('/subscription/bank-transfer', [SubscriptionController::class, 'bankTransfer'])->middleware('throttle:60,1');
 
+    // Checkout
+    Route::post('/checkout/init', [CheckoutController::class, 'init'])->middleware('throttle:60,1');
+    Route::post('/checkout/confirm', [CheckoutController::class, 'confirm'])->middleware('throttle:60,1');
+    Route::post('/checkout/bank-transfer', [CheckoutController::class, 'bankTransfer'])->middleware('throttle:60,1');
+    Route::get('/checkout/orders', [CheckoutController::class, 'myOrders'])->middleware('throttle:60,1');
+    Route::get('/checkout/orders/{order}', [CheckoutController::class, 'showOrder'])->middleware('throttle:60,1');
+    Route::post('/checkout/activate-device', [CheckoutController::class, 'activateDevice'])->middleware('throttle:60,1');
+
+    // Menu (authenticated)
+    Route::get('/menu-items', [MenuController::class, 'index'])->middleware('throttle:60,1');
+
     // Tasks
-    Route::get('/tasks', [TaskController::class, 'index'])->middleware('throttle:60,1');
-    Route::get('/tasks/my', [TaskController::class, 'myTasks'])->middleware('throttle:60,1');
-    Route::get('/tasks/stats', [TaskController::class, 'stats'])->middleware('throttle:60,1');
-    Route::post('/tasks', [TaskController::class, 'store'])->middleware('throttle:60,1');
-    Route::get('/tasks/{task}', [TaskController::class, 'show'])->middleware('throttle:60,1');
-    Route::put('/tasks/{task}', [TaskController::class, 'update'])->middleware('throttle:60,1');
-    Route::delete('/tasks/{task}', [TaskController::class, 'destroy'])->middleware('throttle:60,1');
-     Route::post('/tasks/{task}/complete', [TaskController::class, 'complete'])->middleware('throttle:60,1');
-     Route::post('/tasks/{task}/deliver', [TaskController::class, 'deliver'])->middleware('throttle:60,1');
-     Route::post('/tasks/{task}/approve', [TaskController::class, 'approve'])->middleware('throttle:60,1');
-     Route::post('/tasks/{task}/reject', [TaskController::class, 'reject'])->middleware('throttle:60,1');
-     Route::post('/tasks/{task}/reassign', [TaskController::class, 'reassign'])->middleware('throttle:60,1');
-    Route::get('/tasks/{task}/logs', [TaskLogController::class, 'logsForTask'])->middleware('throttle:60,1');
-    Route::get('/tasks/calendar/data', [TaskController::class, 'calendar'])->middleware('throttle:60,1');
-    Route::get('/tasks/types/list', [TaskController::class, 'taskTypes'])->middleware('throttle:60,1');
+    Route::middleware('feature:tasks')->group(function () {
+        Route::get('/tasks', [TaskController::class, 'index'])->middleware('throttle:60,1');
+        Route::get('/tasks/my', [TaskController::class, 'myTasks'])->middleware('throttle:60,1');
+        Route::get('/tasks/stats', [TaskController::class, 'stats'])->middleware('throttle:60,1');
+        Route::post('/tasks', [TaskController::class, 'store'])->middleware('throttle:60,1');
+        Route::get('/tasks/{task}', [TaskController::class, 'show'])->middleware('throttle:60,1');
+        Route::put('/tasks/{task}', [TaskController::class, 'update'])->middleware('throttle:60,1');
+        Route::delete('/tasks/{task}', [TaskController::class, 'destroy'])->middleware('throttle:60,1');
+        Route::post('/tasks/{task}/complete', [TaskController::class, 'complete'])->middleware('throttle:60,1');
+        Route::post('/tasks/{task}/deliver', [TaskController::class, 'deliver'])->middleware('throttle:60,1');
+        Route::post('/tasks/{task}/approve', [TaskController::class, 'approve'])->middleware('throttle:60,1');
+        Route::post('/tasks/{task}/reject', [TaskController::class, 'reject'])->middleware('throttle:60,1');
+        Route::post('/tasks/{task}/reassign', [TaskController::class, 'reassign'])->middleware('throttle:60,1');
+        Route::get('/tasks/{task}/logs', [TaskLogController::class, 'logsForTask'])->middleware('throttle:60,1');
+        Route::get('/tasks/calendar/data', [TaskController::class, 'calendar'])->middleware('throttle:60,1');
+        Route::get('/tasks/types/list', [TaskController::class, 'taskTypes'])->middleware('throttle:60,1');
 
-    // Task Logs
-    Route::get('/task-logs', [TaskLogController::class, 'index'])->middleware('throttle:60,1');
-    Route::get('/task-logs/archive', [TaskLogController::class, 'archive'])->middleware('throttle:60,1');
-    Route::get('/task-logs/my', [TaskLogController::class, 'myLogs'])->middleware('throttle:60,1');
-    Route::post('/task-logs', [TaskLogController::class, 'store'])->middleware('throttle:60,1');
-    Route::get('/task-logs/{taskLog}', [TaskLogController::class, 'show'])->middleware('throttle:60,1');
-    Route::put('/task-logs/{taskLog}', [TaskLogController::class, 'update'])->middleware('throttle:60,1');
-    Route::delete('/task-logs/{taskLog}', [TaskLogController::class, 'destroy'])->middleware('throttle:60,1');
+        // Task Logs
+        Route::get('/task-logs', [TaskLogController::class, 'index'])->middleware('throttle:60,1');
+        Route::get('/task-logs/archive', [TaskLogController::class, 'archive'])->middleware('throttle:60,1');
+        Route::get('/task-logs/my', [TaskLogController::class, 'myLogs'])->middleware('throttle:60,1');
+        Route::post('/task-logs', [TaskLogController::class, 'store'])->middleware('throttle:60,1');
+        Route::get('/task-logs/{taskLog}', [TaskLogController::class, 'show'])->middleware('throttle:60,1');
+        Route::put('/task-logs/{taskLog}', [TaskLogController::class, 'update'])->middleware('throttle:60,1');
+        Route::delete('/task-logs/{taskLog}', [TaskLogController::class, 'destroy'])->middleware('throttle:60,1');
 
-    // Predefined Tasks
-    Route::get('/predefined-tasks', [PredefinedTaskController::class, 'index'])->middleware('throttle:60,1');
-    Route::post('/predefined-tasks', [PredefinedTaskController::class, 'store'])->middleware('throttle:60,1');
-    Route::get('/predefined-tasks/{predefinedTask}', [PredefinedTaskController::class, 'show'])->middleware('throttle:60,1');
-    Route::put('/predefined-tasks/{predefinedTask}', [PredefinedTaskController::class, 'update'])->middleware('throttle:60,1');
-    Route::delete('/predefined-tasks/{predefinedTask}', [PredefinedTaskController::class, 'destroy'])->middleware('throttle:60,1');
+        // Predefined Tasks
+        Route::get('/predefined-tasks', [PredefinedTaskController::class, 'index'])->middleware('throttle:60,1');
+        Route::post('/predefined-tasks', [PredefinedTaskController::class, 'store'])->middleware('throttle:60,1');
+        Route::get('/predefined-tasks/{predefinedTask}', [PredefinedTaskController::class, 'show'])->middleware('throttle:60,1');
+        Route::put('/predefined-tasks/{predefinedTask}', [PredefinedTaskController::class, 'update'])->middleware('throttle:60,1');
+        Route::delete('/predefined-tasks/{predefinedTask}', [PredefinedTaskController::class, 'destroy'])->middleware('throttle:60,1');
+    });
 
     // Species (auth required for modifications)
     Route::post('/species', [SpeciesController::class, 'store'])->middleware('throttle:60,1');
@@ -230,23 +300,46 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/admin/translations/{id}', [LanguageController::class, 'updateTranslation'])->middleware('throttle:60,1');
     Route::delete('/admin/translations/{id}', [LanguageController::class, 'deleteTranslation'])->middleware('throttle:60,1');
     Route::post('/admin/translations/import', [LanguageController::class, 'importTranslations'])->middleware('throttle:60,1');
-    Route::get('/search', [App\Http\Controllers\Api\SearchController::class, 'search'])->middleware('throttle:60,1');
+    Route::get('/search', [SearchController::class, 'search'])->middleware('throttle:60,1');
 
     // Task Types (public list for all auth users)
-    Route::get('/task-types', [App\Http\Controllers\Api\Admin\TaskTypeController::class, 'index'])->middleware('throttle:60,1');
-    Route::get('/task-log-types', [App\Http\Controllers\Api\Tasks\TaskLogController::class, 'logTypes'])->middleware('throttle:60,1');
+    Route::get('/task-types', [TaskTypeController::class, 'index'])->middleware('throttle:60,1');
+    Route::get('/task-log-types', [TaskLogController::class, 'logTypes'])->middleware('throttle:60,1');
 
     // Medical Record Types (public list for all auth users)
-    Route::get('/medical-record-types', [App\Http\Controllers\Api\Admin\MedicalRecordTypeController::class, 'index'])->middleware('throttle:60,1');
+    Route::get('/medical-record-types', [MedicalRecordTypeController::class, 'index'])->middleware('throttle:60,1');
 
     // Vaccination Types (public list for all auth users)
-    Route::get('/vaccination-types', [App\Http\Controllers\Api\Admin\MedicalRecordTypeController::class, 'vaccinationTypes'])->middleware('throttle:60,1');
+    Route::get('/vaccination-types', [MedicalRecordTypeController::class, 'vaccinationTypes'])->middleware('throttle:60,1');
 
     // Notifications (accessible by all authenticated users)
-    Route::get('/notifications', [App\Http\Controllers\Api\Notifications\NotificationController::class, 'index'])->middleware('throttle:60,1');
-    Route::get('/notifications/unread-count', [App\Http\Controllers\Api\Notifications\NotificationController::class, 'unreadCount'])->middleware('throttle:60,1');
-    Route::patch('/notifications/{notification}/read', [App\Http\Controllers\Api\Notifications\NotificationController::class, 'markAsRead'])->middleware('throttle:60,1');
-    Route::post('/notifications/read-all', [App\Http\Controllers\Api\Notifications\NotificationController::class, 'markAllAsRead'])->middleware('throttle:60,1');
+    Route::get('/notifications', [NotificationController::class, 'index'])->middleware('throttle:60,1');
+    Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount'])->middleware('throttle:60,1');
+    Route::patch('/notifications/{notification}/read', [NotificationController::class, 'markAsRead'])->middleware('throttle:60,1');
+    Route::post('/notifications/read-all', [NotificationController::class, 'markAllAsRead'])->middleware('throttle:60,1');
+
+    // Conversations & Messages
+    Route::get('/conversations/unread-count', [ConversationController::class, 'unreadCount'])->middleware('throttle:60,1');
+    Route::get('/conversations', [ConversationController::class, 'index'])->middleware('throttle:60,1');
+    Route::post('/conversations', [ConversationController::class, 'store'])->middleware('throttle:60,1');
+    Route::get('/conversations/{conversation}', [ConversationController::class, 'show'])->middleware('throttle:60,1');
+    Route::put('/conversations/{conversation}', [ConversationController::class, 'update'])->middleware('throttle:60,1');
+    Route::delete('/conversations/{conversation}', [ConversationController::class, 'destroy'])->middleware('throttle:60,1');
+    Route::post('/conversations/{conversation}/read', [ConversationController::class, 'markRead'])->middleware('throttle:60,1');
+
+    Route::get('/conversations/{conversation}/messages', [MessageController::class, 'index'])->middleware('throttle:60,1');
+    Route::post('/conversations/{conversation}/messages', [MessageController::class, 'store'])->middleware('throttle:60,1');
+    Route::put('/messages/{message}', [MessageController::class, 'update'])->middleware('throttle:60,1');
+    Route::delete('/messages/{message}', [MessageController::class, 'destroy'])->middleware('throttle:60,1');
+    Route::post('/messages/{message}/attachments', [MessageController::class, 'uploadAttachment'])->middleware('throttle:60,1');
+    Route::delete('/attachments/{attachment}', [MessageController::class, 'deleteAttachment'])->middleware('throttle:60,1');
+
+    // AI Assistant
+    Route::post('/ai/chat', [AIController::class, 'chat'])->middleware(['feature:ai_assistant', 'throttle:60,1']);
+
+    // Translation
+    Route::post('/translate', [TranslationController::class, 'translate'])->middleware('throttle:30,1');
+    Route::post('/translate/batch', [TranslationController::class, 'translateBatch'])->middleware('throttle:10,1');
 });
 
 // Admin-only routes
@@ -268,23 +361,23 @@ Route::middleware(['auth:sanctum', 'role:Admin'])->group(function () {
     Route::put('/subscription/admin/update/{subscription}', [SubscriptionController::class, 'adminUpdateSubscription'])->middleware('throttle:60,1');
 
     // Task Type Admin
-    Route::post('/admin/task-types', [App\Http\Controllers\Api\Admin\TaskTypeController::class, 'store'])->middleware('throttle:60,1');
-    Route::put('/admin/task-types/{taskType}', [App\Http\Controllers\Api\Admin\TaskTypeController::class, 'update'])->middleware('throttle:60,1');
-    Route::delete('/admin/task-types/{taskType}', [App\Http\Controllers\Api\Admin\TaskTypeController::class, 'destroy'])->middleware('throttle:60,1');
-    Route::post('/admin/task-log-types', [App\Http\Controllers\Api\Admin\TaskTypeController::class, 'storeLogType'])->middleware('throttle:60,1');
-    Route::put('/admin/task-log-types/{taskLogType}', [App\Http\Controllers\Api\Admin\TaskTypeController::class, 'updateLogType'])->middleware('throttle:60,1');
-    Route::delete('/admin/task-log-types/{taskLogType}', [App\Http\Controllers\Api\Admin\TaskTypeController::class, 'destroyLogType'])->middleware('throttle:60,1');
+    Route::post('/admin/task-types', [TaskTypeController::class, 'store'])->middleware('throttle:60,1');
+    Route::put('/admin/task-types/{taskType}', [TaskTypeController::class, 'update'])->middleware('throttle:60,1');
+    Route::delete('/admin/task-types/{taskType}', [TaskTypeController::class, 'destroy'])->middleware('throttle:60,1');
+    Route::post('/admin/task-log-types', [TaskTypeController::class, 'storeLogType'])->middleware('throttle:60,1');
+    Route::put('/admin/task-log-types/{taskLogType}', [TaskTypeController::class, 'updateLogType'])->middleware('throttle:60,1');
+    Route::delete('/admin/task-log-types/{taskLogType}', [TaskTypeController::class, 'destroyLogType'])->middleware('throttle:60,1');
 
     // Medical Record Type Admin
-    Route::post('/admin/medical-record-types', [App\Http\Controllers\Api\Admin\MedicalRecordTypeController::class, 'store'])->middleware('throttle:60,1');
-    Route::put('/admin/medical-record-types/{medicalRecordType}', [App\Http\Controllers\Api\Admin\MedicalRecordTypeController::class, 'update'])->middleware('throttle:60,1');
-    Route::delete('/admin/medical-record-types/{medicalRecordType}', [App\Http\Controllers\Api\Admin\MedicalRecordTypeController::class, 'destroy'])->middleware('throttle:60,1');
+    Route::post('/admin/medical-record-types', [MedicalRecordTypeController::class, 'store'])->middleware('throttle:60,1');
+    Route::put('/admin/medical-record-types/{medicalRecordType}', [MedicalRecordTypeController::class, 'update'])->middleware('throttle:60,1');
+    Route::delete('/admin/medical-record-types/{medicalRecordType}', [MedicalRecordTypeController::class, 'destroy'])->middleware('throttle:60,1');
 
     // Vaccination Type Admin
-    Route::get('/admin/vaccination-types', [App\Http\Controllers\Api\Admin\MedicalRecordTypeController::class, 'allVaccinationTypes'])->middleware('throttle:60,1');
-    Route::post('/admin/vaccination-types', [App\Http\Controllers\Api\Admin\MedicalRecordTypeController::class, 'storeVaccinationType'])->middleware('throttle:60,1');
-    Route::put('/admin/vaccination-types/{vaccinationType}', [App\Http\Controllers\Api\Admin\MedicalRecordTypeController::class, 'updateVaccinationType'])->middleware('throttle:60,1');
-    Route::delete('/admin/vaccination-types/{vaccinationType}', [App\Http\Controllers\Api\Admin\MedicalRecordTypeController::class, 'destroyVaccinationType'])->middleware('throttle:60,1');
+    Route::get('/admin/vaccination-types', [MedicalRecordTypeController::class, 'allVaccinationTypes'])->middleware('throttle:60,1');
+    Route::post('/admin/vaccination-types', [MedicalRecordTypeController::class, 'storeVaccinationType'])->middleware('throttle:60,1');
+    Route::put('/admin/vaccination-types/{vaccinationType}', [MedicalRecordTypeController::class, 'updateVaccinationType'])->middleware('throttle:60,1');
+    Route::delete('/admin/vaccination-types/{vaccinationType}', [MedicalRecordTypeController::class, 'destroyVaccinationType'])->middleware('throttle:60,1');
 
     // Admin Settings
     Route::get('/admin/settings/general', [AdminSettingsController::class, 'getGeneralSettings'])->middleware('throttle:60,1');
@@ -303,6 +396,36 @@ Route::middleware(['auth:sanctum', 'role:Admin'])->group(function () {
     Route::get('/admin/settings/notifications', [AdminSettingsController::class, 'getNotificationSettings'])->middleware('throttle:60,1');
     Route::post('/admin/settings/notifications', [AdminSettingsController::class, 'saveNotificationSettings'])->middleware('throttle:60,1');
 
+    // Transfer Commission Settings
+    Route::get('/admin/settings/transfer-commission', [AdminSettingsController::class, 'getTransferCommissionSettings'])->middleware('throttle:60,1');
+    Route::post('/admin/settings/transfer-commission', [AdminSettingsController::class, 'saveTransferCommissionSettings'])->middleware('throttle:60,1');
+
+    // Translation Settings
+    Route::get('/admin/settings/translation', [AdminSettingsController::class, 'getTranslationSettings'])->middleware('throttle:60,1');
+    Route::post('/admin/settings/translation', [AdminSettingsController::class, 'saveTranslationSettings'])->middleware('throttle:60,1');
+
+    // Email Notification Preferences
+    Route::get('/admin/settings/email-preferences', [AdminSettingsController::class, 'getEmailNotificationPreferences'])->middleware('throttle:60,1');
+    Route::post('/admin/settings/email-preferences', [AdminSettingsController::class, 'saveEmailNotificationPreferences'])->middleware('throttle:60,1');
+
+    // Country Settings
+    Route::get('/admin/settings/countries', [AdminSettingsController::class, 'getCountrySettings'])->middleware('throttle:60,1');
+    Route::post('/admin/settings/countries', [AdminSettingsController::class, 'saveCountrySettings'])->middleware('throttle:60,1');
+
+    // Checkout Admin
+    Route::get('/checkout/admin/orders', [CheckoutController::class, 'adminOrders'])->middleware('throttle:60,1');
+    Route::put('/checkout/admin/orders/{order}', [CheckoutController::class, 'adminUpdateOrder'])->middleware('throttle:60,1');
+    Route::post('/checkout/admin/orders/{order}/approve-payment', [CheckoutController::class, 'adminApprovePayment'])->middleware('throttle:60,1');
+    Route::post('/checkout/admin/orders/{order}/reject-payment', [CheckoutController::class, 'adminRejectPayment'])->middleware('throttle:60,1');
+    Route::get('/checkout/admin/stats', [CheckoutController::class, 'adminStats'])->middleware('throttle:60,1');
+
+    // Menu Admin
+    Route::get('/admin/menu-items', [MenuItemController::class, 'index'])->middleware('throttle:60,1');
+    Route::post('/admin/menu-items', [MenuItemController::class, 'store'])->middleware('throttle:60,1');
+    Route::put('/admin/menu-items/{menuItem}', [MenuItemController::class, 'update'])->middleware('throttle:60,1');
+    Route::delete('/admin/menu-items/{menuItem}', [MenuItemController::class, 'destroy'])->middleware('throttle:60,1');
+    Route::post('/admin/menu-items/reorder', [MenuItemController::class, 'reorder'])->middleware('throttle:60,1');
+
     // Export
     Route::get('/export/animals', [ExportController::class, 'exportAnimals'])->middleware('throttle:60,1');
     Route::get('/export/devices', [ExportController::class, 'exportDevices'])->middleware('throttle:60,1');
@@ -310,18 +433,57 @@ Route::middleware(['auth:sanctum', 'role:Admin'])->group(function () {
     Route::get('/export/users', [ExportController::class, 'exportUsers'])->middleware('throttle:60,1');
     Route::get('/export/database', [ExportController::class, 'exportDatabase'])->middleware('throttle:60,1');
 
-    // Simulator
-    Route::get('/simulator/devices', [App\Http\Controllers\Api\Admin\SimulatorController::class, 'devices'])->middleware('throttle:60,1');
-    Route::post('/simulator/move', [App\Http\Controllers\Api\Admin\SimulatorController::class, 'move'])->middleware('throttle:60,1');
-    Route::post('/simulator/batch', [App\Http\Controllers\Api\Admin\SimulatorController::class, 'batch'])->middleware('throttle:60,1');
-
     // Role Management
     Route::post('/admin/roles', [RoleManagementController::class, 'storeRole'])->middleware('throttle:60,1');
     Route::put('/admin/roles/{role}', [RoleManagementController::class, 'updateRole'])->middleware('throttle:60,1');
     Route::delete('/admin/roles/{role}', [RoleManagementController::class, 'deleteRole'])->middleware('throttle:60,1');
     Route::get('/admin/users/{user}/roles', [RoleManagementController::class, 'getUserRoles'])->middleware('throttle:60,1');
     Route::put('/admin/users/{user}/roles', [RoleManagementController::class, 'updateUserRoles'])->middleware('throttle:60,1');
+
+    // Workflow Test
+    Route::post('/system/workflow-test/run', [WorkflowTestController::class, 'run']);
+    Route::get('/system/workflow-test/latest', [WorkflowTestController::class, 'latest']);
+    Route::get('/system/workflow-test/runs', [WorkflowTestController::class, 'index']);
+
+    // Banners Admin
+    Route::get('/admin/banners', [\App\Http\Controllers\Api\BannerController::class, 'index']);
+    Route::post('/admin/banners', [\App\Http\Controllers\Api\BannerController::class, 'store']);
+    Route::put('/admin/banners/{banner}', [\App\Http\Controllers\Api\BannerController::class, 'update']);
+    Route::delete('/admin/banners/{banner}', [\App\Http\Controllers\Api\BannerController::class, 'destroy']);
+
+    // Transfer management
+    Route::get('/admin/transfers', [OwnershipTransferController::class, 'adminIndex']);
+    Route::put('/admin/transfers/{transfer}/commission', [OwnershipTransferController::class, 'adminUpdateCommission']);
+    Route::get('/admin/transfers/commission-stats', [OwnershipTransferController::class, 'adminCommissionStats']);
+
+    // Auction Admin
+    Route::get('/admin/auctions/pending-approval', [AuctionController::class, 'adminPendingApproval']);
+    Route::post('/admin/auctions/{auction}/approve', [AuctionController::class, 'adminApprove']);
+    Route::post('/admin/auctions/{auction}/reject', [AuctionController::class, 'adminReject']);
+    Route::get('/admin/auctions/payments', [AuctionController::class, 'adminPayments']);
+
+    // Auction Settings
+    Route::get('/admin/settings/auction', [AdminSettingsController::class, 'getAuctionSettings']);
+    Route::post('/admin/settings/auction', [AdminSettingsController::class, 'saveAuctionSettings']);
+});
+
+// Simulator (all authenticated users)
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/simulator/devices', [SimulatorController::class, 'devices'])->middleware('throttle:60,1');
+    Route::post('/simulator/move', [SimulatorController::class, 'move'])->middleware('throttle:60,1');
+    Route::post('/simulator/batch', [SimulatorController::class, 'batch'])->middleware('throttle:60,1');
+    Route::post('/simulator/recharge', [SimulatorController::class, 'recharge'])->middleware('throttle:60,1');
+    Route::post('/simulator/teleport', [SimulatorController::class, 'teleport'])->middleware('throttle:60,1');
+    Route::post('/simulator/demo-seed', [SimulatorController::class, 'demoSeed'])->middleware('throttle:60,1');
+    Route::post('/simulator/demo-reset', [SimulatorController::class, 'demoReset'])->middleware('throttle:60,1');
+    Route::post('/simulator/update', [SimulatorController::class, 'update'])->middleware('throttle:60,1');
+    Route::post('/simulator/toggle-lost', [SimulatorController::class, 'toggleLost'])->middleware('throttle:60,1');
+    Route::post('/simulator/set-temperature', [SimulatorController::class, 'setTemperature'])->middleware('throttle:60,1');
+    Route::post('/simulator/batch-settings', [SimulatorController::class, 'batchSettings'])->middleware('throttle:60,1');
 });
 
 // Public settings (no auth required — used by login page, favicon, etc.)
 Route::get('/settings/public', [PublicSettingsController::class, 'index']);
+
+// Public banners (no auth)
+Route::get('/banners/active', [\App\Http\Controllers\Api\BannerController::class, 'active']);

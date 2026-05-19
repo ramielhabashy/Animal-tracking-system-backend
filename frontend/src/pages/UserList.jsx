@@ -28,7 +28,7 @@ export default function UserList() {
    const [totalUsers, setTotalUsers] = useState(0);
    
    useEffect(() => {
-     const timer = setTimeout(() => setDebouncedSearch(searchQuery), 300);
+     const timer = setTimeout(() => setDebouncedSearch(searchQuery), 500);
      return () => clearTimeout(timer);
    }, [searchQuery]);
    
@@ -80,6 +80,13 @@ const fetchData = async () => {
      if (roleFilter !== 'all' && u.role !== roleFilter) return false;
      if (statusFilter === 'active' && u.is_active === false) return false;
      if (statusFilter === 'inactive' && u.is_active !== false) return false;
+     if (debouncedSearch) {
+       const q = debouncedSearch.toLowerCase();
+       const name = (u.name || '').toLowerCase();
+       const email = (u.email || '').toLowerCase();
+       const role = (u.role || '').toLowerCase();
+       if (!name.includes(q) && !email.includes(q) && !role.includes(q)) return false;
+     }
      return true;
    });
 

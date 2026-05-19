@@ -22,13 +22,19 @@ export default function StatsCardsWidget({ dashboardData }) {
   const isOwner = userRole === 'Owner';
   const isAdminOrOwner = isAdmin || isOwner;
 
-  const { stats, alerts } = dashboardData;
+  const { stats, alerts, animals } = dashboardData;
   if (!stats) return null;
 
   const sev = getSeverityLabel(alerts);
 
+  const temps = (animals || [])
+    .map(a => parseFloat(a.baseline_temperature))
+    .filter(t => !isNaN(t));
+  const avgTemp = temps.length > 0 ? (temps.reduce((s, t) => s + t, 0) / temps.length).toFixed(1) : '--';
+  const highTempCount = temps.filter(t => t > 39.5).length;
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
       <div className="stat-card group hover:shadow-[0_16px_48px_rgba(6,64,43,0.1)] transition-shadow duration-300">
         <div className="flex justify-between items-start mb-6">
           <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#002819] to-[#06402B] flex items-center justify-center shadow-lg shadow-[#002819]/20">
@@ -71,6 +77,26 @@ export default function StatsCardsWidget({ dashboardData }) {
         </div>
       </div>
 
+      <div className="stat-card bg-gradient-to-br from-[#06402b] to-[#002819] text-white group hover:shadow-[0_16px_48px_rgba(6,64,43,0.1)] transition-shadow duration-300">
+        <div className="flex justify-between items-start mb-6">
+          <div className="w-14 h-14 rounded-2xl bg-white/15 flex items-center justify-center backdrop-blur-sm">
+            <MaterialSymbol icon="device_thermostat" size={24} className="text-[#D4AF37]" weight="fill" />
+          </div>
+          {highTempCount > 0 ? (
+            <span className="chip chip-danger">{highTempCount} High</span>
+          ) : (
+            <span className="chip chip-success">Normal</span>
+          )}
+        </div>
+        <div>
+          <p className="text-sm font-medium text-white/60 mb-1">{t('reportsPage.avgTemp')}</p>
+          <h3 className="text-4xl font-black text-[#D4AF37]">{avgTemp}{t('reportsPage.celsius')}</h3>
+          <p className="text-xs text-white/60 mt-1">
+            {highTempCount > 0 ? `${highTempCount} ${t('reportsPage.animalsAboveThreshold')}` : t('animals.healthy')}
+          </p>
+        </div>
+      </div>
+
       {userRole !== 'Doctor' && userRole !== 'Shepherd' && (isAdmin && stats.subscription?.is_admin ? (
         <Link to="/users" className="stat-card bg-gradient-to-br from-[#002819] to-[#06402B] text-white group hover:shadow-[0_16px_48px_rgba(6,64,43,0.1)] transition-shadow duration-300">
           <div className="flex justify-between items-start mb-6">
@@ -98,9 +124,9 @@ export default function StatsCardsWidget({ dashboardData }) {
             <h3 className="text-3xl font-black text-[#D4AF37]">
               {stats.subscription.tier_name || 'Free'}
             </h3>
-            {stats.subscription.is_on_trial && stats.subscription.trial_ends_at && (
+            {stats.subscription.ends_at && (
               <p className="text-xs text-white/60 mt-1">
-                Trial ends: {new Date(stats.subscription.trial_ends_at).toLocaleDateString()}
+                Renews: {new Date(stats.subscription.ends_at).toLocaleDateString()}
               </p>
             )}
           </div>

@@ -5,6 +5,7 @@ import { MaterialSymbol } from 'react-material-symbols';
 import { apiFetch } from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import { useI18n } from '../i18n';
+import { OrdersPanel } from './OrdersPage';
 
 function BarChart({ data, height = 200, color = '#002819', maxValue, labelKey }) {
   const max = maxValue || Math.max(...data.map(d => d.value), 1);
@@ -154,6 +155,11 @@ export default function SubscriptionsPage() {
   const [statsLoading, setStatsLoading] = useState(false);
   const [paymentHistory, setPaymentHistory] = useState([]);
   const [paymentHistoryLoading, setPaymentHistoryLoading] = useState(false);
+  const [userOrders, setUserOrders] = useState([]);
+  const [userOrdersLoading, setUserOrdersLoading] = useState(false);
+  const [orderUploadId, setOrderUploadId] = useState(null);
+  const [orderUploadFile, setOrderUploadFile] = useState(null);
+  const [orderUploadLoading, setOrderUploadLoading] = useState(false);
   const [bankTransferFile, setBankTransferFile] = useState(null);
   const [bankTransferLoading, setBankTransferLoading] = useState(false);
   const [ownerPaymentMethod, setOwnerPaymentMethod] = useState('');
@@ -187,6 +193,9 @@ export default function SubscriptionsPage() {
         setOwnerPaymentMethod(currentSubscription.payment_method || '');
         setOwnerPaymentRef(currentSubscription.payment_reference || '');
       }
+    }
+    if (!isAdmin && activeTab === 'orders') {
+      fetchUserOrders();
     }
   }, [activeTab, currentSubscription]);
 
@@ -378,6 +387,49 @@ export default function SubscriptionsPage() {
       console.error('Failed to fetch payment history:', error);
     } finally {
       setPaymentHistoryLoading(false);
+    }
+  };
+
+  const fetchUserOrders = async () => {
+    setUserOrdersLoading(true);
+    try {
+      const res = await apiFetch('/api/checkout/orders');
+      if (res.ok) {
+        const data = await res.json();
+        setUserOrders(data.data || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch orders:', error);
+    } finally {
+      setUserOrdersLoading(false);
+    }
+  };
+
+  const handleOrderUpload = async (orderId) => {
+    if (!orderUploadFile) return;
+    setOrderUploadLoading(true);
+    setMessage(null);
+    const formData = new FormData();
+    formData.append('order_id', orderId);
+    formData.append('payment_proof', orderUploadFile);
+    try {
+      const res = await apiFetch('/api/checkout/bank-transfer', {
+        method: 'POST',
+        body: formData,
+      });
+      if (res.ok) {
+        setMessage({ type: 'success', text: 'Payment proof uploaded. Awaiting admin approval.' });
+        setOrderUploadId(null);
+        setOrderUploadFile(null);
+        fetchUserOrders();
+      } else {
+        const d = await res.json();
+        setMessage({ type: 'error', text: d.message || 'Upload failed' });
+      }
+    } catch (e) {
+      setMessage({ type: 'error', text: 'Upload failed' });
+    } finally {
+      setOrderUploadLoading(false);
     }
   };
 
@@ -764,6 +816,8 @@ export default function SubscriptionsPage() {
       has_auctions: formData.get('has_auctions') === 'on',
       has_advanced_reports: formData.get('has_advanced_reports') === 'on',
       has_api_access: formData.get('has_api_access') === 'on',
+      is_featured: formData.get('is_featured') === 'on',
+      is_yearly_only: formData.get('is_yearly_only') === 'on',
       sort_order: parseInt(formData.get('sort_order')) || 10,
       is_active: true,
     };
@@ -1104,6 +1158,18 @@ export default function SubscriptionsPage() {
             Billing
           </button>
         )}
+        {!isAdmin && (
+          <button
+            onClick={() => setActiveTab('orders')}
+            className={`pb-4 px-2 border-b-2 font-bold text-sm transition-colors ${
+              activeTab === 'orders'
+                ? 'border-[#002819] text-[#002819]'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Orders
+          </button>
+        )}
         {isAdmin && (
           <button
             onClick={() => setActiveTab('subscribers')}
@@ -1126,6 +1192,18 @@ export default function SubscriptionsPage() {
             }`}
           >
             Payments
+          </button>
+        )}
+        {isAdmin && (
+          <button
+            onClick={() => setActiveTab('adminOrders')}
+            className={`pb-4 px-2 border-b-2 font-bold text-sm transition-colors ${
+              activeTab === 'adminOrders'
+                ? 'border-[#002819] text-[#002819]'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Orders
           </button>
         )}
         {isAdmin && (
@@ -2285,6 +2363,119 @@ export default function SubscriptionsPage() {
         </div>
       )}
 
+      {/* Orders Tab */}
+      {activeTab === 'orders' && !isAdmin && (
+        <div className="space-y-6">
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+            <h3 className="text-lg font-bold text-[#002819] mb-4">My Orders</h3>
+            {userOrdersLoading ? (
+              <div className="flex items-center justify-center h-32">
+                <div className="animate-spin w-6 h-6 border-4 border-[#002819] border-t-transparent rounded-full" />
+              </div>
+            ) : userOrders.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-gray-200">
+                      <th className="text-start py-3 px-4 text-sm font-bold text-gray-600">Order</th>
+                      <th className="text-start py-3 px-4 text-sm font-bold text-gray-600">Plan</th>
+                      <th className="text-start py-3 px-4 text-sm font-bold text-gray-600">Amount</th>
+                      <th className="text-start py-3 px-4 text-sm font-bold text-gray-600">Payment</th>
+                      <th className="text-start py-3 px-4 text-sm font-bold text-gray-600">Shipping</th>
+                      <th className="text-start py-3 px-4 text-sm font-bold text-gray-600">Date</th>
+                      <th className="text-start py-3 px-4 text-sm font-bold text-gray-600">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {userOrders.map((order) => (
+                      <tr key={order.id} className="border-b border-gray-100 hover:bg-gray-50">
+                        <td className="py-3 px-4 font-bold text-[#002819]">#{order.id}</td>
+                        <td className="py-3 px-4 text-sm text-gray-700">{order.tier?.name || 'N/A'}</td>
+                        <td className="py-3 px-4 text-sm font-medium text-[#002819]">${parseFloat(order.amount || 0).toFixed(2)}</td>
+                        <td className="py-3 px-4">
+                          <span className={`px-2 py-1 rounded text-xs font-medium ${
+                            order.payment_status === 'paid' ? 'bg-emerald-100 text-emerald-700' :
+                            order.payment_status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                            'bg-red-100 text-red-700'
+                          }`}>
+                            {order.payment_status}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="flex items-center gap-2">
+                            <span className={`px-2 py-1 rounded text-xs font-medium ${
+                              order.shipping_status === 'delivered' ? 'bg-emerald-100 text-emerald-700' :
+                              order.shipping_status === 'shipped' ? 'bg-blue-100 text-blue-700' :
+                              'bg-gray-100 text-gray-600'
+                            }`}>
+                              {order.shipping_status || 'pending'}
+                            </span>
+                            {order.tracking_number && (
+                              <span className="text-xs text-gray-500" title={order.tracking_number}>
+                                #{order.tracking_number}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 text-sm text-gray-600">
+                          {new Date(order.created_at).toLocaleDateString()}
+                        </td>
+                        <td className="py-3 px-4">
+                          {order.payment_method === 'bank_transfer' && order.payment_status === 'pending' && (
+                            orderUploadId === order.id ? (
+                              <div className="flex items-center gap-1">
+                                <input
+                                  type="file"
+                                  accept=".pdf,.jpg,.jpeg,.png"
+                                  onChange={(e) => setOrderUploadFile(e.target.files[0] || null)}
+                                  className="text-xs w-24 file:mr-1 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-bold file:bg-[#002819] file:text-white"
+                                />
+                                <button
+                                  onClick={() => handleOrderUpload(order.id)}
+                                  disabled={orderUploadLoading || !orderUploadFile}
+                                  className="px-2 py-1 bg-emerald-500 text-white rounded text-xs font-bold hover:bg-emerald-600 disabled:opacity-50"
+                                >
+                                  {orderUploadLoading ? '...' : 'Upload'}
+                                </button>
+                                <button
+                                  onClick={() => { setOrderUploadId(null); setOrderUploadFile(null); }}
+                                  className="px-2 py-1 text-xs text-gray-500 hover:text-gray-700"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => setOrderUploadId(order.id)}
+                                className="px-3 py-1.5 bg-amber-500 text-white rounded-lg text-xs font-bold hover:bg-amber-600 transition"
+                              >
+                                Upload Proof
+                              </button>
+                            )
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="text-center py-8 text-gray-500 text-sm">
+                <MaterialSymbol icon="receipt_long" size={32} className="mx-auto mb-2 text-gray-300" />
+                No orders yet
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Admin Orders Tab */}
+      {activeTab === 'adminOrders' && isAdmin && (
+        <div className="space-y-6">
+          <OrdersPanel />
+        </div>
+      )}
+
       {/* Reports Tab */}
       {activeTab === 'reports' && isAdmin && (
         <div className="space-y-6">
@@ -2993,6 +3184,36 @@ export default function SubscriptionsPage() {
                     <span className="text-sm">API Access</span>
                   </label>
                 </div>
+              </div>
+
+              <div className="bg-[#002819]/5 border border-[#002819]/20 rounded-xl p-4">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    name="is_featured"
+                    defaultChecked={editingTier?.is_featured}
+                    className="w-5 h-5 text-[#002819] border-gray-300 rounded focus:ring-[#002819]"
+                  />
+                  <div>
+                    <span className="text-sm font-bold text-[#002819]">Featured Tier</span>
+                    <p className="text-xs text-[#717973] mt-0.5">Shows this tier prominently with a larger card, gradient background, and badge</p>
+                  </div>
+                </label>
+              </div>
+
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    name="is_yearly_only"
+                    defaultChecked={editingTier?.is_yearly_only}
+                    className="w-5 h-5 text-amber-600 border-gray-300 rounded focus:ring-amber-500"
+                  />
+                  <div>
+                    <span className="text-sm font-bold text-amber-800">Yearly Only</span>
+                    <p className="text-xs text-amber-700 mt-0.5">Disables monthly billing — users can only subscribe yearly</p>
+                  </div>
+                </label>
               </div>
 
               <div className="flex gap-3 pt-4">

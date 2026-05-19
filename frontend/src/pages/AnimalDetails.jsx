@@ -8,6 +8,7 @@ import { MaterialSymbol } from 'react-material-symbols';
 import { apiFetch, storageUrl } from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import { useI18n } from '../i18n';
+import TransferCreateModal from '../components/Transfers/TransferCreateModal';
 
 const createMarkerIcon = (status) => {
   const colors = { healthy: '#10b981', warning: '#f59e0b', critical: '#ef4444' };
@@ -45,63 +46,13 @@ export default function AnimalDetails() {
   const [locationHistory, setLocationHistory] = useState([]);
   const [activityHistory, setActivityHistory] = useState([]);
   const [showTransferModal, setShowTransferModal] = useState(false);
-  const [users, setUsers] = useState([]);
-  const [selectedUser, setSelectedUser] = useState('');
-  const [transferLoading, setTransferLoading] = useState(false);
-  const [message, setMessage] = useState(null);
 
   useEffect(() => {
     fetchAnimal();
   }, [id]);
 
-  const fetchUsers = async () => {
-    try {
-      const res = await apiFetch('/api/users?per_page=100');
-      if (res.ok) {
-        const data = await res.json();
-        const owners = (data.data || []).filter(u => u.role === 'Owner' || u.role === 'Admin');
-        setUsers(owners);
-      }
-    } catch (error) {
-      console.error('Failed to fetch users:', error);
-    }
-  };
-
   const handleTransferClick = () => {
     setShowTransferModal(true);
-    setSelectedUser('');
-    setMessage(null);
-    fetchUsers();
-  };
-
-  const handleTransferOwnership = async () => {
-    if (!selectedUser) return;
-    
-    setTransferLoading(true);
-    setMessage(null);
-    
-    try {
-      const res = await apiFetch(`/api/animals/${id}/transfer-ownership`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ new_owner_id: selectedUser }),
-      });
-      
-      if (res.ok) {
-        setMessage({ type: 'success', text: t('animalDetailsPage.transferSuccess') });
-        setTimeout(() => {
-          setShowTransferModal(false);
-          fetchAnimal();
-        }, 1500);
-      } else {
-        const data = await res.json();
-        setMessage({ type: 'error', text: data.message || 'Transfer failed' });
-      }
-    } catch (error) {
-      setMessage({ type: 'error', text: 'Network error' });
-    } finally {
-      setTransferLoading(false);
-    }
   };
 
 const fetchAnimal = async () => {
@@ -432,7 +383,7 @@ const fetchAnimal = async () => {
         <div className="h-[450px] relative z-0">
           {positions.length > 0 ? (
             <MapContainer 
-              center={currentPosition || [24.4539, 54.3773]} 
+              center={currentPosition || [24.7136, 46.6753]} 
               zoom={14} 
               style={{ height: '100%', width: '100%' }}
               className="z-0"
@@ -523,58 +474,12 @@ const fetchAnimal = async () => {
         )}
       </section>
 
-      {/* Transfer Ownership Modal */}
       {showTransferModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold text-[#002819]">{t('animalDetailsPage.transferOwnership')}</h3>
-              <button onClick={() => setShowTransferModal(false)} className="p-2 hover:bg-gray-100 rounded-lg">
-                <MaterialSymbol icon="close" size={20} />
-              </button>
-            </div>
-
-            {message && (
-              <div className={`mb-4 p-3 rounded-xl ${message.type === 'success' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}`}>
-                {message.text}
-              </div>
-            )}
-
-            <div className="mb-6">
-              <label className="block text-xs font-bold text-[#404943] uppercase mb-2">
-                {t('animalDetailsPage.selectNewOwner')}
-              </label>
-              <select
-                value={selectedUser}
-                onChange={(e) => setSelectedUser(e.target.value)}
-                className="w-full bg-[#F4F4EF] rounded-xl p-3 text-[#002819] focus:ring-2 focus:ring-[#06402B]/20"
-              >
-                <option value="">{t('animalDetailsPage.selectUser')}</option>
-                {users.filter(u => u.id !== owner?.id).map((user) => (
-                  <option key={user.id} value={user.id}>
-                    {user.name} ({user.role})
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex gap-4">
-              <button
-                onClick={() => setShowTransferModal(false)}
-                className="flex-1 py-3 bg-[#F4F4EF] text-[#002819] rounded-xl font-bold hover:bg-[#E3E3DE] transition"
-              >
-                {t('common.cancel')}
-              </button>
-              <button
-                onClick={handleTransferOwnership}
-                disabled={!selectedUser || transferLoading}
-                className="flex-1 py-3 bg-[#002819] text-white rounded-xl font-bold hover:bg-[#06402b] transition disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {transferLoading ? t('common.loading') : t('animalDetailsPage.transfer')}
-              </button>
-            </div>
-          </div>
-        </div>
+        <TransferCreateModal
+          preselectedAnimalIds={[parseInt(id)]}
+          onClose={() => setShowTransferModal(false)}
+          onCreated={() => fetchAnimal()}
+        />
       )}
       </div>
     </main>

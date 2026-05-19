@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Laravel\Sanctum\HasApiTokens;
+use Spatie\Permission\Models\Role;
 use Spatie\Permission\Traits\HasRoles;
 
 /**
@@ -52,6 +53,12 @@ class User extends Authenticatable
     public function animals()
     {
         return $this->hasMany(Animal::class, 'owner_id');
+    }
+
+    public function assignedGroups()
+    {
+        return $this->belongsToMany(AnimalGroup::class, 'group_shepherd', 'shepherd_id', 'animal_group_id')
+            ->withTimestamps();
     }
 
     public function devices()
@@ -101,10 +108,17 @@ class User extends Authenticatable
 
     public function canManage(User $user): bool
     {
-        if ($this->hasRole('Admin')) return true;
+        if ($this->isAdmin()) return true;
+        if ($this->isStaff()) return true;
         if ($this->hasRole('Owner') && $user->managed_by === $this->id) return true;
         if ($this->hasRole('Manager') && $user->managed_by === $this->id) return true;
         return false;
+    }
+
+    public function isStaff(): bool
+    {
+        $role = Role::where('name', $this->getPrimaryRoleName())->first();
+        return $role && $role->type === 'admin';
     }
 
     public function getAnimalCount(): int
@@ -151,5 +165,20 @@ class User extends Authenticatable
         $tier = $this->subscriptionTier;
         if (!$tier || $tier->max_devices === 0) return false;
         return $this->getDeviceCount() > $tier->max_devices;
+    }
+
+    public function sentTransfers(): HasMany
+    {
+        return $this->hasMany(OwnershipTransfer::class, 'from_user_id');
+    }
+
+    public function receivedTransfers(): HasMany
+    {
+        return $this->hasMany(OwnershipTransfer::class, 'to_user_id');
+    }
+
+    public function ownershipHistory(): HasMany
+    {
+        return $this->hasMany(OwnershipHistory::class, 'to_user_id');
     }
 }

@@ -26,6 +26,9 @@ import OwnerOverviewWidget from './widgets/OwnerOverviewWidget';
 import ChartsWidget from './widgets/ChartsWidget';
 import MedicalOverviewWidget from './widgets/MedicalOverviewWidget';
 import TasksWidget from './widgets/TasksWidget';
+import AuctionsWidget from './widgets/AuctionsWidget';
+import ActivationWidget from './widgets/ActivationWidget';
+import AnnouncementsWidget from './widgets/AnnouncementsWidget';
 
 const widgetComponents = {
   statsCards: StatsCardsWidget,
@@ -38,6 +41,9 @@ const widgetComponents = {
   chartsWidget: ChartsWidget,
   medicalOverview: MedicalOverviewWidget,
   tasksWidget: TasksWidget,
+  auctionsWidget: AuctionsWidget,
+  activationWidget: ActivationWidget,
+  announcements: AnnouncementsWidget,
 };
 
 function getGridColsClass(gridDesktop) {
@@ -108,7 +114,36 @@ export default function DashboardGrid({ dashboardData }) {
     setWidgets(getWidgetsForRole(role, t));
   }, [role, t]);
 
-  if (!widgets || widgets.length === 0) return null;
+  if (!widgets || widgets.length === 0) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between gap-4">
+          <h2 className="text-2xl font-black text-[#002819]">{t('dashboard.title')}</h2>
+          <button
+            onClick={handleReset}
+            className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold text-[#717973] hover:text-[#002819] hover:bg-[#F4F4EF] transition-all"
+          >
+            <MaterialSymbol icon="refresh" size={16} />
+            {t('dashboard.resetLayout')}
+          </button>
+        </div>
+        <div className="bg-[#F4F4EF] rounded-[2rem] p-16 text-center">
+          <MaterialSymbol icon="dashboard_customize" size={64} className="mx-auto text-[#c0c9c1] mb-4" />
+          <h3 className="text-xl font-bold text-[#404943] mb-2">Dashboard is empty</h3>
+          <p className="text-[#717973] mb-6 max-w-md mx-auto">
+            All widgets have been removed. Click the Customize button or Reset to restore default widgets.
+          </p>
+          <button
+            onClick={handleReset}
+            className="inline-flex items-center gap-2 px-6 py-3 bg-[#002819] text-white rounded-xl font-bold hover:bg-[#06402B] transition-all"
+          >
+            <MaterialSymbol icon="refresh" size={18} />
+            Reset to Defaults
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const activeIds = widgets.map(w => w.id);
 

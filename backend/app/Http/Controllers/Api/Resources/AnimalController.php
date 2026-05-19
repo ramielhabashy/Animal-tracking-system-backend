@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Resources;
 
 use App\Models\Animal;
+use App\Models\AnimalDocument;
 use App\Models\User;
 use App\Models\Device;
 use App\Http\Requests\StoreAnimalRequest;
@@ -60,6 +61,44 @@ class AnimalController extends Controller
     }
 
     /**
+     * Lightweight stats endpoint - returns aggregate counts without loading all records
+     * 
+     * GET /api/animals/stats
+     * Query params: healthy_threshold (default 39.0), warning_threshold (default 39.5)
+     */
+    public function stats(Request $request): JsonResponse
+    {
+        $query = Animal::query();
+        $query = $this->filterByOwner($request, $query);
+
+        $total = (clone $query)->count();
+        $withDevice = (clone $query)->whereHas('device')->count();
+        $withoutDevice = $total - $withDevice;
+
+        $healthyThreshold = (float) $request->input('healthy_threshold', 39.0);
+        $warningThreshold = (float) $request->input('warning_threshold', 39.5);
+
+        $healthy = (clone $query)->where(function ($q) use ($healthyThreshold) {
+            $q->whereNull('baseline_temperature')
+              ->orWhere('baseline_temperature', '<=', $healthyThreshold);
+        })->count();
+
+        $warning = (clone $query)->where('baseline_temperature', '>', $healthyThreshold)
+            ->where('baseline_temperature', '<=', $warningThreshold)->count();
+
+        $critical = (clone $query)->where('baseline_temperature', '>', $warningThreshold)->count();
+
+        return response()->json([
+            'total' => $total,
+            'assigned' => $withDevice,
+            'unassigned' => $withoutDevice,
+            'healthy' => $healthy,
+            'warning' => $warning,
+            'critical' => $critical,
+        ]);
+    }
+
+    /**
      * Create new animal
      * 
      * POST /api/animals
@@ -74,20 +113,11 @@ class AnimalController extends Controller
     {
         $authUser = $request->user();
         
-        // Check permission using Sanctum or fallback to header
-        if ($authUser) {
-            if (!$authUser->can('animal_create')) {
-                return response()->json(['message' => 'Unauthorized to create animals', 'error' => 'unauthorized'], 403);
-            }
-        } else {
-            // Flutter mobile uses header-based auth
-            $userRole = $request->header('X-User-Role');
-            if (!in_array($userRole, ['Admin', 'Owner', 'Manager', 'Doctor'])) {
-                return response()->json(['message' => 'Unauthorized to create animals', 'error' => 'unauthorized'], 403);
-            }
+        if (!$authUser || !$authUser->can('animal_create')) {
+            return response()->json(['message' => 'Unauthorized to create animals', 'error' => 'unauthorized'], 403);
         }
         
-        $userId = $request->header('X-User-Id');
+        $userId = $authUser->id;
         $data = $request->validated();
         
         // Check if device is already assigned to another animal
@@ -119,10 +149,8 @@ class AnimalController extends Controller
         }
         
         if ($authUser && $authUser->hasRole('Manager')) {
-            // Manager creating animal: set owner to their manager (managed_by)
-            $user = $authUser ? User::find($userId) : null;
-            if ($user && $user->managed_by) {
-                $data['owner_id'] = $user->managed_by;
+            if ($authUser->managed_by) {
+                $data['owner_id'] = $authUser->managed_by;
             }
         }
         
@@ -160,7 +188,9 @@ class AnimalController extends Controller
             $deviceToAssign->update(['animal_id' => $animal->id]);
         }
 
-        $animal->load(['owner', 'device']);
+        $this->handleDocumentUploads($request, $animal);
+
+        $animal->load(['owner', 'device', 'documents']);
 
         return response()->json([
             'message' => 'Animal created successfully',
@@ -270,7 +300,25 @@ class AnimalController extends Controller
         }
         
         $animal->update($data);
-        $animal->load(['owner', 'device']);
+
+        // Handle document deletions
+        if ($request->has('delete_document_ids')) {
+            $deleteIds = (array) $request->input('delete_document_ids');
+            AnimalDocument::whereIn('id', $deleteIds)
+                ->where('animal_id', $animal->id)
+                ->get()
+                ->each(function ($doc) {
+                    $oldPath = 'public/' . str_replace('/storage/', '', $doc->file_path);
+                    if (Storage::disk('local')->exists($oldPath)) {
+                        Storage::disk('local')->delete($oldPath);
+                    }
+                    $doc->delete();
+                });
+        }
+
+        $this->handleDocumentUploads($request, $animal);
+
+        $animal->load(['owner', 'device', 'documents']);
 
         return response()->json([
             'message' => 'Animal updated successfully',
@@ -358,5 +406,45 @@ class AnimalController extends Controller
             'message' => 'Animal ownership transferred successfully',
             'data' => new AnimalResource($animal),
         ]);
+    }
+
+    /**
+     * Handle document file uploads from the request.
+     * Expects documents as array: documents[0][file], documents[0][type], documents[0][notes]
+     */
+    private function handleDocumentUploads(Request $request, Animal $animal): void
+    {
+        if (!$request->hasFile('documents')) {
+            $files = $request->file('documents');
+            if (!$files) {
+                return;
+            }
+        }
+
+        $documents = $request->file('documents', []);
+        $types = $request->input('documents', []);
+        $notes = $request->input('documents', []);
+
+        foreach ($documents as $index => $file) {
+            if (!$file->isValid()) {
+                continue;
+            }
+
+            $type = $types[$index]['type'] ?? 'other';
+            $note = $notes[$index]['notes'] ?? null;
+
+            $filename = 'doc_' . $animal->id . '_' . time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+            $path = $file->storeAs('public/documents', $filename, 'local');
+
+            AnimalDocument::create([
+                'animal_id' => $animal->id,
+                'type' => $type,
+                'file_path' => '/storage/' . str_replace('public/', '', $path),
+                'original_name' => $file->getClientOriginalName(),
+                'mime_type' => $file->getClientMimeType(),
+                'file_size' => $file->getSize(),
+                'notes' => $note,
+            ]);
+        }
     }
 }

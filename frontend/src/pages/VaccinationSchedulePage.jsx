@@ -4,6 +4,7 @@ import { MaterialSymbol } from 'react-material-symbols';
 import { apiFetch } from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import { useI18n } from '../i18n';
+import TranslateButton from '../components/TranslateButton';
 
 export default function VaccinationSchedulePage() {
   const { t, dir } = useI18n();
@@ -459,7 +460,7 @@ export default function VaccinationSchedulePage() {
                           onClick={() => openEditModal(vacc)}
                           title={vacc.vaccine_name}
                         >
-                          {vacc.vaccine_name}
+                          <span>{vacc.vaccine_name} <TranslateButton text={vacc.vaccine_name} /></span>
                         </div>
                       );
                     })}
@@ -541,7 +542,7 @@ export default function VaccinationSchedulePage() {
                         {new Date(vacc.scheduled_date).toLocaleDateString()}
                       </span>
                     </div>
-                    <p className="font-bold text-sm text-[#002819]">{vacc.vaccine_name}</p>
+                    <p className="font-bold text-sm text-[#002819]">{vacc.vaccine_name} <TranslateButton text={vacc.vaccine_name} /></p>
                     <div className={`flex items-center gap-2 mt-3 ${isRtl ? 'flex-row-reverse' : ''}`}>
                       <div className="w-6 h-6 rounded-md bg-[#002819]/10 flex items-center justify-center">
                         <MaterialSymbol icon="pets" size={14} className="text-[#002819]/60" />
@@ -590,14 +591,7 @@ export default function VaccinationSchedulePage() {
           </div>
         </div>
 
-        <div className={`bg-gradient-to-br from-[#002819] to-[#06402b] rounded-2xl p-6 text-white relative overflow-hidden ${isRtl ? 'text-right' : ''}`}>
-          <MaterialSymbol icon="medical_services" size={80} className="absolute -right-4 -bottom-4 text-white/10" />
-          <h4 className="text-lg font-bold font-['Manrope'] relative z-10">{t('vaccination.needVet') || 'Need a Vet?'}</h4>
-          <p className="text-xs text-emerald-100/70 mt-2 mb-4 relative z-10">{t('vaccination.vetDesc') || 'Connect with regional experts for complex vaccination procedures.'}</p>
-          <button className="bg-yellow-500 text-[#002819] font-bold text-xs px-4 py-2 rounded-lg relative z-10">
-            {t('vaccination.requestConsult') || 'Request Consult'}
-          </button>
-        </div>
+        <DynamicCtaBanner isRtl={isRtl} />
       </div>
 
       {showModal && (
@@ -824,6 +818,32 @@ export default function VaccinationSchedulePage() {
             </form>
           </div>
         </div>
+      )}
+    </div>
+  );
+}
+
+function DynamicCtaBanner({ isRtl }) {
+  const { t } = useI18n();
+  const [banner, setBanner] = useState(null);
+  useEffect(() => {
+    let cancelled = false;
+    apiFetch('/api/banners/active?type=cta').then(res => {
+      if (cancelled) return;
+      if (res.ok) res.json().then(d => { if (!cancelled && d.data?.[0]) setBanner(d.data[0]); }).catch(() => {});
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+  if (!banner) return null;
+  return (
+    <div className={`bg-gradient-to-br from-[#002819] to-[#06402b] rounded-2xl p-6 text-white relative overflow-hidden ${isRtl ? 'text-right' : ''}`}>
+      <MaterialSymbol icon={banner.icon || 'medical_services'} size={80} className="absolute -right-4 -bottom-4 text-white/10" />
+      <h4 className="text-lg font-bold font-['Manrope'] relative z-10">{banner.title || t('vaccination.needVet')}</h4>
+      <p className="text-xs text-emerald-100/70 mt-2 mb-4 relative z-10">{banner.description || t('vaccination.vetDesc')}</p>
+      {banner.button_url && (
+        <a href={banner.button_url} target="_blank" rel="noopener noreferrer" className="inline-block bg-yellow-500 text-[#002819] font-bold text-xs px-4 py-2 rounded-lg relative z-10">
+          {banner.button_text || t('vaccination.requestConsult')}
+        </a>
       )}
     </div>
   );
