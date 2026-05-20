@@ -12,6 +12,7 @@ use Stripe\Charge;
 use Stripe\Token;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Traits\SendsEmailNotifications;
+use App\Services\FeatureGate;
 
 class SubscriptionController extends Controller
 {
@@ -106,7 +107,7 @@ class SubscriptionController extends Controller
             ->where('status', 'active')
             ->first();
 
-        $tier = $user->subscriptionTier;
+        $tier = FeatureGate::getUserTier($user);
 
         $limits = [
             'animals' => [
@@ -376,6 +377,7 @@ class SubscriptionController extends Controller
             ->get()
             ->map(function ($user) {
                 $sub = $user->subscription->sortByDesc('created_at')->first();
+                $effectiveTier = FeatureGate::getUserTier($user);
                 $nextBillingDate = null;
                 if ($sub?->ends_at) {
                     $nextBillingDate = $sub->ends_at;
@@ -398,6 +400,7 @@ class SubscriptionController extends Controller
                     ],
                     'tier_id' => $user->subscription_tier_id,
                     'tier' => $user->subscriptionTier,
+                    'effective_tier' => $effectiveTier,
                     'status' => $sub?->status ?? 'active',
                     'created_at' => $sub?->created_at?->toISOString(),
                     'started_at' => $sub?->started_at?->toISOString(),
@@ -409,15 +412,15 @@ class SubscriptionController extends Controller
                     'usage' => [
                         'animals' => [
                             'used' => $user->animals_count,
-                            'max' => $user->subscriptionTier?->max_animals ?? 0,
+                            'max' => $effectiveTier?->max_animals ?? 0,
                         ],
                         'devices' => [
                             'used' => $user->devices_count,
-                            'max' => $user->subscriptionTier?->max_devices ?? 0,
+                            'max' => $effectiveTier?->max_devices ?? 0,
                         ],
                         'team' => [
                             'used' => $user->shepherds_count,
-                            'max' => $user->subscriptionTier?->max_users ?? 0,
+                            'max' => $effectiveTier?->max_users ?? 0,
                         ],
                     ],
                 ];
@@ -562,8 +565,13 @@ class SubscriptionController extends Controller
             'has_auctions' => 'nullable|boolean',
             'has_advanced_reports' => 'nullable|boolean',
             'has_api_access' => 'nullable|boolean',
+            'is_featured' => 'nullable|boolean',
+            'is_yearly_only' => 'nullable|boolean',
             'sort_order' => 'nullable|integer',
         ]);
+
+        $validated['is_featured'] = $request->boolean('is_featured');
+        $validated['is_yearly_only'] = $request->boolean('is_yearly_only');
 
         $tier = SubscriptionTier::create($validated);
 
@@ -595,9 +603,14 @@ class SubscriptionController extends Controller
             'has_auctions' => 'nullable|boolean',
             'has_advanced_reports' => 'nullable|boolean',
             'has_api_access' => 'nullable|boolean',
+            'is_featured' => 'nullable|boolean',
+            'is_yearly_only' => 'nullable|boolean',
             'sort_order' => 'nullable|integer',
             'is_active' => 'nullable|boolean',
         ]);
+
+        $validated['is_featured'] = $request->boolean('is_featured');
+        $validated['is_yearly_only'] = $request->boolean('is_yearly_only');
 
         $tier->update($validated);
 

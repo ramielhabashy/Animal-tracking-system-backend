@@ -46,6 +46,8 @@ class AnimalResource extends JsonResource
                     'battery_level' => $this->device->battery_level,
                     'gps_lat' => $this->device->gps_lat,
                     'gps_lng' => $this->device->gps_lng,
+                    'temperature' => $this->device->temperature,
+                    'last_temperature_update' => $this->device->last_temperature_update,
                     'last_ping' => $this->device->last_ping,
                 ];
             }),
@@ -66,6 +68,21 @@ class AnimalResource extends JsonResource
                 return $this->geofences->map(fn($geofence) => [
                     'id' => $geofence->id,
                     'name' => $geofence->name,
+                ]);
+            }),
+            'documents' => $this->whenLoaded('documents', function () {
+                if (!$this->documents) {
+                    return [];
+                }
+                return $this->documents->map(fn($doc) => [
+                    'id' => $doc->id,
+                    'type' => $doc->type,
+                    'file_url' => url($doc->file_path),
+                    'original_name' => $doc->original_name,
+                    'mime_type' => $doc->mime_type,
+                    'file_size' => $doc->file_size,
+                    'notes' => $doc->notes,
+                    'created_at' => $doc->created_at?->toIso8601String(),
                 ]);
             }),
         ];

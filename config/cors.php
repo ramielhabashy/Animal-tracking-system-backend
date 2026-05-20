@@ -15,7 +15,7 @@ return [
     |
     */
 
-    'paths' => ['api/*', 'sanctum/csrf-cookie', 'api/health', 'api/health/*'],
+    'paths' => ['api/*', 'sanctum/csrf-cookie', 'api/health', 'api/health/*', '/api/auth/register'],
 
     'allowed_methods' => ['*'],
 
@@ -27,7 +27,9 @@ return [
         'http://localhost:8050',
     ]),
 
-    'allowed_origins_patterns' => [],
+    'allowed_origins_patterns' => [
+        '/^http:\/\/localhost:\d+$/',
+    ],
 
     'allowed_headers' => ['*'],
 

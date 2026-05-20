@@ -104,7 +104,7 @@ class TaskController extends Controller
             return $this->forbidden('Unauthorized to view tasks');
         }
 
-        $query = Task::with(['owner', 'assignee', 'animal', 'geofence']);
+        $query = Task::with(['owner', 'assignee', 'animal', 'geofence'])->withCount('logs');
         $query = $this->filterByRole($request, $query);
 
         if ($request->has('status') && $request->status !== 'all') {

@@ -7,6 +7,7 @@ use App\Http\Controllers\Traits\ApiResponse;
 use App\Http\Controllers\Traits\OwnableAuthorization;
 use App\Models\AnimalGroup;
 use App\Models\Animal;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
@@ -16,7 +17,7 @@ class AnimalGroupController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $query = AnimalGroup::with(['owner']);
+        $query = AnimalGroup::with(['owner', 'shepherds']);
         $query = $this->filterByOwner($request, $query);
 
         $groups = $query->withCount('animals')->orderBy('created_at', 'desc')->get();
@@ -79,7 +80,7 @@ class AnimalGroupController extends Controller
             return $this->forbidden('Unauthorized');
         }
 
-        return $this->success($animalGroup->load(['animals.device', 'owner']));
+        return $this->success($animalGroup->load(['animals.device', 'owner', 'shepherds']));
     }
 
     public function update(Request $request, AnimalGroup $animalGroup): JsonResponse
@@ -190,5 +191,56 @@ class AnimalGroupController extends Controller
         $available = $query->whereNotIn('id', $assignedIds)->get();
 
         return $this->success($available);
+    }
+
+    public function getShepherds(Request $request, AnimalGroup $animalGroup): JsonResponse
+    {
+        if (!$this->canAccessOwner($request, $animalGroup->owner_id)) {
+            return $this->forbidden('Unauthorized');
+        }
+
+        return $this->success($animalGroup->shepherds);
+    }
+
+    public function assignShepherds(Request $request, AnimalGroup $animalGroup): JsonResponse
+    {
+        $authUser = $request->user();
+
+        if (!$this->canModifyOwner($request, $animalGroup->owner_id)) {
+            return $this->forbidden('Unauthorized');
+        }
+
+        $validated = $request->validate([
+            'shepherd_ids' => 'required|array',
+            'shepherd_ids.*' => 'exists:users,id',
+        ]);
+
+        $validShepherdIds = User::whereIn('id', $validated['shepherd_ids'])
+            ->role('Shepherd')
+            ->pluck('id')
+            ->toArray();
+
+        if ($authUser && !$authUser->hasRole('Admin')) {
+            $ownerId = $animalGroup->owner_id;
+            $validShepherdIds = User::whereIn('id', $validShepherdIds)
+                ->where('managed_by', $ownerId)
+                ->pluck('id')
+                ->toArray();
+        }
+
+        $animalGroup->shepherds()->syncWithoutDetaching($validShepherdIds);
+
+        return $this->success($animalGroup->shepherds, 'Shepherds assigned successfully');
+    }
+
+    public function removeShepherd(Request $request, AnimalGroup $animalGroup, User $shepherd): JsonResponse
+    {
+        if (!$this->canModifyOwner($request, $animalGroup->owner_id)) {
+            return $this->forbidden('Unauthorized');
+        }
+
+        $animalGroup->shepherds()->detach($shepherd->id);
+
+        return $this->success($animalGroup->shepherds, 'Shepherd removed from group');
     }
 }

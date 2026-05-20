@@ -55,6 +55,12 @@ class User extends Authenticatable
         return $this->hasMany(Animal::class, 'owner_id');
     }
 
+    public function assignedGroups()
+    {
+        return $this->belongsToMany(AnimalGroup::class, 'group_shepherd', 'shepherd_id', 'animal_group_id')
+            ->withTimestamps();
+    }
+
     public function devices()
     {
         return $this->hasMany(Device::class, 'owner_id');
@@ -159,5 +165,20 @@ class User extends Authenticatable
         $tier = $this->subscriptionTier;
         if (!$tier || $tier->max_devices === 0) return false;
         return $this->getDeviceCount() > $tier->max_devices;
+    }
+
+    public function sentTransfers(): HasMany
+    {
+        return $this->hasMany(OwnershipTransfer::class, 'from_user_id');
+    }
+
+    public function receivedTransfers(): HasMany
+    {
+        return $this->hasMany(OwnershipTransfer::class, 'to_user_id');
+    }
+
+    public function ownershipHistory(): HasMany
+    {
+        return $this->hasMany(OwnershipHistory::class, 'to_user_id');
     }
 }

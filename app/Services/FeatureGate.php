@@ -2,16 +2,20 @@
 
 namespace App\Services;
 
-use App\Models\User;
 use App\Models\SubscriptionTier;
+use App\Models\User;
 
 class FeatureGate
 {
-    public static function hasFeature(User $user, string $feature): bool
+    public static function hasFeature(?User $user, string $feature): bool
     {
+        if (!$user) {
+            return false;
+        }
+
         $tier = self::getUserTier($user);
-        
-        if (!$tier) {
+
+        if (! $tier) {
             return false;
         }
 
@@ -27,20 +31,24 @@ class FeatureGate
         };
     }
 
-    public static function canAccessFeature(User $user, string $feature): array
+    public static function canAccessFeature(?User $user, string $feature): array
     {
+        if (!$user) {
+            return ['allowed' => false, 'message' => 'Authentication required.'];
+        }
+
         $hasAccess = self::hasFeature($user, $feature);
-        
+
         if ($hasAccess) {
             return ['allowed' => true];
         }
 
         $tier = self::getUserTier($user);
         $tierName = $tier?->name ?? 'No subscription';
-        
+
         return [
             'allowed' => false,
-            'message' => "This feature requires a higher subscription tier.",
+            'message' => 'This feature requires a higher subscription tier.',
             'upgrade_required' => $tierName,
             'feature' => $feature,
         ];
@@ -48,21 +56,35 @@ class FeatureGate
 
     public static function getUserTier(User $user): ?SubscriptionTier
     {
-        if (!$user->subscription_tier_id) {
-            $freeTier = SubscriptionTier::where('slug', 'free')->first();
-            if ($freeTier) {
-                return $freeTier;
-            }
-            return null;
+        $tier = $user->subscriptionTier;
+
+        if (! $tier) {
+            return SubscriptionTier::where('slug', 'free')->first();
         }
 
-        return SubscriptionTier::find($user->subscription_tier_id);
+        if ($tier->isFree()) {
+            return $tier;
+        }
+
+        $activeSubscription = $user->activeSubscription();
+
+        if ($activeSubscription) {
+            return $tier;
+        }
+
+        $latestSubscription = $user->subscription()->latest()->first();
+
+        if ($latestSubscription && $latestSubscription->isOnTrial()) {
+            return $tier;
+        }
+
+        return SubscriptionTier::where('slug', 'free')->first();
     }
 
     public static function getUserFeatures(User $user): array
     {
         $tier = self::getUserTier($user);
-        
+
         return [
             'tier_name' => $tier?->name ?? 'Unknown',
             'tier_slug' => $tier?->slug ?? 'free',
@@ -82,7 +104,7 @@ class FeatureGate
     public static function checkLimit(User $user, string $resource, int $currentCount): array
     {
         $tier = self::getUserTier($user);
-        
+
         $limit = match ($resource) {
             'animals' => $tier?->max_animals ?? 5,
             'devices' => $tier?->max_devices ?? 5,

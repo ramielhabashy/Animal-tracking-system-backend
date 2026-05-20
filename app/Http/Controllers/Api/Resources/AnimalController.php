@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Resources;
 
 use App\Models\Animal;
+use App\Models\AnimalDocument;
 use App\Models\User;
 use App\Models\Device;
 use App\Http\Requests\StoreAnimalRequest;
@@ -187,7 +188,9 @@ class AnimalController extends Controller
             $deviceToAssign->update(['animal_id' => $animal->id]);
         }
 
-        $animal->load(['owner', 'device']);
+        $this->handleDocumentUploads($request, $animal);
+
+        $animal->load(['owner', 'device', 'documents']);
 
         return response()->json([
             'message' => 'Animal created successfully',
@@ -297,7 +300,25 @@ class AnimalController extends Controller
         }
         
         $animal->update($data);
-        $animal->load(['owner', 'device']);
+
+        // Handle document deletions
+        if ($request->has('delete_document_ids')) {
+            $deleteIds = (array) $request->input('delete_document_ids');
+            AnimalDocument::whereIn('id', $deleteIds)
+                ->where('animal_id', $animal->id)
+                ->get()
+                ->each(function ($doc) {
+                    $oldPath = 'public/' . str_replace('/storage/', '', $doc->file_path);
+                    if (Storage::disk('local')->exists($oldPath)) {
+                        Storage::disk('local')->delete($oldPath);
+                    }
+                    $doc->delete();
+                });
+        }
+
+        $this->handleDocumentUploads($request, $animal);
+
+        $animal->load(['owner', 'device', 'documents']);
 
         return response()->json([
             'message' => 'Animal updated successfully',
@@ -385,5 +406,45 @@ class AnimalController extends Controller
             'message' => 'Animal ownership transferred successfully',
             'data' => new AnimalResource($animal),
         ]);
+    }
+
+    /**
+     * Handle document file uploads from the request.
+     * Expects documents as array: documents[0][file], documents[0][type], documents[0][notes]
+     */
+    private function handleDocumentUploads(Request $request, Animal $animal): void
+    {
+        if (!$request->hasFile('documents')) {
+            $files = $request->file('documents');
+            if (!$files) {
+                return;
+            }
+        }
+
+        $documents = $request->file('documents', []);
+        $types = $request->input('documents', []);
+        $notes = $request->input('documents', []);
+
+        foreach ($documents as $index => $file) {
+            if (!$file->isValid()) {
+                continue;
+            }
+
+            $type = $types[$index]['type'] ?? 'other';
+            $note = $notes[$index]['notes'] ?? null;
+
+            $filename = 'doc_' . $animal->id . '_' . time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+            $path = $file->storeAs('public/documents', $filename, 'local');
+
+            AnimalDocument::create([
+                'animal_id' => $animal->id,
+                'type' => $type,
+                'file_path' => '/storage/' . str_replace('public/', '', $path),
+                'original_name' => $file->getClientOriginalName(),
+                'mime_type' => $file->getClientMimeType(),
+                'file_size' => $file->getSize(),
+                'notes' => $note,
+            ]);
+        }
     }
 }

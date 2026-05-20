@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\SubscriptionTier;
 use App\Models\User;
 use Closure;
 use Illuminate\Http\Request;
@@ -13,7 +14,7 @@ class CheckSubscriptionLimits
     {
         $user = $request->user();
 
-        if (!$user) {
+        if (! $user) {
             return $next($request);
         }
 
@@ -21,25 +22,26 @@ class CheckSubscriptionLimits
             return $next($request);
         }
 
-        $tier = $user->subscriptionTier;
-        $isCreating = in_array($request->method(), ['POST', 'PUT', 'PATCH']);
+        $tier = $this->resolveEffectiveTier($user);
+        $isCreating = $request->method() === 'POST';
 
         // For testing environment, allow requests without subscription tier
-        if (!$tier && app()->environment('testing')) {
+        if (! $tier && app()->environment('testing')) {
             return $next($request);
         }
 
-        if (!$tier) {
+        if (! $tier) {
             if ($isCreating) {
                 return response()->json([
                     'message' => 'No subscription tier found. Please subscribe to continue.',
-                    'error' => 'no_subscription'
+                    'error' => 'no_subscription',
                 ], 403);
             }
+
             return $next($request);
         }
 
-        if (!$isCreating) {
+        if (! $isCreating) {
             return $next($request);
         }
 
@@ -64,22 +66,24 @@ class CheckSubscriptionLimits
                 $maxMethod = 'max_users';
                 break;
             case 'geofences':
-                if (!$tier->has_geofencing) {
+                if (! $tier->has_geofencing) {
                     return response()->json([
                         'message' => 'Geofencing is not available on your current plan.',
                         'error' => 'feature_not_available',
-                        'required_tier' => 'Starter or higher'
+                        'required_tier' => 'Starter or higher',
                     ], 403);
                 }
+
                 return $next($request);
             case 'auctions':
-                if (!$tier->has_auctions) {
+                if (! $tier->has_auctions) {
                     return response()->json([
                         'message' => 'Auctions are not available on your current plan.',
                         'error' => 'feature_not_available',
-                        'required_tier' => 'Starter or higher'
+                        'required_tier' => 'Starter or higher',
                     ], 403);
                 }
+
                 return $next($request);
             default:
                 return $next($request);
@@ -95,10 +99,41 @@ class CheckSubscriptionLimits
                 'current' => $currentCount,
                 'max' => $maxAllowed,
                 'current_plan' => $tier->name,
-                'upgrade_required' => true
+                'upgrade_required' => true,
             ], 403);
         }
 
         return $next($request);
+    }
+
+    private function resolveEffectiveTier(User $user): ?SubscriptionTier
+    {
+        $tier = $user->subscriptionTier;
+
+        if (! $tier) {
+            return SubscriptionTier::where('slug', 'free')->first();
+        }
+
+        if ($tier->isFree()) {
+            return $tier;
+        }
+
+        $activeSubscription = $user->activeSubscription();
+
+        if ($activeSubscription) {
+            return $tier;
+        }
+
+        $latestSubscription = $user->subscription()->latest()->first();
+
+        if ($latestSubscription && $latestSubscription->isOnTrial()) {
+            return $tier;
+        }
+
+        if ($latestSubscription && $latestSubscription->isExpired()) {
+            return SubscriptionTier::where('slug', 'free')->first();
+        }
+
+        return SubscriptionTier::where('slug', 'free')->first();
     }
 }

@@ -1,0 +1,31 @@
+=== Oasis Trace Demo System - Login Credentials ===
+Password for all accounts: password
+
+Admin
+  admin@oasis.com
+
+Support Staff
+  support@oasis.com
+
+Accountant
+  accounts@oasis.com
+
+Customer Service
+  cs@oasis.com
+
+Owners
+  demo1@oasis.com   (Ahmed Al-Demo - full demo data)
+  demo2@oasis.com   (Sara Al-Demo - full demo data)
+
+Shepherds
+  youssef@demo.com  (assigned to Ahmed)
+  hassan@demo.com   (assigned to Sara)
+
+=== Additional pre-seeded accounts (password: password) ===
+  khalid@oasis.com  (Owner - Khalid Al-Rashid)
+  ahmad@oasis.com   (Owner - Ahmad Hassan)
+  saeed@oasis.com   (Owner - Saeed Al-Maktoum)
+  mohsen@oasis.com  (Owner - Mohsen Al-Owner)
+  fatima@oasis.com  (Doctor)
+  omar@oasis.com    (Shepherd)
+  ali@oasis.com     (Shepherd)

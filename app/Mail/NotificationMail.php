@@ -13,8 +13,8 @@ class NotificationMail extends Mailable
     use Queueable, SerializesModels;
 
     public function __construct(
-        public string $subject,
-        public string $greeting = 'Hello,',
+        public $subject,
+        public $greeting = 'Hello,',
         public array $lines = [],
         public ?string $actionUrl = null,
         public ?string $actionText = null,

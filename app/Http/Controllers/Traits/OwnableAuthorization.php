@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Traits;
 
 use App\Models\User;
+use App\Models\AnimalGroup;
 use Illuminate\Http\Request;
+use Illuminate\Database\Eloquent\Builder;
 
 trait OwnableAuthorization
 {
@@ -54,11 +56,26 @@ trait OwnableAuthorization
             return true;
         }
 
-        if ($user->hasAnyRole(['Manager', 'Shepherd'])) {
+        if ($user->hasRole('Manager')) {
             if ($user->managed_by) {
                 return $ownerId == $user->managed_by;
             }
             return true;
+        }
+
+        if ($user->hasRole('Shepherd')) {
+            if ($user->managed_by && $ownerId == $user->managed_by) {
+                return true;
+            }
+            $assignedOwnerIds = $user->assignedGroups()
+                ->select('owner_id')
+                ->distinct()
+                ->pluck('owner_id')
+                ->toArray();
+            if (in_array($ownerId, $assignedOwnerIds)) {
+                return true;
+            }
+            return false;
         }
 
         return false;
@@ -127,13 +144,54 @@ trait OwnableAuthorization
             return $query;
         }
 
-        if ($user->hasAnyRole(['Manager', 'Shepherd'])) {
+        if ($user->hasRole('Manager')) {
             if ($user->managed_by) {
                 return $query->where('owner_id', $user->managed_by);
             }
             return $query;
         }
 
+        if ($user->hasRole('Shepherd')) {
+            return $this->applyShepherdFilter($request, $query);
+        }
+
+        return $query;
+    }
+
+    protected function applyShepherdFilter(Request $request, Builder $query): Builder
+    {
+        $user = $this->getUser($request);
+        $firstTable = $query->getQuery()->from;
+
+        if ($firstTable === 'animal_groups') {
+            $assignedIds = $user->assignedGroups()->pluck('animal_groups.id');
+            if ($assignedIds->isNotEmpty()) {
+                return $query->whereIn('id', $assignedIds);
+            }
+            if ($user->managed_by) {
+                return $query->where('owner_id', $user->managed_by);
+            }
+            return $query;
+        }
+
+        if ($firstTable === 'animals') {
+            $assignedGroupIds = $user->assignedGroups()->pluck('animal_groups.id');
+            if ($assignedGroupIds->isNotEmpty()) {
+                return $query->whereIn('id', function ($q) use ($assignedGroupIds) {
+                    $q->select('animal_id')
+                        ->from('animal_group_member')
+                        ->whereIn('animal_group_id', $assignedGroupIds);
+                });
+            }
+            if ($user->managed_by) {
+                return $query->where('owner_id', $user->managed_by);
+            }
+            return $query;
+        }
+
+        if ($user->managed_by) {
+            return $query->where('owner_id', $user->managed_by);
+        }
         return $query;
     }
 

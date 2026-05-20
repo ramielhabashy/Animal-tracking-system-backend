@@ -126,6 +126,15 @@ class UserController extends Controller
             return $query->where('id', $authUser->id);
         }
 
+        // Team roles (Shepherd, Doctor, Manager, etc.) see their manager + team + themselves
+        if ($authUser->managed_by) {
+            return $query->where(function ($q) use ($authUser) {
+                $q->where('id', $authUser->id)
+                  ->orWhere('managed_by', $authUser->managed_by)
+                  ->orWhere('id', $authUser->managed_by);
+            });
+        }
+
         // Others see only themselves
         return $query->where('id', $authUser->id);
     }

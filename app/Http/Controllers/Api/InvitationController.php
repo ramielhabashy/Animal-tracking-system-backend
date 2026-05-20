@@ -150,6 +150,10 @@ class InvitationController extends Controller
             'language' => 'nullable|string',
         ]);
 
+        if (User::where('email', $invitation->email)->exists()) {
+            return $this->error('A user with this email already exists', 409, null, 'email_exists');
+        }
+
         $freeTier = SubscriptionTier::where('slug', 'free')->first();
 
         $user = User::create([
@@ -179,7 +183,7 @@ class InvitationController extends Controller
 
         $this->notifyInvitationAccepted($invitation, $user);
 
-        $token = $user->createToken('auth-token')->plainTextToken;
+        $apiToken = $user->createToken('auth-token')->plainTextToken;
 
         $this->sendNotificationMail(
             $user,
@@ -190,7 +194,7 @@ class InvitationController extends Controller
                 "You have been invited as a {$invitation->role}.",
                 'You can now log in and start using the platform.',
             ],
-            rtrim(env('FRONTEND_URL', config('app.url')), '/') . '/login',
+            rtrim(env('FRONTEND_URL', config('app.url')), '/') . '/dashboard',
             'Go to Dashboard',
         );
 
@@ -205,7 +209,7 @@ class InvitationController extends Controller
                 'language' => $user->language,
                 'subscription_tier_id' => $user->subscription_tier_id,
             ],
-            'token' => $token,
+            'token' => $apiToken,
         ], 'Account created successfully');
     }
 

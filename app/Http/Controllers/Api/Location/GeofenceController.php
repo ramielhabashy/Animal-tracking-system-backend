@@ -35,16 +35,20 @@ class GeofenceController extends Controller
         }
         
         if ($userRole === 'Owner') {
-            return $query->whereHas('geofence', function ($q) use ($userId) {
-                $q->where('owner_id', $userId);
+            return $query->where(function ($q) use ($userId) {
+                $q->whereHas('geofence', function ($q2) use ($userId) {
+                    $q2->where('owner_id', $userId);
+                })->orWhereNull('geofence_id');
             });
         }
         
         if (in_array($userRole, ['Manager', 'Shepherd'])) {
             $user = $this->getUser($request);
             if ($user && $user->managed_by) {
-                return $query->whereHas('geofence', function ($q) use ($user) {
-                    $q->where('owner_id', $user->managed_by);
+                return $query->where(function ($q) use ($user) {
+                    $q->whereHas('geofence', function ($q2) use ($user) {
+                        $q2->where('owner_id', $user->managed_by);
+                    })->orWhereNull('geofence_id');
                 });
             }
             return $query;
@@ -53,8 +57,10 @@ class GeofenceController extends Controller
         if ($userRole === 'Doctor') {
             $user = $this->getUser($request);
             if ($user && $user->managed_by) {
-                return $query->whereHas('geofence', function ($q) use ($user) {
-                    $q->where('owner_id', $user->managed_by);
+                return $query->where(function ($q) use ($user) {
+                    $q->whereHas('geofence', function ($q2) use ($user) {
+                        $q2->where('owner_id', $user->managed_by);
+                    })->orWhereNull('geofence_id');
                 });
             }
             return $query->whereRaw('1 = 0');
@@ -178,6 +184,52 @@ class GeofenceController extends Controller
         return response()->json(['message' => 'Geofence deleted successfully']);
     }
 
+    public function temperatureAlerts(Request $request): JsonResponse
+    {
+        $perPage = $request->integer('per_page', 50);
+        $page = $request->integer('page', 1);
+
+        $query = GeofenceAlert::with(['animal', 'geofence'])
+            ->where('type', 'temperature')
+            ->orderBy('triggered_at', 'desc');
+
+        if ($request->has('severity')) {
+            $query->where('severity', $request->input('severity'));
+        }
+
+        if ($request->has('is_acknowledged')) {
+            $query->where('is_acknowledged', $request->boolean('is_acknowledged'));
+        }
+
+        if ($request->has('owner_id')) {
+            $query->whereHas('animal', function ($q) use ($request) {
+                $q->where('owner_id', $request->input('owner_id'));
+            });
+        }
+
+        if ($request->has('animal_id')) {
+            $query->where('animal_id', $request->input('animal_id'));
+        }
+
+        $query = $this->filterAlertsByRole($request, $query);
+
+        $total = $query->count();
+        $alerts = $query->skip(($page - 1) * $perPage)->take($perPage)->get();
+
+        $unresolvedCount = GeofenceAlert::where('type', 'temperature')
+            ->where('is_acknowledged', false)
+            ->count();
+
+        return response()->json([
+            'data' => GeofenceAlertResource::collection($alerts),
+            'total' => $total,
+            'per_page' => $perPage,
+            'current_page' => $page,
+            'last_page' => ceil($total / $perPage),
+            'unresolved_count' => $unresolvedCount,
+        ]);
+    }
+
     public function alerts(Request $request)
     {
         $perPage = $request->integer('per_page', 50);
@@ -196,9 +248,34 @@ class GeofenceController extends Controller
         }
 
         if ($request->has('severity')) {
-            $query->where('type', $request->input('severity'));
+            $query->where('severity', $request->input('severity'));
         }
-        
+
+        if ($request->has('owner_id')) {
+            $query->whereHas('geofence', function ($q) use ($request) {
+                $q->where('owner_id', $request->input('owner_id'));
+            });
+        }
+
+        if ($request->has('animal_id')) {
+            $query->where('animal_id', $request->input('animal_id'));
+        }
+
+        if ($request->has('group_id')) {
+            $query->whereHas('animal', function ($q) use ($request) {
+                $q->whereHas('groups', function ($q2) use ($request) {
+                    $q2->where('animal_groups.id', $request->input('group_id'));
+                });
+            });
+        }
+
+        if ($request->has('animal_name') && $request->input('animal_name') !== '') {
+            $search = $request->input('animal_name');
+            $query->whereHas('animal', function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%");
+            });
+        }
+
         $query = $this->filterAlertsByRole($request, $query);
 
         $total = $query->count();
@@ -225,7 +302,8 @@ class GeofenceController extends Controller
             return response()->json(['message' => 'Unauthorized', 'error' => 'unauthorized'], 403);
         }
 
-        if (!$this->canAccessOwner($request, $alert->geofence->owner_id)) {
+        $ownerId = $alert->geofence?->owner_id ?? $alert->animal?->owner_id;
+        if ($ownerId !== null && !$this->canAccessOwner($request, $ownerId)) {
             return response()->json(['message' => 'Unauthorized', 'error' => 'unauthorized'], 403);
         }
         
@@ -238,7 +316,8 @@ class GeofenceController extends Controller
 
     public function showAlert(Request $request, GeofenceAlert $alert): JsonResponse
     {
-        if (!$this->canAccessOwner($request, $alert->geofence->owner_id)) {
+        $ownerId = $alert->geofence?->owner_id ?? $alert->animal?->owner_id;
+        if ($ownerId !== null && !$this->canAccessOwner($request, $ownerId)) {
             return response()->json(['message' => 'Unauthorized', 'error' => 'unauthorized'], 403);
         }
 
@@ -255,7 +334,8 @@ class GeofenceController extends Controller
             return response()->json(['message' => 'Unauthorized', 'error' => 'unauthorized'], 403);
         }
 
-        if (!$this->canAccessOwner($request, $alert->geofence->owner_id)) {
+        $ownerId = $alert->geofence?->owner_id ?? $alert->animal?->owner_id;
+        if ($ownerId !== null && !$this->canAccessOwner($request, $ownerId)) {
             return response()->json(['message' => 'Unauthorized', 'error' => 'unauthorized'], 403);
         }
 

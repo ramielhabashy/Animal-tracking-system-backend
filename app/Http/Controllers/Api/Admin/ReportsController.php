@@ -33,6 +33,18 @@ class ReportsController extends Controller
             $deviceQuery->where('owner_id', $ownerId);
         }
 
+        if ($request->filled('animal_id')) {
+            $animalQuery->where('id', $request->animal_id);
+        }
+
+        if ($request->filled('group_id')) {
+            $group = AnimalGroup::with('animals')->find($request->group_id);
+            if ($group) {
+                $animalIds = $group->animals->pluck('id')->toArray();
+                $animalQuery->whereIn('id', $animalIds);
+            }
+        }
+
         $animals = $animalQuery->get();
         $devices = $deviceQuery->get();
 
@@ -321,5 +333,126 @@ class ReportsController extends Controller
                 'percentage' => round(($count / $total) * 100),
             ];
         })->values()->toArray();
+    }
+
+    public function export(Request $request)
+    {
+        $user = $request->user();
+        if (!$user) {
+            return response()->json(['message' => 'Unauthorized'], 401);
+        }
+
+        $role = $user->getPrimaryRoleName();
+        $ownerId = $this->resolveOwnerId($user, $role);
+
+        $animalQuery = Animal::query();
+        $deviceQuery = Device::query();
+
+        if ($role !== 'Admin' && $ownerId) {
+            $animalQuery->where('owner_id', $ownerId);
+            $deviceQuery->where('owner_id', $ownerId);
+        }
+
+        if ($request->filled('animal_id')) {
+            $animalQuery->where('id', $request->animal_id);
+        }
+
+        if ($request->filled('group_id')) {
+            $group = AnimalGroup::with('animals')->find($request->group_id);
+            if ($group) {
+                $animalIds = $group->animals->pluck('id')->toArray();
+                $animalQuery->whereIn('id', $animalIds);
+            }
+        }
+
+        $animals = $animalQuery->get();
+        $devices = $deviceQuery->get();
+
+        $avgTemp = $animals->whereNotNull('baseline_temperature')->avg('baseline_temperature') ?? 38.5;
+        $deviceConnectivity = $devices->count() > 0
+            ? round(($devices->where('status', 'online')->count() / $devices->count()) * 100, 1)
+            : 100;
+        $healthScore = $this->calculateHealthScore($animals);
+        $activityData = $this->getActivityTrends($animals);
+
+        $dateFrom = $request->input('date_from', now()->subDays(30)->format('Y-m-d'));
+        $dateTo = $request->input('date_to', now()->format('Y-m-d'));
+
+        $rows = [];
+        $rows[] = ['Metric', 'Value'];
+        $rows[] = ['Report Period', "$dateFrom to $dateTo"];
+        $rows[] = ['Total Animals', $animals->count()];
+        $rows[] = ['Total Devices', $devices->count()];
+        $rows[] = ['Avg Daily Movement (km)', $activityData['avgDaily']];
+        $rows[] = ['Avg Temperature (°C)', round($avgTemp, 1)];
+        $rows[] = ['Health Score (%)', $healthScore];
+        $rows[] = ['Device Connectivity (%)', $deviceConnectivity];
+        $rows[] = [''];
+
+        $speciesDist = $this->getSpeciesDistribution($animals);
+        if (!empty($speciesDist)) {
+            $rows[] = ['Species', 'Count', 'Percentage'];
+            foreach ($speciesDist as $s) {
+                $rows[] = [$s['species'], $s['count'], $s['percentage'] . '%'];
+            }
+            $rows[] = [''];
+        }
+
+        $breedDist = $this->getBreedDistribution($animals);
+        if (!empty($breedDist)) {
+            $rows[] = ['Breed', 'Count', 'Percentage'];
+            foreach ($breedDist as $b) {
+                $rows[] = [$b['breed'], $b['count'], $b['percentage'] . '%'];
+            }
+            $rows[] = [''];
+        }
+
+        $distanceByGroup = $this->getDistanceByGroup($role, $ownerId);
+        if (!empty($distanceByGroup)) {
+            $rows[] = ['Group', 'Distance (km)', 'Animals'];
+            foreach ($distanceByGroup as $g) {
+                $rows[] = [$g['name'], $g['distance'], $g['animal_count']];
+            }
+            $rows[] = [''];
+        }
+
+        if (!empty($animals)) {
+            $rows[] = ['Animal ID', 'Name', 'Species', 'Breed', 'Gender', 'Weight (kg)', 'Baseline Temp (°C)', 'Device', 'Device Status', 'Battery (%)'];
+            foreach ($animals as $animal) {
+                $device = $devices->firstWhere('animal_id', $animal->id);
+                $rows[] = [
+                    $animal->animal_id,
+                    $animal->name ?? '',
+                    $animal->species ?? '',
+                    $animal->breed ?? '',
+                    $animal->gender ?? '',
+                    $animal->current_weight ?? '',
+                    $animal->baseline_temperature ?? '',
+                    $device?->device_id ?? '',
+                    $device?->status ?? '',
+                    $device?->battery_level ?? '',
+                ];
+            }
+        }
+
+        $csv = $this->generateCsv($rows);
+        $filename = 'report-' . date('Y-m-d') . '.csv';
+
+        return response($csv, 200, [
+            'Content-Type' => 'text/csv; charset=utf-8',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ]);
+    }
+
+    protected function generateCsv(array $rows): string
+    {
+        $handle = fopen('php://temp', 'r+');
+        foreach ($rows as $row) {
+            fputcsv($handle, $row);
+        }
+        rewind($handle);
+        $csv = stream_get_contents($handle);
+        fclose($handle);
+        return $csv;
     }
 }

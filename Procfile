@@ -1,2 +1,2 @@
 web: vendor/bin/heroku-php-apache2 public/
-queue: php artisan queue:work --tries=3 --timeout=90
+queue: php artisan horizon

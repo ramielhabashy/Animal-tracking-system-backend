@@ -20,7 +20,7 @@ class CheckFeatureAccess
             ], 401);
         }
 
-        if ($user->hasRole('Admin')) {
+        if ($user->roles()->where('type', 'admin')->exists()) {
             return $next($request);
         }
 

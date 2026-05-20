@@ -10,6 +10,7 @@ use App\Models\Geofence;
 use App\Models\GeofenceAlert;
 use App\Models\User;
 use App\Services\NotificationService;
+use App\Models\Setting;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
@@ -23,6 +24,23 @@ class SimulatorController extends Controller
         $this->notificationService = $notificationService;
     }
 
+    protected function guardSimulator(Request $request, ?Device $device = null): bool
+    {
+        if ($request->user()?->getPrimaryRoleName() !== 'Admin') {
+            return false;
+        }
+
+        if (!Setting::getBoolean('device_simulator_enabled', true)) {
+            return false;
+        }
+
+        if ($device && $device->data_source !== 'simulated') {
+            return false;
+        }
+
+        return true;
+    }
+
     public function devices(): JsonResponse
     {
         $devices = Device::with(['animal' => function ($q) {
@@ -34,6 +52,10 @@ class SimulatorController extends Controller
 
     public function move(Request $request): JsonResponse
     {
+        if (!$this->guardSimulator($request)) {
+            return response()->json(['error' => 'Simulator is disabled or forbidden'], 403);
+        }
+
         $validated = $request->validate([
             'device_id' => 'required|exists:devices,id',
             'latitude' => 'required|numeric|between:-90,90',
@@ -42,9 +64,14 @@ class SimulatorController extends Controller
             'heading' => 'nullable|numeric|between:0,360',
             'recorded_at' => 'nullable|date',
             'battery_drain' => 'nullable|numeric|min:0|max:100',
+            'temperature' => 'nullable|numeric|min:20|max:45',
         ]);
 
         $device = Device::findOrFail($validated['device_id']);
+
+        if (!$this->guardSimulator($request, $device)) {
+            return response()->json(['error' => 'Cannot control real devices from simulator'], 403);
+        }
 
         if (!$device->animal_id) {
             return response()->json(['message' => 'No animal assigned to this device'], 422);
@@ -65,13 +92,24 @@ class SimulatorController extends Controller
         $batteryDrain = $validated['battery_drain'] ?? 0;
         $newBattery = max(0, ($device->battery_level ?? 100) - $batteryDrain);
 
-        $device->update([
+        $updateData = [
             'gps_lat' => $validated['latitude'],
             'gps_lng' => $validated['longitude'],
             'battery_level' => $newBattery,
             'last_ping' => now(),
             'status' => $newBattery > 0 ? 'online' : 'offline',
-        ]);
+        ];
+
+        if (isset($validated['speed'])) {
+            $updateData['speed'] = $validated['speed'];
+        }
+
+        if (isset($validated['temperature'])) {
+            $updateData['temperature'] = $validated['temperature'];
+            $updateData['last_temperature_update'] = now();
+        }
+
+        $device->update($updateData);
 
         $alert = $this->checkGeofences($animal, $validated['latitude'], $validated['longitude']);
 
@@ -84,6 +122,8 @@ class SimulatorController extends Controller
             'alert_triggered' => $alert ? true : false,
             'alert_type' => $alert?->type,
             'battery_level' => $newBattery,
+            'temperature' => $device->fresh()->temperature,
+            'speed' => $device->fresh()->speed,
         ]);
     }
 
@@ -97,7 +137,12 @@ class SimulatorController extends Controller
             'moves.*.speed' => 'nullable|numeric|min:0',
             'moves.*.heading' => 'nullable|numeric|between:0,360',
             'moves.*.battery_drain' => 'nullable|numeric|min:0|max:100',
+            'moves.*.temperature' => 'nullable|numeric|min:20|max:45',
         ]);
+
+        if (!$this->guardSimulator($request)) {
+            return response()->json(['error' => 'Simulator is disabled or forbidden'], 403);
+        }
 
         $results = [];
 
@@ -109,6 +154,10 @@ class SimulatorController extends Controller
                     'success' => false,
                     'message' => 'No animal assigned',
                 ];
+                continue;
+            }
+
+            if ($device->data_source !== 'simulated') {
                 continue;
             }
 
@@ -127,13 +176,24 @@ class SimulatorController extends Controller
             $batteryDrain = $move['battery_drain'] ?? 0;
             $newBattery = max(0, ($device->battery_level ?? 100) - $batteryDrain);
 
-            $device->update([
+            $updateData = [
                 'gps_lat' => $move['latitude'],
                 'gps_lng' => $move['longitude'],
                 'battery_level' => $newBattery,
                 'last_ping' => now(),
                 'status' => $newBattery > 0 ? 'online' : 'offline',
-            ]);
+            ];
+
+            if (isset($move['speed'])) {
+                $updateData['speed'] = $move['speed'];
+            }
+
+            if (isset($move['temperature'])) {
+                $updateData['temperature'] = $move['temperature'];
+                $updateData['last_temperature_update'] = now();
+            }
+
+            $device->update($updateData);
 
             $alert = $this->checkGeofences($animal, $move['latitude'], $move['longitude']);
 
@@ -221,8 +281,16 @@ class SimulatorController extends Controller
             'level' => 'nullable|numeric|min:0|max:100',
         ]);
 
+        if (!$this->guardSimulator($request)) {
+            return response()->json(['error' => 'Simulator is disabled or forbidden'], 403);
+        }
+
         $level = $validated['level'] ?? 100;
         $device = Device::findOrFail($validated['device_id']);
+
+        if (!$this->guardSimulator($request, $device)) {
+            return response()->json(['error' => 'Cannot control real devices from simulator'], 403);
+        }
 
         $device->update([
             'battery_level' => $level,
@@ -243,14 +311,30 @@ class SimulatorController extends Controller
             'latitude' => 'required|numeric|between:-90,90',
             'longitude' => 'required|numeric|between:-180,180',
             'battery_drain' => 'nullable|numeric|min:0|max:100',
+            'speed' => 'nullable|numeric|min:0',
+            'temperature' => 'nullable|numeric|min:20|max:45',
         ]);
+
+        if (!$this->guardSimulator($request)) {
+            return response()->json(['error' => 'Simulator is disabled or forbidden'], 403);
+        }
 
         $batteryDrain = $validated['battery_drain'] ?? 0;
         $results = [];
 
         foreach ($validated['device_ids'] as $deviceId) {
             $device = Device::find($deviceId);
-            if (!$device || !$device->animal_id) {
+            if (!$device) {
+                $results[] = ['device_id' => $deviceId, 'success' => false, 'message' => 'Device not found'];
+                continue;
+            }
+
+            if ($device->data_source !== 'simulated') {
+                $results[] = ['device_id' => $deviceId, 'success' => false, 'message' => 'Cannot control real devices from simulator'];
+                continue;
+            }
+
+            if (!$device->animal_id) {
                 $results[] = ['device_id' => $deviceId, 'success' => false, 'message' => 'No animal assigned'];
                 continue;
             }
@@ -258,20 +342,31 @@ class SimulatorController extends Controller
             $animal = Animal::find($device->animal_id);
             $newBattery = max(0, ($device->battery_level ?? 100) - $batteryDrain);
 
-            $device->update([
+            $updateData = [
                 'gps_lat' => $validated['latitude'],
                 'gps_lng' => $validated['longitude'],
                 'battery_level' => $newBattery,
                 'last_ping' => now(),
                 'status' => $newBattery > 0 ? 'online' : 'offline',
-            ]);
+            ];
+
+            if (isset($validated['speed'])) {
+                $updateData['speed'] = $validated['speed'];
+            }
+
+            if (isset($validated['temperature'])) {
+                $updateData['temperature'] = $validated['temperature'];
+                $updateData['last_temperature_update'] = now();
+            }
+
+            $device->update($updateData);
 
             LocationHistory::create([
                 'device_id' => $device->id,
                 'animal_id' => $animal->id,
                 'latitude' => $validated['latitude'],
                 'longitude' => $validated['longitude'],
-                'speed' => 0,
+                'speed' => $validated['speed'] ?? 0,
                 'heading' => 0,
                 'recorded_at' => now(),
             ]);
@@ -295,6 +390,10 @@ class SimulatorController extends Controller
         $validated = $request->validate([
             'owner_id' => 'nullable|exists:users,id',
         ]);
+
+        if (!$this->guardSimulator($request)) {
+            return response()->json(['error' => 'Simulator is disabled or forbidden'], 403);
+        }
 
         $ownerId = $validated['owner_id'] ?? null;
 
@@ -322,17 +421,29 @@ class SimulatorController extends Controller
                 }
             }
 
+            $species = strtolower($animal->species ?? 'camel');
+            $baseTemp = match ($species) {
+                'camel' => 37.0 + (rand(-5, 5) / 10),
+                'goat' => 38.5 + (rand(-5, 5) / 10),
+                'sheep' => 38.5 + (rand(-5, 5) / 10),
+                default => 38.0 + (rand(-5, 5) / 10),
+            };
+
             $device = Device::create([
                 'device_id' => 'DEMO-' . str_pad($animal->id, 4, '0', STR_PAD_LEFT) . '-' . strtoupper(substr(md5($animal->id . time()), 0, 1)),
                 'name' => 'Demo ' . ($animal->name ?? $animal->animal_id),
                 'type' => 'collar',
                 'status' => 'online',
                 'battery_level' => rand(60, 100),
+                'temperature' => $baseTemp,
+                'speed' => 0,
+                'is_lost' => false,
                 'firmware_version' => 'v4.2.1-stable',
                 'update_interval' => 15,
                 'gps_lat' => $lat + (rand(-100, 100) / 10000),
                 'gps_lng' => $lng + (rand(-100, 100) / 10000),
                 'last_ping' => now(),
+                'last_temperature_update' => now(),
                 'animal_id' => $animal->id,
                 'owner_id' => $animal->owner_id,
             ]);
@@ -367,19 +478,187 @@ class SimulatorController extends Controller
             'device_ids.*' => 'exists:devices,id',
         ]);
 
+        if (!$this->guardSimulator($request)) {
+            return response()->json(['error' => 'Simulator is disabled or forbidden'], 403);
+        }
+
         $count = 0;
         foreach ($validated['device_ids'] as $id) {
             $device = Device::find($id);
-            if ($device) {
-                LocationHistory::where('device_id', $device->id)->delete();
-                $device->delete();
-                $count++;
+            if (!$device || $device->data_source !== 'simulated') {
+                continue;
             }
+            LocationHistory::where('device_id', $device->id)->delete();
+            $device->delete();
+            $count++;
         }
 
         return response()->json([
             'message' => "Removed {$count} demo devices",
             'deleted' => $count,
+        ]);
+    }
+
+    public function update(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'device_id' => 'required|exists:devices,id',
+            'temperature' => 'nullable|numeric|min:20|max:45',
+            'speed' => 'nullable|numeric|min:0|max:120',
+            'is_lost' => 'nullable|boolean',
+            'battery_level' => 'nullable|integer|min:0|max:100',
+            'signal_strength' => 'nullable|integer|min:0|max:100',
+        ]);
+
+        if (!$this->guardSimulator($request)) {
+            return response()->json(['error' => 'Simulator is disabled or forbidden'], 403);
+        }
+
+        $device = Device::findOrFail($validated['device_id']);
+
+        if (!$this->guardSimulator($request, $device)) {
+            return response()->json(['error' => 'Cannot control real devices from simulator'], 403);
+        }
+
+        $updateData = [];
+
+        if (isset($validated['temperature'])) {
+            $updateData['temperature'] = $validated['temperature'];
+            $updateData['last_temperature_update'] = now();
+        }
+
+        if (isset($validated['speed'])) {
+            $updateData['speed'] = $validated['speed'];
+        }
+
+        if (isset($validated['is_lost'])) {
+            $updateData['is_lost'] = $validated['is_lost'];
+        }
+
+        if (isset($validated['battery_level'])) {
+            $updateData['battery_level'] = $validated['battery_level'];
+            $updateData['status'] = $validated['battery_level'] > 0 ? 'online' : 'offline';
+        }
+
+        if (isset($validated['signal_strength'])) {
+            $updateData['signal_strength'] = $validated['signal_strength'];
+        }
+
+        $device->update($updateData);
+
+        return response()->json([
+            'message' => 'Device updated',
+            'device' => $device->fresh(),
+        ]);
+    }
+
+    public function toggleLost(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'device_id' => 'required|exists:devices,id',
+            'is_lost' => 'required|boolean',
+        ]);
+
+        if (!$this->guardSimulator($request)) {
+            return response()->json(['error' => 'Simulator is disabled or forbidden'], 403);
+        }
+
+        $device = Device::findOrFail($validated['device_id']);
+
+        if (!$this->guardSimulator($request, $device)) {
+            return response()->json(['error' => 'Cannot control real devices from simulator'], 403);
+        }
+
+        $device->update(['is_lost' => $validated['is_lost']]);
+
+        if ($validated['is_lost']) {
+            GeofenceAlert::create([
+                'geofence_id' => null,
+                'animal_id' => $device->animal_id,
+                'device_id' => $device->id,
+                'type' => 'lost',
+                'latitude' => $device->gps_lat,
+                'longitude' => $device->gps_lng,
+                'is_acknowledged' => false,
+                'triggered_at' => now(),
+            ]);
+        }
+
+        return response()->json([
+            'message' => $validated['is_lost'] ? 'Animal marked as lost' : 'Animal unmarked as lost',
+            'is_lost' => $validated['is_lost'],
+        ]);
+    }
+
+    public function setTemperature(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'device_id' => 'required|exists:devices,id',
+            'temperature' => 'required|numeric|min:20|max:45',
+        ]);
+
+        if (!$this->guardSimulator($request)) {
+            return response()->json(['error' => 'Simulator is disabled or forbidden'], 403);
+        }
+
+        $device = Device::findOrFail($validated['device_id']);
+
+        if (!$this->guardSimulator($request, $device)) {
+            return response()->json(['error' => 'Cannot control real devices from simulator'], 403);
+        }
+
+        $device->update([
+            'temperature' => $validated['temperature'],
+            'last_temperature_update' => now(),
+        ]);
+
+        return response()->json([
+            'message' => 'Temperature set',
+            'temperature' => (float) $validated['temperature'],
+        ]);
+    }
+
+    public function batchSettings(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'device_ids' => 'nullable|array',
+            'device_ids.*' => 'exists:devices,id',
+            'temperature' => 'nullable|numeric|min:20|max:45',
+            'speed' => 'nullable|numeric|min:0|max:120',
+            'is_lost' => 'nullable|boolean',
+            'battery_level' => 'nullable|integer|min:0|max:100',
+        ]);
+
+        if (!$this->guardSimulator($request)) {
+            return response()->json(['error' => 'Simulator is disabled or forbidden'], 403);
+        }
+
+        $query = Device::whereNotNull('animal_id')->where('data_source', 'simulated');
+        if (!empty($validated['device_ids'])) {
+            $query->whereIn('id', $validated['device_ids']);
+        }
+
+        $updateData = [];
+        if (isset($validated['temperature'])) {
+            $updateData['temperature'] = $validated['temperature'];
+            $updateData['last_temperature_update'] = now();
+        }
+        if (isset($validated['speed'])) {
+            $updateData['speed'] = $validated['speed'];
+        }
+        if (isset($validated['is_lost'])) {
+            $updateData['is_lost'] = $validated['is_lost'];
+        }
+        if (isset($validated['battery_level'])) {
+            $updateData['battery_level'] = $validated['battery_level'];
+            $updateData['status'] = $validated['battery_level'] > 0 ? 'online' : 'offline';
+        }
+
+        $count = $query->update($updateData);
+
+        return response()->json([
+            'message' => "Updated {$count} devices",
+            'count' => $count,
         ]);
     }
 }

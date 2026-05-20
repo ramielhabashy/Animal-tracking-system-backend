@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\Auction;
+use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Console\Command;
 
@@ -18,6 +19,7 @@ class EndExpiredAuctions extends Command
             ->get();
 
         $count = 0;
+        $paymentExpiryHours = (int) Setting::get('auction_payment_expiry_hours', 24);
         foreach ($expiredAuctions as $auction) {
             $highestBid = $auction->highestBid();
 
@@ -34,7 +36,7 @@ class EndExpiredAuctions extends Command
                         'winner_id' => $highestBid->user_id,
                         'second_winner_id' => $secondHighest?->user_id,
                         'ended_at' => now(),
-                        'payment_expires_at' => now()->addHours(24),
+                        'payment_expires_at' => now()->addHours($paymentExpiryHours),
                         'payment_status' => 'pending',
                     ]);
 
@@ -42,7 +44,7 @@ class EndExpiredAuctions extends Command
                         'user_id' => $highestBid->user_id,
                         'type' => 'auction_won',
                         'title' => 'You won the auction!',
-                        'body' => "Congratulations! You won \"{$auction->title}\" for {$highestBid->amount} SAR. Complete payment within 24 hours.",
+                        'body' => "Congratulations! You won \"{$auction->title}\" for {$highestBid->amount} SAR. Complete payment within {$paymentExpiryHours} hours.",
                         'data' => [
                             'auction_id' => $auction->id,
                             'link' => "/auctions/{$auction->id}",

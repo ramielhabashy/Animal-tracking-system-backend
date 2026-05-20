@@ -35,7 +35,21 @@ class MapController extends Controller
                 'Doctor', 'Shepherd' => $user?->managed_by ? [$user->managed_by] : [0],
                 default => [$userId],
             };
-            $animalIds = Animal::whereIn('owner_id', $ownerIds)->pluck('id')->toArray();
+
+            if ($userRole === 'Shepherd') {
+                $assignedGroupIds = $user?->assignedGroups()->pluck('animal_groups.id') ?? collect();
+                if ($assignedGroupIds->isNotEmpty()) {
+                    $animalIds = Animal::whereIn('id', function ($q) use ($assignedGroupIds) {
+                        $q->select('animal_id')
+                            ->from('animal_group_member')
+                            ->whereIn('animal_group_id', $assignedGroupIds);
+                    })->pluck('id')->toArray();
+                } else {
+                    $animalIds = Animal::whereIn('owner_id', $ownerIds)->pluck('id')->toArray();
+                }
+            } else {
+                $animalIds = Animal::whereIn('owner_id', $ownerIds)->pluck('id')->toArray();
+            }
         }
 
         $deviceQuery = Device::whereNotNull('animal_id')
@@ -64,6 +78,9 @@ class MapController extends Controller
                 'status' => $device->status,
                 'battery_level' => $device->battery_level,
                 'signal_strength' => $device->signal_strength,
+                'temperature' => $device->temperature ? (float) $device->temperature : null,
+                'speed' => $device->speed ? (float) $device->speed : null,
+                'is_lost' => $device->is_lost ?? false,
                 'has_gps' => $hasGps,
                 'gps_lat' => $hasGps ? (float) $device->gps_lat : null,
                 'gps_lng' => $hasGps ? (float) $device->gps_lng : null,
@@ -96,6 +113,7 @@ class MapController extends Controller
                     'heading' => $loc->heading,
                     'recorded_at' => $loc->recorded_at?->toISOString(),
                 ]),
+                'last_temperature_update' => $device->last_temperature_update?->toISOString(),
             ];
         });
 
@@ -134,6 +152,7 @@ class MapController extends Controller
             ->get(['id', 'name', 'color', 'owner_id']);
 
         $users = User::query()
+            ->role('Owner')
             ->when($userRole !== 'Admin', function ($q) use ($userRole, $userId, $user) {
                 if ($userRole === 'Owner') {
                     $q->where(function ($sq) use ($userId) {

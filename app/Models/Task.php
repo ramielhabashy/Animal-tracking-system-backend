@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Carbon\Carbon;
 
 class Task extends Model
@@ -86,6 +87,11 @@ class Task extends Model
     public function geofence(): BelongsTo
     {
         return $this->belongsTo(Geofence::class);
+    }
+
+    public function logs(): HasMany
+    {
+        return $this->hasMany(TaskLog::class);
     }
 
       public function isOverdue(): bool

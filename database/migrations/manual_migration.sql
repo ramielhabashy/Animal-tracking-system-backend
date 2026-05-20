@@ -99,8 +99,7 @@ INSERT IGNORE INTO translations (language_code, `group`, `key`, value) VALUES
 ('en', 'settings', 'smtp', 'Email (SMTP)'),
 ('en', 'settings', 'stripe', 'Payments (Stripe)'),
 ('en', 'settings', 'gemini', 'AI (Gemini)'),
-('en', 'settings', 'whatsapp', 'WhatsApp'),
-('en', 'settings', 'twilio', 'SMS (Twilio)'),
+
 -- Arabic settings
 ('ar', 'settings', 'languageSettings', 'إعدادات اللغة'),
 ('ar', 'settings', 'languageDescription', 'إدارة لغات النظام والترجمات'),
@@ -110,8 +109,7 @@ INSERT IGNORE INTO translations (language_code, `group`, `key`, value) VALUES
 ('ar', 'settings', 'smtp', 'البريد (SMTP)'),
 ('ar', 'settings', 'stripe', 'المدفوعات (Stripe)'),
 ('ar', 'settings', 'gemini', 'الذكاء الاصطناعي (Gemini)'),
-('ar', 'settings', 'whatsapp', 'واتساب'),
-('ar', 'settings', 'twilio', 'الرسائل (Twilio)'),
+
 -- Urdu settings
 ('ur', 'settings', 'languageSettings', 'زبان کی سیٹنگز'),
 ('ur', 'settings', 'languageDescription', 'سسٹم کی زبانیں اور ترجمے کا انتظام کریں'),
@@ -121,8 +119,7 @@ INSERT IGNORE INTO translations (language_code, `group`, `key`, value) VALUES
 ('ur', 'settings', 'smtp', 'ای میل (SMTP)'),
 ('ur', 'settings', 'stripe', 'ادائیگی (Stripe)'),
 ('ur', 'settings', 'gemini', 'AI (Gemini)'),
-('ur', 'settings', 'whatsapp', 'واٹس ایپ'),
-('ur', 'settings', 'twilio', 'ایس ایم ایس (Twilio)'),
+
 -- Basque settings
 ('eu', 'settings', 'languageSettings', 'Hizkuntza ezarpenak'),
 ('eu', 'settings', 'languageDescription', 'Sistemaren hizkuntzak eta itzulpenak kudeatu'),
@@ -132,8 +129,9 @@ INSERT IGNORE INTO translations (language_code, `group`, `key`, value) VALUES
 ('eu', 'settings', 'smtp', ' posta (SMTP)'),
 ('eu', 'settings', 'stripe', 'Ordainketak (Stripe)'),
 ('eu', 'settings', 'gemini', 'AI (Gemini)'),
-('eu', 'settings', 'whatsapp', 'WhatsApp'),
-('eu', 'settings', 'twilio', 'SMS (Twilio)');
+('eu', 'settings', 'smtp', ' posta (SMTP)'),
+('eu', 'settings', 'stripe', 'Ordainketak (Stripe)'),
+('eu', 'settings', 'gemini', 'AI (Gemini)');
 
 -- =====================
 -- Verify Data
