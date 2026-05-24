@@ -135,15 +135,15 @@ export default function GeneralSettings({ dir: _dir }) {
       <div className="bg-white rounded-[2rem] p-8 shadow-sm border border-[#eeeee9]">
         <div className="animate-pulse space-y-4">
           <div className="flex items-center gap-3 mb-6">
-            <div className="w-12 h-12 bg-[#F4F4EF] rounded-xl" />
+            <div className="w-12 h-12 bg-surface-light rounded-xl" />
             <div className="space-y-2 flex-1">
-              <div className="h-5 bg-[#F4F4EF] rounded w-48" />
-              <div className="h-3 bg-[#F4F4EF] rounded w-64" />
+              <div className="h-5 bg-surface-light rounded w-48" />
+              <div className="h-3 bg-surface-light rounded w-64" />
             </div>
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {[...Array(6)].map((_, i) => (
-              <div key={i} className="h-14 bg-[#F4F4EF] rounded-xl" />
+              <div key={i} className="h-14 bg-surface-light rounded-xl" />
             ))}
           </div>
         </div>
@@ -205,14 +205,14 @@ export default function GeneralSettings({ dir: _dir }) {
           placeholder="Digital Majlis."
         />
         <div>
-          <label className="block text-xs font-bold text-[#404943] uppercase tracking-wider mb-2">Logo</label>
+          <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">Logo</label>
           <div className="flex items-center gap-4">
             {(logoPreview || generalSettings.logo) && (
               <div className="group relative w-16 h-16 flex-shrink-0">
                 <img
                   src={storageUrl(logoPreview || generalSettings.logo)}
                   alt="Logo"
-                  className="w-16 h-16 object-contain rounded-xl border border-[#e5e7db] transition-transform duration-200 group-hover:scale-110"
+                  className="w-16 h-16 object-contain rounded-xl border border-outline transition-transform duration-200 group-hover:scale-110"
                 />
               </div>
             )}
@@ -226,19 +226,19 @@ export default function GeneralSettings({ dir: _dir }) {
                   setLogoPreview(URL.createObjectURL(file));
                 }
               }}
-              className="w-full bg-[#F4F4EF] border-none rounded-xl p-3 text-sm text-[#002819] file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-[#002819] file:text-white file:font-bold file:text-xs hover:file:bg-[#06402b]"
+              className="w-full bg-surface-light border-none rounded-xl p-3 text-sm text-brand-primary file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-brand-primary file:text-white file:font-bold file:text-xs hover:file:bg-brand-secondary"
             />
           </div>
         </div>
         <div>
-          <label className="block text-xs font-bold text-[#404943] uppercase tracking-wider mb-2">Favicon</label>
+          <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">Favicon</label>
           <div className="flex items-center gap-4">
             {(faviconPreview || generalSettings.favicon) && (
               <div className="group relative w-8 h-8 flex-shrink-0">
                 <img
                   src={storageUrl(faviconPreview || generalSettings.favicon)}
                   alt="Favicon"
-                  className="w-8 h-8 object-contain rounded border border-[#e5e7db] transition-transform duration-200 group-hover:scale-110"
+                  className="w-8 h-8 object-contain rounded border border-outline transition-transform duration-200 group-hover:scale-110"
                 />
               </div>
             )}
@@ -252,17 +252,17 @@ export default function GeneralSettings({ dir: _dir }) {
                   setFaviconPreview(URL.createObjectURL(file));
                 }
               }}
-              className="w-full bg-[#F4F4EF] border-none rounded-xl p-3 text-sm text-[#002819] file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-[#002819] file:text-white file:font-bold file:text-xs hover:file:bg-[#06402b]"
+              className="w-full bg-surface-light border-none rounded-xl p-3 text-sm text-brand-primary file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-brand-primary file:text-white file:font-bold file:text-xs hover:file:bg-brand-secondary"
             />
           </div>
         </div>
         <div>
-          <label className="block text-xs font-bold text-[#404943] uppercase tracking-wider mb-2">{t('settings.loginBackground')}</label>
+          <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">{t('settings.loginBackground')}</label>
           <div className="flex items-center gap-4">
             {(loginBackgroundPreview || generalSettings.login_background) && (
               <div className="group relative w-24 h-16 flex-shrink-0">
                 <div
-                  className="w-24 h-16 rounded-xl border border-[#e5e7db] bg-cover bg-center transition-transform duration-200 group-hover:scale-110"
+                  className="w-24 h-16 rounded-xl border border-outline bg-cover bg-center transition-transform duration-200 group-hover:scale-110"
                   style={{
                     backgroundImage: `url(${storageUrl(loginBackgroundPreview || generalSettings.login_background)})`
                   }}
@@ -279,7 +279,7 @@ export default function GeneralSettings({ dir: _dir }) {
                   setLoginBackgroundPreview(URL.createObjectURL(file));
                 }
               }}
-              className="w-full bg-[#F4F4EF] border-none rounded-xl p-3 text-sm text-[#002819] file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-[#002819] file:text-white file:font-bold file:text-xs hover:file:bg-[#06402b]"
+              className="w-full bg-surface-light border-none rounded-xl p-3 text-sm text-brand-primary file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-brand-primary file:text-white file:font-bold file:text-xs hover:file:bg-brand-secondary"
             />
           </div>
         </div>
@@ -293,7 +293,7 @@ export default function GeneralSettings({ dir: _dir }) {
         <button
           onClick={handleExportDatabase}
           disabled={exportingDb}
-          className="w-full py-3 bg-[#D4AF37] text-white rounded-xl font-bold hover:bg-[#c9a030] transition disabled:opacity-50 flex items-center justify-center gap-2"
+          className="w-full py-3 bg-brand-accent text-white rounded-xl font-bold hover:bg-brand-accent transition disabled:opacity-50 flex items-center justify-center gap-2"
         >
           <MaterialSymbol icon="backup" size={20} />
           {exportingDb ? t('common.exporting') : t('settings.exportDatabase')}

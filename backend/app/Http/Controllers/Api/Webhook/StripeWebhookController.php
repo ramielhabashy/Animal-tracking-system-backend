@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Log;
 use Stripe\Webhook;
 use App\Models\User;
 use App\Models\UserSubscription;
+use App\Models\SubscriptionOrder;
 
 class StripeWebhookController extends Controller
 {
@@ -15,7 +16,8 @@ class StripeWebhookController extends Controller
     {
         $payload = $request->getContent();
         $sigHeader = $request->header('Stripe-Signature');
-        $webhookSecret = config('services.stripe.webhook_secret');
+        $stripeSettings = \App\Models\Setting::getStripeSettings();
+        $webhookSecret = $stripeSettings['webhook_secret'] ?? '';
 
         try {
             $event = Webhook::constructEvent(
@@ -32,6 +34,7 @@ class StripeWebhookController extends Controller
             'invoice.payment_succeeded' => $this->handleInvoicePaymentSucceeded($event->data->object),
             'invoice.payment_failed' => $this->handleInvoicePaymentFailed($event->data->object),
             'customer.subscription.deleted' => $this->handleSubscriptionDeleted($event->data->object),
+            'checkout.session.completed' => $this->handleCheckoutSessionCompleted($event->data->object),
             default => Log::info('Unhandled Stripe event: ' . $event->type),
         };
 
@@ -78,6 +81,53 @@ class StripeWebhookController extends Controller
                 'status' => 'past_due',
             ]);
             Log::warning('Subscription marked as past_due', ['subscription_id' => $subscription->id]);
+        }
+    }
+
+    protected function handleCheckoutSessionCompleted($session): void
+    {
+        $orderId = $session->metadata->order_id ?? null;
+        if (!$orderId) {
+            Log::warning('Checkout session completed webhook missing order_id in metadata', ['session_id' => $session->id]);
+            return;
+        }
+
+        $order = SubscriptionOrder::find($orderId);
+        if (!$order) {
+            Log::warning('Order not found for checkout.session.completed', ['order_id' => $orderId, 'session_id' => $session->id]);
+            return;
+        }
+
+        if ($order->payment_status === 'paid') {
+            Log::info('Order already marked as paid', ['order_id' => $orderId]);
+            return;
+        }
+
+        $order->update([
+            'payment_status' => 'paid',
+            'stripe_session_id' => $session->id,
+            'payment_intent_id' => $session->payment_intent ?? null,
+            'payment_reference' => $session->id,
+        ]);
+
+        $subscription = UserSubscription::find($order->user_subscription_id);
+        if ($subscription) {
+            $billingDays = $order->billing_cycle === 'yearly' ? 365 : 30;
+            $subscription->update([
+                'status' => 'active',
+                'started_at' => $subscription->started_at ?? now(),
+                'ends_at' => $subscription->ends_at ?? now()->addDays($billingDays),
+                'last_payment_at' => now(),
+            ]);
+
+            $user = User::find($order->user_id);
+            if ($user) {
+                $user->update(['subscription_tier_id' => $order->tier_id]);
+            }
+
+            Log::info('Subscription activated via checkout.session.completed', ['order_id' => $orderId, 'subscription_id' => $subscription->id]);
+        } else {
+            Log::info('No pending subscription for order; activation deferred to confirm flow', ['order_id' => $orderId]);
         }
     }
 

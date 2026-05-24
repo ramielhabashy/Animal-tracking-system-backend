@@ -8,10 +8,8 @@ return [
         'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
     ],
 
-    'twilio' => [
-        'sid' => env('TWILIO_ACCOUNT_SID'),
-        'token' => env('TWILIO_AUTH_TOKEN'),
-        'from_number' => env('SMS_FROM_NUMBER'),
+    'groq' => [
+        'api_key' => env('GROQ_API_KEY'),
     ],
 
     'pusher' => [

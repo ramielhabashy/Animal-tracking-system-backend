@@ -124,8 +124,8 @@ export default function MedicalTypeSettings({ dir, message, setMessage }) {
       {medicalSubTab === 'recordTypes' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <div>
-            <h4 className="font-bold text-[#002819] mb-4">{editingMedicalType ? 'Edit Medical Type' : 'Add New Medical Type'}</h4>
-            <div className="space-y-4 p-4 bg-[#F4F4EF] rounded-xl">
+            <h4 className="font-bold text-brand-primary mb-4">{editingMedicalType ? 'Edit Medical Type' : 'Add New Medical Type'}</h4>
+            <div className="space-y-4 p-4 bg-surface-light rounded-xl">
               <InputField
                 label="Name"
                 value={medicalTypeForm.name}
@@ -148,7 +148,7 @@ export default function MedicalTypeSettings({ dir, message, setMessage }) {
                   options={medicalIconOptions}
                 />
                 <div>
-                  <label className="block text-xs font-bold text-[#404943] uppercase tracking-wider mb-2">Color</label>
+                  <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">Color</label>
                   <input
                     type="color"
                     value={medicalTypeForm.color}
@@ -173,7 +173,7 @@ export default function MedicalTypeSettings({ dir, message, setMessage }) {
                 {editingMedicalType && (
                   <button
                     onClick={() => { setEditingMedicalType(null); setMedicalTypeForm({ name: '', slug: '', icon: 'medical_services', color: '#002819', is_active: true }); }}
-                    className="px-4 py-3 bg-[#717973] text-white rounded-xl font-bold hover:bg-[#5a6265] transition"
+                    className="px-4 py-3 bg-on-surface-subtle text-white rounded-xl font-bold hover:bg-[#5a6265] transition"
                   >
                     Cancel
                   </button>
@@ -183,20 +183,20 @@ export default function MedicalTypeSettings({ dir, message, setMessage }) {
           </div>
 
           <div>
-            <h4 className="font-bold text-[#002819] mb-4">Existing Medical Record Types</h4>
+            <h4 className="font-bold text-brand-primary mb-4">Existing Medical Record Types</h4>
             <div className="space-y-2">
               {medicalRecordTypes.length === 0 ? (
-                <p className="text-[#717973] text-sm">No medical record types defined</p>
+                <p className="text-on-surface-subtle text-sm">No medical record types defined</p>
               ) : (
                 medicalRecordTypes.map((mt) => (
-                  <div key={mt.id} className={`p-4 rounded-xl flex items-center justify-between ${mt.is_active ? 'bg-[#F4F4EF]' : 'bg-[#F4F4EF]/50 opacity-60'}`}>
+                  <div key={mt.id} className={`p-4 rounded-xl flex items-center justify-between ${mt.is_active ? 'bg-surface-light' : 'bg-surface-light/50 opacity-60'}`}>
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: mt.color + '20' }}>
                         <MaterialSymbol icon={mt.icon || 'medical_services'} size={20} style={{ color: mt.color }} />
                       </div>
                       <div>
-                        <p className="font-bold text-[#002819]">{mt.name}</p>
-                        <p className="text-xs text-[#717973]">{mt.slug}</p>
+                        <p className="font-bold text-brand-primary">{mt.name}</p>
+                        <p className="text-xs text-on-surface-subtle">{mt.slug}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -208,7 +208,7 @@ export default function MedicalTypeSettings({ dir, message, setMessage }) {
                       </button>
                       <button
                         onClick={() => handleDeleteMedicalType(mt.id)}
-                        className="p-2 text-[#BA1A1A] hover:bg-[#BA1A1A]/10 rounded-lg transition"
+                        className="p-2 text-danger hover:bg-danger/10 rounded-lg transition"
                       >
                         <MaterialSymbol icon="delete" size={18} />
                       </button>
@@ -224,8 +224,8 @@ export default function MedicalTypeSettings({ dir, message, setMessage }) {
       {medicalSubTab === 'vaccinationTypes' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <div>
-            <h4 className="font-bold text-[#002819] mb-4">{editingVaccinationType ? 'Edit Vaccination Type' : 'Add New Vaccination Type'}</h4>
-            <div className="space-y-4 p-4 bg-[#F4F4EF] rounded-xl">
+            <h4 className="font-bold text-brand-primary mb-4">{editingVaccinationType ? 'Edit Vaccination Type' : 'Add New Vaccination Type'}</h4>
+            <div className="space-y-4 p-4 bg-surface-light rounded-xl">
               <InputField
                 label="Name"
                 value={vaccinationTypeForm.name}
@@ -248,7 +248,7 @@ export default function MedicalTypeSettings({ dir, message, setMessage }) {
                   options={vaccinationIconOptions}
                 />
                 <div>
-                  <label className="block text-xs font-bold text-[#404943] uppercase tracking-wider mb-2">Color</label>
+                  <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">Color</label>
                   <input
                     type="color"
                     value={vaccinationTypeForm.color}
@@ -273,7 +273,7 @@ export default function MedicalTypeSettings({ dir, message, setMessage }) {
                 {editingVaccinationType && (
                   <button
                     onClick={() => { setEditingVaccinationType(null); setVaccinationTypeForm({ name: '', slug: '', icon: 'vaccines', color: '#002819', is_active: true }); }}
-                    className="px-4 py-3 bg-[#717973] text-white rounded-xl font-bold hover:bg-[#5a6265] transition"
+                    className="px-4 py-3 bg-on-surface-subtle text-white rounded-xl font-bold hover:bg-[#5a6265] transition"
                   >
                     Cancel
                   </button>
@@ -283,20 +283,20 @@ export default function MedicalTypeSettings({ dir, message, setMessage }) {
           </div>
 
           <div>
-            <h4 className="font-bold text-[#002819] mb-4">Existing Vaccination Types</h4>
+            <h4 className="font-bold text-brand-primary mb-4">Existing Vaccination Types</h4>
             <div className="space-y-2">
               {vaccinationTypesList.length === 0 ? (
-                <p className="text-[#717973] text-sm">No vaccination types defined</p>
+                <p className="text-on-surface-subtle text-sm">No vaccination types defined</p>
               ) : (
                 vaccinationTypesList.map((vt) => (
-                  <div key={vt.id} className={`p-4 rounded-xl flex items-center justify-between ${vt.is_active ? 'bg-[#F4F4EF]' : 'bg-[#F4F4EF]/50 opacity-60'}`}>
+                  <div key={vt.id} className={`p-4 rounded-xl flex items-center justify-between ${vt.is_active ? 'bg-surface-light' : 'bg-surface-light/50 opacity-60'}`}>
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: vt.color + '20' }}>
                         <MaterialSymbol icon={vt.icon || 'vaccines'} size={20} style={{ color: vt.color }} />
                       </div>
                       <div>
-                        <p className="font-bold text-[#002819]">{vt.name}</p>
-                        <p className="text-xs text-[#717973]">{vt.slug}</p>
+                        <p className="font-bold text-brand-primary">{vt.name}</p>
+                        <p className="text-xs text-on-surface-subtle">{vt.slug}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -308,7 +308,7 @@ export default function MedicalTypeSettings({ dir, message, setMessage }) {
                       </button>
                       <button
                         onClick={() => handleDeleteVaccinationType(vt.id)}
-                        className="p-2 text-[#BA1A1A] hover:bg-[#BA1A1A]/10 rounded-lg transition"
+                        className="p-2 text-danger hover:bg-danger/10 rounded-lg transition"
                       >
                         <MaterialSymbol icon="delete" size={18} />
                       </button>

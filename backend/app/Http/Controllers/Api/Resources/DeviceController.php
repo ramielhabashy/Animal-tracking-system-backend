@@ -12,6 +12,7 @@ use App\Models\LocationHistory;
 use App\Models\User;
 use App\Http\Requests\StoreDeviceRequest;
 use App\Http\Requests\UpdateDeviceRequest;
+use App\Contracts\DeviceDataProvider;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -62,7 +63,18 @@ class DeviceController extends Controller
             'last_seen' => 'nullable|date',
             'owner_id' => 'nullable|exists:users,id',
             'animal_id' => 'nullable|exists:animals,id',
+            'data_source' => 'nullable|string|in:simulated,real',
+            'driver' => 'nullable|string|max:50',
         ]);
+
+        // Only Admin can set data_source to 'real'
+        $userRole = $this->getUserRole($request);
+        if ($userRole !== 'Admin' || empty($data['data_source'])) {
+            $data['data_source'] = 'simulated';
+        }
+        if ($data['data_source'] !== 'real') {
+            $data['driver'] = null;
+        }
 
         $data['device_id'] = 'IOT-' . str_pad(Device::count() + 1, 3, '0', STR_PAD_LEFT) . '-' . strtoupper(substr(md5(time()), 0, 1));
 
@@ -365,5 +377,38 @@ class DeviceController extends Controller
         $device->delete();
 
         return $this->deleted('Device deleted successfully');
+    }
+
+    public function pollRealData(Request $request, DeviceDataProvider $provider): JsonResponse
+    {
+        $devices = Device::whereNotNull('animal_id')
+            ->where('data_source', 'real')
+            ->get();
+
+        $count = 0;
+        foreach ($devices as $device) {
+            try {
+                $data = $provider->fetchData($device);
+                if (!empty($data)) {
+                    $updateData = [];
+                    foreach (['gps_lat', 'gps_lng', 'temperature', 'battery_level', 'signal_strength', 'speed', 'status', 'last_ping'] as $field) {
+                        if (array_key_exists($field, $data)) {
+                            $updateData[$field] = $data[$field];
+                        }
+                    }
+                    if (!empty($updateData)) {
+                        $device->update($updateData);
+                    }
+                    $count++;
+                }
+            } catch (\Throwable $e) {
+                // log error, skip device
+            }
+        }
+
+        return response()->json([
+            'message' => "Polled {$count} real devices",
+            'count' => $count,
+        ]);
     }
 }

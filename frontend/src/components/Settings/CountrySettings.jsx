@@ -83,7 +83,7 @@ export default function CountrySettings({ dir, message, setMessage, saving, setS
           </div>
           <button
             onClick={addCountry}
-            className="mt-6 px-4 py-3 bg-[#002819] text-white rounded-xl font-bold hover:bg-[#06402B] transition flex items-center gap-2"
+            className="mt-6 px-4 py-3 bg-brand-primary text-white rounded-xl font-bold hover:bg-brand-secondary transition flex items-center gap-2"
           >
             <MaterialSymbol icon="add" size={18} />
             Add
@@ -94,11 +94,11 @@ export default function CountrySettings({ dir, message, setMessage, saving, setS
           {countries.map((country, idx) => (
             <div
               key={idx}
-              className="flex items-center justify-between bg-[#F4F4EF] rounded-xl px-4 py-3"
+              className="flex items-center justify-between bg-surface-light rounded-xl px-4 py-3"
             >
               <div className="flex items-center gap-3">
-                <MaterialSymbol icon="flag" size={18} className="text-[#D4AF37]" />
-                <span className="font-medium text-[#002819]">{country}</span>
+                <MaterialSymbol icon="flag" size={18} className="text-brand-accent" />
+                <span className="font-medium text-brand-primary">{country}</span>
               </div>
               <button
                 onClick={() => removeCountry(idx)}

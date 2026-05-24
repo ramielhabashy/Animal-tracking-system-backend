@@ -19,6 +19,9 @@ export default function LanguageSettings({ dir: _dir }) {
   const [selectedGroup, setSelectedGroup] = useState('common');
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState(null);
+  const [aiFillTarget, setAiFillTarget] = useState('ar');
+  const [aiFilling, setAiFilling] = useState(false);
+  const [aiFillProgress, setAiFillProgress] = useState(null);
 
   const groups = ['common', 'dashboard', 'animals', 'devices', 'geofences', 'alerts', 'tasks', 'auctions', 'profile', 'settings'];
 
@@ -164,13 +167,80 @@ export default function LanguageSettings({ dir: _dir }) {
     setLanguageForm({ code: '', name: '', native_name: '', direction: 'ltr' });
   };
 
+  const handleAiFillUi = async () => {
+    setAiFilling(true);
+    setAiFillProgress({ type: 'info', text: `AI-filling missing UI strings for ${aiFillTarget}...` });
+    let remaining = null;
+    let totalFilled = 0;
+    do {
+      try {
+        const res = await apiFetch('/api/admin/translations/ai-fill', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ source_lang: 'en', target_lang: aiFillTarget, limit: 200 }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          totalFilled += data.filled || 0;
+          remaining = data.remaining || 0;
+          setAiFillProgress({ type: 'info', text: `Filled ${totalFilled} strings... ${remaining} remaining` });
+        } else {
+          const err = await res.json();
+          setAiFillProgress({ type: 'error', text: err.error || 'AI fill failed' });
+          remaining = 0;
+        }
+      } catch (error) {
+        setAiFillProgress({ type: 'error', text: 'Network error during AI fill' });
+        remaining = 0;
+      }
+    } while (remaining > 0);
+    setAiFilling(false);
+    if (aiFillProgress?.type !== 'error') {
+      setAiFillProgress({ type: 'success', text: `AI fill complete: ${totalFilled} strings translated to ${aiFillTarget}` });
+      sessionStorage.setItem('oasis_translations_dirty', Date.now().toString());
+    }
+  };
+
+  const handleAiFillModels = async () => {
+    setAiFilling(true);
+    setAiFillProgress({ type: 'info', text: `AI-filling model names for ${aiFillTarget}...` });
+    let remaining = null;
+    let totalFilled = 0;
+    do {
+      try {
+        const res = await apiFetch('/api/admin/translations/ai-fill-models', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ source_lang: 'en', target_lang: aiFillTarget, limit: 200 }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          totalFilled += data.filled || 0;
+          remaining = data.remaining || 0;
+          setAiFillProgress({ type: 'info', text: `Filled ${totalFilled} model names... ${remaining} remaining` });
+        } else {
+          const err = await res.json();
+          setAiFillProgress({ type: 'error', text: err.error || 'AI fill failed' });
+          remaining = 0;
+        }
+      } catch (error) {
+        setAiFillProgress({ type: 'error', text: 'Network error during AI fill' });
+        remaining = 0;
+      }
+    } while (remaining > 0);
+    setAiFilling(false);
+    if (aiFillProgress?.type !== 'error') {
+      setAiFillProgress({ type: 'success', text: `Model fill complete: ${totalFilled} names translated to ${aiFillTarget}` });
+    }
+  };
+
   if (showTranslations) {
     return (
       <SettingsCard icon="translate" title="Manage Translations" description="Edit translation values for selected language">
         <div className="flex flex-wrap gap-4 mb-4 items-center">
           <button
             onClick={() => setShowTranslations(false)}
-            className="flex items-center gap-1 text-[#404943] hover:text-[#002819] font-medium transition-colors"
+            className="flex items-center gap-1 text-on-surface-variant hover:text-brand-primary font-medium transition-colors"
           >
             <MaterialSymbol icon="arrow_back" size={20} />
             <span>Back to Languages</span>
@@ -179,7 +249,7 @@ export default function LanguageSettings({ dir: _dir }) {
           <select
             value={selectedLanguageForTranslation}
             onChange={(e) => setSelectedLanguageForTranslation(e.target.value)}
-            className="border border-[#F4F4EF] rounded-xl px-3 py-2 min-w-[200px] text-[#002819] bg-white"
+            className="border border-[#F4F4EF] rounded-xl px-3 py-2 min-w-[200px] text-brand-primary bg-white"
           >
             {languages.map(lang => (
               <option key={lang.code} value={lang.code}>{lang.name} ({lang.code})</option>
@@ -188,7 +258,7 @@ export default function LanguageSettings({ dir: _dir }) {
           <select
             value={selectedGroup}
             onChange={(e) => setSelectedGroup(e.target.value)}
-            className="border border-[#F4F4EF] rounded-xl px-3 py-2 text-[#002819] bg-white"
+            className="border border-[#F4F4EF] rounded-xl px-3 py-2 text-brand-primary bg-white"
           >
             {groups.map(group => (
               <option key={group} value={group}>{group}</option>
@@ -198,30 +268,30 @@ export default function LanguageSettings({ dir: _dir }) {
 
         <div className="overflow-x-auto rounded-xl border border-[#F4F4EF]">
           <table className="w-full">
-            <thead className="bg-[#F4F4EF] sticky top-0">
+            <thead className="bg-surface-light sticky top-0">
               <tr>
-                <th className="px-4 py-3 text-start text-xs font-bold text-[#404943] uppercase w-1/3">Key</th>
-                <th className="px-4 py-3 text-start text-xs font-bold text-[#404943] uppercase">Value</th>
+                <th className="px-4 py-3 text-start text-xs font-bold text-on-surface-variant uppercase w-1/3">Key</th>
+                <th className="px-4 py-3 text-start text-xs font-bold text-on-surface-variant uppercase">Value</th>
               </tr>
             </thead>
             <tbody>
               {translations.length === 0 ? (
                 <tr>
-                  <td colSpan="2" className="px-4 py-8 text-center text-[#717973]">
+                  <td colSpan="2" className="px-4 py-8 text-center text-on-surface-subtle">
                     No translations found for this language and group.
                   </td>
                 </tr>
               ) : (
                 translations.map((trans) => (
                   <tr key={trans.id} className="border-t border-[#F4F4EF]">
-                    <td className="px-4 py-3 font-mono text-sm text-[#002819]">{trans.key}</td>
+                    <td className="px-4 py-3 font-mono text-sm text-brand-primary">{trans.key}</td>
                     <td className="px-4 py-3">
                       <input
                         type="text"
                         defaultValue={trans.value}
                         onBlur={(e) => handleSaveTranslation(trans.id, e.target.value)}
                         dir={selectedLanguageForTranslation === 'ar' || selectedLanguageForTranslation === 'ur' ? 'rtl' : 'ltr'}
-                        className="w-full border-none rounded-lg px-3 py-2 bg-[#F4F4EF] focus:ring-2 focus:ring-[#06402B]/20 text-[#002819]"
+                        className="w-full border-none rounded-lg px-3 py-2 bg-surface-light focus:ring-2 focus:ring-brand-secondary/20 text-brand-primary"
                       />
                     </td>
                   </tr>
@@ -283,7 +353,7 @@ export default function LanguageSettings({ dir: _dir }) {
           {editingLanguage && (
             <button
               onClick={handleCancelEdit}
-              className="px-4 py-3 bg-[#717973] text-white rounded-xl font-bold hover:bg-[#5a6265] transition"
+              className="px-4 py-3 bg-on-surface-subtle text-white rounded-xl font-bold hover:bg-[#5a6265] transition"
             >
               ×
             </button>
@@ -293,23 +363,23 @@ export default function LanguageSettings({ dir: _dir }) {
 
       <div className="overflow-x-auto rounded-xl border border-[#F4F4EF]">
         <table className="w-full">
-          <thead className="bg-[#F4F4EF]">
+          <thead className="bg-surface-light">
             <tr>
-              <th className="px-4 py-3 text-start text-xs font-bold text-[#404943] uppercase">{t('common.code') || 'Code'}</th>
-              <th className="px-4 py-3 text-start text-xs font-bold text-[#404943] uppercase">{t('common.name') || 'Name'}</th>
-              <th className="px-4 py-3 text-start text-xs font-bold text-[#404943] uppercase">{t('common.nativeName') || 'Native'}</th>
-              <th className="px-4 py-3 text-start text-xs font-bold text-[#404943] uppercase">{t('common.direction') || 'Dir'}</th>
-              <th className="px-4 py-3 text-start text-xs font-bold text-[#404943] uppercase">{t('common.status') || 'Status'}</th>
-              <th className="px-4 py-3 text-right text-xs font-bold text-[#404943] uppercase">{t('common.actions') || 'Actions'}</th>
+              <th className="px-4 py-3 text-start text-xs font-bold text-on-surface-variant uppercase">{t('common.code') || 'Code'}</th>
+              <th className="px-4 py-3 text-start text-xs font-bold text-on-surface-variant uppercase">{t('common.name') || 'Name'}</th>
+              <th className="px-4 py-3 text-start text-xs font-bold text-on-surface-variant uppercase">{t('common.nativeName') || 'Native'}</th>
+              <th className="px-4 py-3 text-start text-xs font-bold text-on-surface-variant uppercase">{t('common.direction') || 'Dir'}</th>
+              <th className="px-4 py-3 text-start text-xs font-bold text-on-surface-variant uppercase">{t('common.status') || 'Status'}</th>
+              <th className="px-4 py-3 text-right text-xs font-bold text-on-surface-variant uppercase">{t('common.actions') || 'Actions'}</th>
             </tr>
           </thead>
           <tbody>
             {languages.map((lang) => (
               <tr key={lang.code} className="border-t border-[#F4F4EF] hover:bg-[#FAFAF7] transition-colors">
-                <td className="px-4 py-3 font-mono font-bold text-[#002819]">{lang.code}</td>
-                <td className="px-4 py-3 text-[#002819]">{lang.name}</td>
-                <td className="px-4 py-3 text-[#002819]" dir={lang.direction || 'ltr'}>{lang.native_name}</td>
-                <td className="px-4 py-3 uppercase text-xs text-[#404943]">{lang.direction}</td>
+                <td className="px-4 py-3 font-mono font-bold text-brand-primary">{lang.code}</td>
+                <td className="px-4 py-3 text-brand-primary">{lang.name}</td>
+                <td className="px-4 py-3 text-brand-primary" dir={lang.direction || 'ltr'}>{lang.native_name}</td>
+                <td className="px-4 py-3 uppercase text-xs text-on-surface-variant">{lang.direction}</td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
                     <span className={`px-2.5 py-1 rounded-lg text-xs font-bold ${
@@ -320,7 +390,7 @@ export default function LanguageSettings({ dir: _dir }) {
                       {lang.is_active ? 'Active' : 'Inactive'}
                     </span>
                     {lang.is_default && (
-                      <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-[#D4AF37] text-white">
+                      <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-brand-accent text-white">
                         Default
                       </span>
                     )}
@@ -329,7 +399,7 @@ export default function LanguageSettings({ dir: _dir }) {
                 <td className="px-4 py-3 text-right whitespace-nowrap">
                   <button
                     onClick={() => handleEditLanguage(lang)}
-                    className="text-[#002819] hover:text-[#06402B] font-medium text-sm mr-2"
+                    className="text-brand-primary hover:text-brand-secondary font-medium text-sm mr-2"
                   >
                     {t('common.edit')}
                   </button>
@@ -366,6 +436,70 @@ export default function LanguageSettings({ dir: _dir }) {
             ))}
           </tbody>
         </table>
+      </div>
+
+      <div className="mt-8 pt-6 border-t border-[#E3E3DE]">
+        <div className="flex items-center gap-2 mb-4">
+          <MaterialSymbol icon="auto_awesome" size={20} className="text-brand-accent" />
+          <h3 className="text-lg font-bold text-brand-primary">AI Translation Fill</h3>
+        </div>
+        <p className="text-sm text-on-surface-subtle mb-4">Use your configured AI provider to automatically translate missing strings. Requires AI settings configured on the AI tab.</p>
+
+        {aiFillProgress && (
+          <div className={`mb-4 p-4 rounded-xl text-sm font-medium ${
+            aiFillProgress.type === 'success' ? 'bg-emerald-100 text-emerald-800' :
+            aiFillProgress.type === 'error' ? 'bg-red-100 text-red-800' :
+            'bg-blue-100 text-blue-800'
+          }`}>
+            {aiFillProgress.text}
+          </div>
+        )}
+
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-medium text-on-surface-variant">Target:</label>
+            <select
+              value={aiFillTarget}
+              onChange={(e) => setAiFillTarget(e.target.value)}
+              className="border border-[#F4F4EF] rounded-xl px-3 py-2 text-brand-primary bg-white"
+              disabled={aiFilling}
+            >
+              {languages.filter(l => l.code !== 'en').map(lang => (
+                <option key={lang.code} value={lang.code}>{lang.name} ({lang.code})</option>
+              ))}
+            </select>
+          </div>
+          <button
+            onClick={handleAiFillUi}
+            disabled={aiFilling}
+            className="px-4 py-2 bg-brand-primary text-white rounded-xl font-medium text-sm hover:bg-[#003d24] transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            {aiFilling ? (
+              <>
+                <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
+                Working...
+              </>
+            ) : (
+              <MaterialSymbol icon="translate" size={16} />
+            )}
+            AI-Fill Missing UI Strings
+          </button>
+          <button
+            onClick={handleAiFillModels}
+            disabled={aiFilling}
+            className="px-4 py-2 bg-brand-secondary text-white rounded-xl font-medium text-sm hover:bg-[#c9a22f] transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            {aiFilling ? (
+              <>
+                <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
+                Working...
+              </>
+            ) : (
+              <MaterialSymbol icon="pets" size={16} />
+            )}
+            AI-Fill Model Names
+          </button>
+        </div>
       </div>
     </SettingsCard>
   );

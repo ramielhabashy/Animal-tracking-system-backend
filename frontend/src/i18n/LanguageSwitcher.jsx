@@ -29,7 +29,7 @@ export default function LanguageSwitcher({ compact }) {
       <select
         value={locale}
         onChange={handleChange}
-        className="px-3 py-2 rounded-xl bg-[#F4F4EF] hover:bg-[#E3E3DE] transition-all text-sm text-[#002819] font-semibold border-none cursor-pointer appearance-none"
+        className="px-3 py-2 rounded-xl bg-surface-light hover:bg-surface-high transition-all text-sm text-brand-primary font-semibold border-none cursor-pointer appearance-none"
       >
         {languages.map(lang => (
           <option key={lang.code} value={lang.code} dir={lang.direction || 'ltr'}>
@@ -45,7 +45,7 @@ export default function LanguageSwitcher({ compact }) {
       <select
         value={locale}
         onChange={handleChange}
-        className="px-3 pe-14 py-2 rounded-xl bg-[#F4F4EF] hover:bg-[#E3E3DE] transition-all text-sm text-[#002819] font-semibold border-none cursor-pointer appearance-none"
+        className="px-3 pe-14 py-2 rounded-xl bg-surface-light hover:bg-surface-high transition-all text-sm text-brand-primary font-semibold border-none cursor-pointer appearance-none"
       >
         {languages.map(lang => (
           <option key={lang.code} value={lang.code} dir={lang.direction || 'ltr'}>
@@ -54,7 +54,7 @@ export default function LanguageSwitcher({ compact }) {
         ))}
       </select>
       {currentLang?.direction === 'rtl' && (
-        <span className="absolute end-2 text-[10px] font-bold text-[#06402B] bg-[#06402B]/10 px-1.5 py-0.5 rounded pointer-events-none">
+        <span className="absolute end-2 text-[10px] font-bold text-brand-secondary bg-brand-secondary/10 px-1.5 py-0.5 rounded pointer-events-none">
           RTL
         </span>
       )}

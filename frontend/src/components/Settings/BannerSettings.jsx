@@ -9,15 +9,15 @@ const COLOR_OPTIONS = ['dark', 'brand', 'amber', 'emerald'];
 
 const COLOR_STYLES = {
   dark: 'bg-stone-900 text-stone-300',
-  brand: 'bg-gradient-to-br from-[#002819] to-[#06402b] text-white',
+  brand: 'bg-gradient-to-br from-brand-primary to-brand-secondary text-white',
   amber: 'bg-amber-50 border border-amber-200 text-amber-800',
   emerald: 'bg-emerald-50 border border-emerald-200 text-emerald-800',
 };
 
 const COLOR_PREVIEW = {
   dark: { bg: 'bg-stone-900', ring: 'ring-stone-500', text: 'text-white' },
-  brand: { bg: 'bg-[#002819]', ring: 'ring-[#002819]', text: 'text-white' },
-  amber: { bg: 'bg-amber-400', ring: 'ring-amber-400', text: 'text-[#002819]' },
+  brand: { bg: 'bg-brand-primary', ring: 'ring-[#002819]', text: 'text-white' },
+  amber: { bg: 'bg-amber-400', ring: 'ring-amber-400', text: 'text-brand-primary' },
   emerald: { bg: 'bg-emerald-500', ring: 'ring-emerald-500', text: 'text-white' },
 };
 
@@ -190,22 +190,22 @@ export default function BannerSettings({ dir, message, setMessage }) {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center h-48"><div className="animate-spin w-8 h-8 border-4 border-[#002819] border-t-transparent rounded-full" /></div>;
+    return <div className="flex items-center justify-center h-48"><div className="animate-spin w-8 h-8 border-4 border-brand-primary border-t-transparent rounded-full" /></div>;
   }
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-bold text-[#002819]">
+          <h3 className="text-lg font-bold text-brand-primary">
             <MaterialSymbol icon="campaign" size={22} className="inline align-text-bottom mr-1" />
             {t('announcements.title')}
           </h3>
-          <p className="text-sm text-[#717973] mt-1">{t('announcements.description')}</p>
+          <p className="text-sm text-on-surface-subtle mt-1">{t('announcements.description')}</p>
         </div>
         <button
           onClick={openNew}
-          className="flex items-center gap-2 px-4 py-2 bg-[#002819] text-white rounded-xl font-bold text-sm hover:bg-[#06402b] transition"
+          className="flex items-center gap-2 px-4 py-2 bg-brand-primary text-white rounded-xl font-bold text-sm hover:bg-brand-secondary transition"
         >
           <MaterialSymbol icon="add" size={18} />
           {t('announcements.addBanner')}
@@ -215,7 +215,7 @@ export default function BannerSettings({ dir, message, setMessage }) {
       {!showForm && banners.length === 0 && (
         <div className="text-center py-16 bg-white rounded-2xl border border-[#eeeee9]">
           <MaterialSymbol icon="campaign" size={48} className="text-[#E3E3DE] mx-auto mb-3" />
-          <p className="text-[#717973] font-medium">{t('announcements.noBanners')}</p>
+          <p className="text-on-surface-subtle font-medium">{t('announcements.noBanners')}</p>
         </div>
       )}
 
@@ -234,20 +234,20 @@ export default function BannerSettings({ dir, message, setMessage }) {
                   ) : (
                     <span className="text-[10px] font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded">{t('announcements.inactive')}</span>
                   )}
-                  <span className="text-[10px] text-[#717973]">#{banner.sort_order}</span>
+                  <span className="text-[10px] text-on-surface-subtle">#{banner.sort_order}</span>
                 </div>
-                <p className="font-bold text-[#002819] text-sm truncate">
+                <p className="font-bold text-brand-primary text-sm truncate">
                   {banner.translations?.en?.title || '(no title)'}
                 </p>
-                <p className="text-xs text-[#717973] truncate mt-0.5">
+                <p className="text-xs text-on-surface-subtle truncate mt-0.5">
                   {banner.translations?.en?.description || ''}
                 </p>
               </div>
               <div className="flex items-center gap-2 shrink-0">
-                <button onClick={() => openEdit(banner)} className="p-2 rounded-lg hover:bg-[#f4f4ef] text-[#717973] hover:text-[#002819] transition">
+                <button onClick={() => openEdit(banner)} className="p-2 rounded-lg hover:bg-surface-light text-on-surface-subtle hover:text-brand-primary transition">
                   <MaterialSymbol icon="edit" size={18} />
                 </button>
-                <button onClick={() => handleDelete(banner)} className="p-2 rounded-lg hover:bg-red-50 text-[#717973] hover:text-red-600 transition">
+                <button onClick={() => handleDelete(banner)} className="p-2 rounded-lg hover:bg-red-50 text-on-surface-subtle hover:text-red-600 transition">
                   <MaterialSymbol icon="delete" size={18} />
                 </button>
               </div>
@@ -259,35 +259,35 @@ export default function BannerSettings({ dir, message, setMessage }) {
       {showForm && (
         <div className="bg-white rounded-2xl border border-[#eeeee9] p-6 space-y-5">
           <div className="flex items-center justify-between">
-            <h4 className="font-bold text-[#002819]">{editing ? t('announcements.editBanner') : t('announcements.addBanner')}</h4>
-            <button onClick={() => setShowForm(false)} className="p-2 rounded-lg hover:bg-[#f4f4ef] text-[#717973] transition">
+            <h4 className="font-bold text-brand-primary">{editing ? t('announcements.editBanner') : t('announcements.addBanner')}</h4>
+            <button onClick={() => setShowForm(false)} className="p-2 rounded-lg hover:bg-surface-light text-on-surface-subtle transition">
               <MaterialSymbol icon="close" size={20} />
             </button>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-[10px] uppercase tracking-wider font-bold text-[#717973] mb-1">{t('announcements.type')}</label>
+              <label className="block text-[10px] uppercase tracking-wider font-bold text-on-surface-subtle mb-1">{t('announcements.type')}</label>
               <select value={form.type} onChange={e => setForm(prev => ({ ...prev, type: e.target.value }))}
-                className="w-full px-3 py-2 bg-[#f4f4ef] rounded-lg text-sm font-medium border-0 focus:ring-2 focus:ring-[#D4AF37]">
+                className="w-full px-3 py-2 bg-surface-light rounded-lg text-sm font-medium border-0 focus:ring-2 focus:ring-brand-accent">
                 {TYPE_OPTIONS.map(tp => (
                   <option key={tp} value={tp}>{t('announcements.' + tp)}</option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="block text-[10px] uppercase tracking-wider font-bold text-[#717973] mb-1">{t('announcements.icon')}</label>
+              <label className="block text-[10px] uppercase tracking-wider font-bold text-on-surface-subtle mb-1">{t('announcements.icon')}</label>
               <input type="text" value={form.icon} onChange={e => setForm(prev => ({ ...prev, icon: e.target.value }))}
                 placeholder="material_symbol_name"
-                className="w-full px-3 py-2 bg-[#f4f4ef] rounded-lg text-sm font-medium border-0 focus:ring-2 focus:ring-[#D4AF37]" />
+                className="w-full px-3 py-2 bg-surface-light rounded-lg text-sm font-medium border-0 focus:ring-2 focus:ring-brand-accent" />
               {form.icon && (
-                <span className="inline-flex items-center gap-1 mt-1 text-xs text-[#717973]">
+                <span className="inline-flex items-center gap-1 mt-1 text-xs text-on-surface-subtle">
                   <MaterialSymbol icon={form.icon} size={16} /> {form.icon}
                 </span>
               )}
             </div>
             <div>
-              <label className="block text-[10px] uppercase tracking-wider font-bold text-[#717973] mb-1">{t('announcements.colorScheme')}</label>
+              <label className="block text-[10px] uppercase tracking-wider font-bold text-on-surface-subtle mb-1">{t('announcements.colorScheme')}</label>
               <div className="flex gap-2">
                 {COLOR_OPTIONS.map(c => (
                   <button key={c} type="button" onClick={() => setForm(prev => ({ ...prev, color_scheme: c }))}
@@ -299,10 +299,10 @@ export default function BannerSettings({ dir, message, setMessage }) {
 
           {languages.length > 0 && (
             <div>
-              <div className="flex gap-1 bg-[#f4f4ef] p-1 rounded-lg w-fit mb-4">
+              <div className="flex gap-1 bg-surface-light p-1 rounded-lg w-fit mb-4">
                 {languages.map(l => (
                   <button key={l.code} type="button" onClick={() => setActiveLangTab(l.code)}
-                    className={`px-3 py-1.5 rounded text-xs font-bold transition ${activeLangTab === l.code ? 'bg-white text-[#002819] shadow-sm' : 'text-[#717973] hover:text-[#002819]'}`}>
+                    className={`px-3 py-1.5 rounded text-xs font-bold transition ${activeLangTab === l.code ? 'bg-white text-brand-primary shadow-sm' : 'text-on-surface-subtle hover:text-brand-primary'}`}>
                     {l.name}
                   </button>
                 ))}
@@ -310,25 +310,25 @@ export default function BannerSettings({ dir, message, setMessage }) {
 
               {languages.map(l => l.code === activeLangTab && (
                 <div key={l.code} className="space-y-4 border border-[#eeeee9] rounded-xl p-4">
-                  <p className="text-[10px] uppercase tracking-wider font-bold text-[#D4AF37]">{l.name}</p>
+                  <p className="text-[10px] uppercase tracking-wider font-bold text-brand-accent">{l.name}</p>
                   <div>
-                    <label className="block text-[10px] uppercase tracking-wider font-bold text-[#717973] mb-1">{t('announcements.tabTitle')}</label>
+                    <label className="block text-[10px] uppercase tracking-wider font-bold text-on-surface-subtle mb-1">{t('announcements.tabTitle')}</label>
                     <input type="text" value={form.translations[l.code]?.title || ''}
                       onChange={e => updateTranslation(l.code, 'title', e.target.value)}
-                      className="w-full px-3 py-2 bg-[#f4f4ef] rounded-lg text-sm font-medium border-0 focus:ring-2 focus:ring-[#D4AF37]" />
+                      className="w-full px-3 py-2 bg-surface-light rounded-lg text-sm font-medium border-0 focus:ring-2 focus:ring-brand-accent" />
                   </div>
                   <div>
-                    <label className="block text-[10px] uppercase tracking-wider font-bold text-[#717973] mb-1">{t('announcements.tabDescription')}</label>
+                    <label className="block text-[10px] uppercase tracking-wider font-bold text-on-surface-subtle mb-1">{t('announcements.tabDescription')}</label>
                     <textarea value={form.translations[l.code]?.description || ''}
                       onChange={e => updateTranslation(l.code, 'description', e.target.value)} rows={3}
-                      className="w-full px-3 py-2 bg-[#f4f4ef] rounded-lg text-sm font-medium border-0 focus:ring-2 focus:ring-[#D4AF37]" />
+                      className="w-full px-3 py-2 bg-surface-light rounded-lg text-sm font-medium border-0 focus:ring-2 focus:ring-brand-accent" />
                   </div>
                   {form.type === 'cta' && (
                     <div>
-                      <label className="block text-[10px] uppercase tracking-wider font-bold text-[#717973] mb-1">{t('announcements.tabButton')}</label>
+                      <label className="block text-[10px] uppercase tracking-wider font-bold text-on-surface-subtle mb-1">{t('announcements.tabButton')}</label>
                       <input type="text" value={form.translations[l.code]?.button_text || ''}
                         onChange={e => updateTranslation(l.code, 'button_text', e.target.value)}
-                        className="w-full px-3 py-2 bg-[#f4f4ef] rounded-lg text-sm font-medium border-0 focus:ring-2 focus:ring-[#D4AF37]" />
+                        className="w-full px-3 py-2 bg-surface-light rounded-lg text-sm font-medium border-0 focus:ring-2 focus:ring-brand-accent" />
                     </div>
                   )}
                 </div>
@@ -338,44 +338,44 @@ export default function BannerSettings({ dir, message, setMessage }) {
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
-              <label className="block text-[10px] uppercase tracking-wider font-bold text-[#717973] mb-1">{t('announcements.buttonUrl')}</label>
+              <label className="block text-[10px] uppercase tracking-wider font-bold text-on-surface-subtle mb-1">{t('announcements.buttonUrl')}</label>
               <input type="text" value={form.button_url} onChange={e => setForm(prev => ({ ...prev, button_url: e.target.value }))}
                 placeholder="/path"
-                className="w-full px-3 py-2 bg-[#f4f4ef] rounded-lg text-sm font-medium border-0 focus:ring-2 focus:ring-[#D4AF37]" />
+                className="w-full px-3 py-2 bg-surface-light rounded-lg text-sm font-medium border-0 focus:ring-2 focus:ring-brand-accent" />
             </div>
             <div>
-              <label className="block text-[10px] uppercase tracking-wider font-bold text-[#717973] mb-1">{t('announcements.sortOrder')}</label>
+              <label className="block text-[10px] uppercase tracking-wider font-bold text-on-surface-subtle mb-1">{t('announcements.sortOrder')}</label>
               <input type="number" value={form.sort_order} onChange={e => setForm(prev => ({ ...prev, sort_order: parseInt(e.target.value) || 0 }))}
-                className="w-full px-3 py-2 bg-[#f4f4ef] rounded-lg text-sm font-medium border-0 focus:ring-2 focus:ring-[#D4AF37]" />
+                className="w-full px-3 py-2 bg-surface-light rounded-lg text-sm font-medium border-0 focus:ring-2 focus:ring-brand-accent" />
             </div>
             <div>
-              <label className="block text-[10px] uppercase tracking-wider font-bold text-[#717973] mb-1">{t('announcements.startsAt')}</label>
+              <label className="block text-[10px] uppercase tracking-wider font-bold text-on-surface-subtle mb-1">{t('announcements.startsAt')}</label>
               <input type="datetime-local" value={form.starts_at} onChange={e => setForm(prev => ({ ...prev, starts_at: e.target.value }))}
-                className="w-full px-3 py-2 bg-[#f4f4ef] rounded-lg text-sm font-medium border-0 focus:ring-2 focus:ring-[#D4AF37]" />
+                className="w-full px-3 py-2 bg-surface-light rounded-lg text-sm font-medium border-0 focus:ring-2 focus:ring-brand-accent" />
             </div>
             <div>
-              <label className="block text-[10px] uppercase tracking-wider font-bold text-[#717973] mb-1">{t('announcements.expiresAt')}</label>
+              <label className="block text-[10px] uppercase tracking-wider font-bold text-on-surface-subtle mb-1">{t('announcements.expiresAt')}</label>
               <input type="datetime-local" value={form.expires_at} onChange={e => setForm(prev => ({ ...prev, expires_at: e.target.value }))}
-                className="w-full px-3 py-2 bg-[#f4f4ef] rounded-lg text-sm font-medium border-0 focus:ring-2 focus:ring-[#D4AF37]" />
+                className="w-full px-3 py-2 bg-surface-light rounded-lg text-sm font-medium border-0 focus:ring-2 focus:ring-brand-accent" />
             </div>
           </div>
 
           <div className="flex items-center gap-3">
             <label className="flex items-center gap-2 cursor-pointer">
               <input type="checkbox" checked={form.is_active} onChange={e => setForm(prev => ({ ...prev, is_active: e.target.checked }))}
-                className="w-5 h-5 rounded border-2 border-[#E3E3DE] text-[#002819] focus:ring-2 focus:ring-[#D4AF37]" />
-              <span className="text-sm font-medium text-[#002819]">{t('announcements.active')}</span>
+                className="w-5 h-5 rounded border-2 border-surface-high text-brand-primary focus:ring-2 focus:ring-brand-accent" />
+              <span className="text-sm font-medium text-brand-primary">{t('announcements.active')}</span>
             </label>
           </div>
 
           <div className="flex gap-3 pt-2">
             <button onClick={handleSave} disabled={saving}
-              className="px-6 py-3 bg-[#002819] text-white rounded-xl font-bold text-sm hover:bg-[#06402b] transition flex items-center gap-2 disabled:opacity-50">
+              className="px-6 py-3 bg-brand-primary text-white rounded-xl font-bold text-sm hover:bg-brand-secondary transition flex items-center gap-2 disabled:opacity-50">
               {saving ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <MaterialSymbol icon="save" size={18} />}
               {saving ? t('common.loading') : t('common.save')}
             </button>
             <button onClick={() => setShowForm(false)}
-              className="px-6 py-3 bg-[#f4f4ef] text-[#404943] rounded-xl font-bold text-sm hover:bg-[#E3E3DE] transition">
+              className="px-6 py-3 bg-surface-light text-on-surface-variant rounded-xl font-bold text-sm hover:bg-surface-high transition">
               {t('common.cancel')}
             </button>
           </div>

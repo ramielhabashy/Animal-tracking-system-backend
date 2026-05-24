@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api\Business;
 
 use App\Models\SubscriptionTier;
 use App\Models\UserSubscription;
+use App\Models\SubscriptionOrder;
+use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -13,25 +15,19 @@ use Stripe\Token;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Traits\SendsEmailNotifications;
 use App\Services\FeatureGate;
+use App\Services\PaymentMethodService;
 
 class SubscriptionController extends Controller
 {
     use SendsEmailNotifications;
     private function getRequestUser(Request $request): ?User
     {
-        if ($request->user()) {
-            return $request->user();
-        }
-        $userId = $request->header('X-User-Id');
-        return $userId ? User::find($userId) : null;
+        return $request->user();
     }
 
     private function getRequestUserId(Request $request): ?string
     {
-        if ($request->user()) {
-            return (string) $request->user()->id;
-        }
-        return $request->header('X-User-Id');
+        return $request->user() ? (string) $request->user()->id : null;
     }
 
     public function tiers(): JsonResponse
@@ -81,9 +77,9 @@ class SubscriptionController extends Controller
 
     public function userSubscription(Request $request): JsonResponse
     {
-        $user = $this->getRequestUser($request);
-        $requestingUserId = $user?->id ?? $request->header('X-User-Id');
-        $requestingUserRole = $user?->getPrimaryRoleName() ?? $request->header('X-User-Role');
+        $user = $request->user();
+        $requestingUserId = $user?->id;
+        $requestingUserRole = $user?->getPrimaryRoleName();
         
         $targetUserId = $request->input('user_id') ?: $requestingUserId;
         
@@ -166,6 +162,8 @@ class SubscriptionController extends Controller
             return $this->downgrade($request, $tier);
         }
 
+        $defaultBillingDays = (int) (Setting::get('subscription_default_billing_period_days') ?? 30);
+
         $pendingSubscription = $user->subscription()
             ->where('status', 'pending_payment')
             ->first();
@@ -176,7 +174,7 @@ class SubscriptionController extends Controller
                 'status' => 'active',
                 'started_at' => now(),
                 'trial_ends_at' => $tier->trial_days > 0 ? now()->addDays($tier->trial_days) : null,
-                'ends_at' => now()->addDays($tier->trial_days > 0 ? $tier->trial_days : 30),
+                'ends_at' => now()->addDays($tier->trial_days > 0 ? $tier->trial_days : $defaultBillingDays),
             ]);
             
             $user->update(['subscription_tier_id' => $tier->id]);
@@ -193,7 +191,7 @@ class SubscriptionController extends Controller
             'status' => 'active',
             'started_at' => now(),
             'trial_ends_at' => $tier->trial_days > 0 ? now()->addDays($tier->trial_days) : null,
-            'ends_at' => now()->addDays($tier->trial_days > 0 ? $tier->trial_days : 30),
+            'ends_at' => now()->addDays($tier->trial_days > 0 ? $tier->trial_days : $defaultBillingDays),
             'billing_cycle' => 'monthly',
         ]);
 
@@ -223,14 +221,16 @@ class SubscriptionController extends Controller
 
         $currentSubscription->update(['status' => 'upgraded']);
 
+        $upgradeDefaultBillingDays = (int) (Setting::get('subscription_default_billing_period_days') ?? 30);
+
         $subscription = UserSubscription::create([
             'user_id' => $user->id,
             'tier_id' => $tier->id,
             'status' => 'active',
             'started_at' => now(),
             'trial_ends_at' => $tier->trial_days > 0 ? now()->addDays($tier->trial_days) : null,
-            'ends_at' => now()->addDays($tier->trial_days > 0 ? $tier->trial_days : 30),
-            'billing_cycle' => $request->input('billing_cycle', 'monthly'),
+            'ends_at' => now()->addDays($tier->trial_days > 0 ? $tier->trial_days : $upgradeDefaultBillingDays),
+            'billing_cycle' => 'monthly',
             'payment_method' => $request->input('payment_method'),
             'payment_reference' => $request->input('payment_reference'),
         ]);
@@ -342,13 +342,15 @@ class SubscriptionController extends Controller
             $existingSubscription->update(['status' => 'cancelled', 'cancelled_at' => now()]);
         }
 
+        $adminDefaultBillingDays = (int) (Setting::get('subscription_default_billing_period_days') ?? 30);
+
         $subscription = UserSubscription::create([
             'user_id' => $user->id,
             'tier_id' => $tier->id,
             'status' => 'active',
             'started_at' => now(),
             'trial_ends_at' => $tier->trial_days > 0 ? now()->addDays($tier->trial_days) : null,
-            'ends_at' => now()->addDays($tier->trial_days > 0 ? $tier->trial_days : 365),
+            'ends_at' => now()->addDays($tier->trial_days > 0 ? $tier->trial_days : $adminDefaultBillingDays),
         ]);
 
         $user->update(['subscription_tier_id' => $tier->id]);
@@ -401,7 +403,7 @@ class SubscriptionController extends Controller
                     'tier_id' => $user->subscription_tier_id,
                     'tier' => $user->subscriptionTier,
                     'effective_tier' => $effectiveTier,
-                    'status' => $sub?->status ?? 'active',
+                    'status' => $sub?->status ?? 'none',
                     'created_at' => $sub?->created_at?->toISOString(),
                     'started_at' => $sub?->started_at?->toISOString(),
                     'ends_at' => $sub?->ends_at?->toISOString(),
@@ -639,6 +641,8 @@ class SubscriptionController extends Controller
 
     public function processPayment(Request $request): JsonResponse
     {
+        return response()->json(['message' => 'This payment method is deprecated. Use Stripe Checkout instead.', 'error' => 'deprecated'], 410);
+
         $user = $this->getRequestUser($request);
 
         if (!$user) {
@@ -660,7 +664,8 @@ class SubscriptionController extends Controller
         }
 
         try {
-            Stripe::setApiKey(config('services.stripe.secret'));
+            $stripeSettings = \App\Models\Setting::getStripeSettings();
+            Stripe::setApiKey($stripeSettings['secret_key']);
 
             $expiry = $validated['expiry'];
             $expMonth = null;
@@ -705,12 +710,13 @@ class SubscriptionController extends Controller
 
                 $this->activateSubscription($user, $tier);
 
+                $processDefaultBillingDays = (int) (Setting::get('subscription_default_billing_period_days') ?? 30);
                 $subscription = UserSubscription::create([
                     'user_id' => $user->id,
                     'tier_id' => $tier->id,
                     'status' => 'active',
                     'started_at' => now(),
-                    'ends_at' => now()->addDays(30),
+                    'ends_at' => now()->addDays($processDefaultBillingDays),
                     'billing_cycle' => 'monthly',
                     'payment_method' => 'card',
                     'payment_reference' => $charge->id,
@@ -745,6 +751,8 @@ class SubscriptionController extends Controller
         $tier = SubscriptionTier::find($validated['tier_id']);
         $path = $request->file('payment_proof')->store('subscription-payments', 'public');
 
+        $bankDefaultBillingDays = (int) (Setting::get('subscription_default_billing_period_days') ?? 30);
+
         $existingActive = $user->subscription()
             ->where('status', 'active')
             ->first();
@@ -760,7 +768,7 @@ class SubscriptionController extends Controller
             'tier_id' => $tier->id,
             'status' => 'pending_payment',
             'started_at' => now(),
-            'ends_at' => now()->addDays(7),
+            'ends_at' => now()->addDays($bankDefaultBillingDays),
             'billing_cycle' => 'monthly',
             'payment_method' => 'bank_transfer',
             'payment_reference' => asset('storage/' . $path),
@@ -807,10 +815,11 @@ class SubscriptionController extends Controller
             return response()->json(['message' => 'User or tier not found'], 404);
         }
 
+        $approveDefaultBillingDays = (int) (Setting::get('subscription_default_billing_period_days') ?? 30);
         $subscription->update([
             'status' => 'active',
             'started_at' => now(),
-            'ends_at' => now()->addDays(30),
+            'ends_at' => now()->addDays($approveDefaultBillingDays),
         ]);
 
         $user->update(['subscription_tier_id' => $tier->id]);
@@ -1053,28 +1062,133 @@ class SubscriptionController extends Controller
             return response()->json(['message' => 'No active subscription to renew'], 400);
         }
 
-        $period = $subscription->billing_cycle === 'yearly' ? '1 year' : '1 month';
-        $subscription->update([
-            'ends_at' => now()->add($period),
-        ]);
+        $tier = $subscription->tier;
 
-        $tierName = $subscription->tier?->name ?? 'Subscription';
-        $this->sendNotificationMail(
-            $user,
-            'subscription',
-            "Subscription Renewed – {$tierName}",
-            [
-                "Your {$tierName} plan has been renewed successfully.",
-                "New expiry date: {$subscription->ends_at?->format('M d, Y')}",
-            ],
-            rtrim(env('FRONTEND_URL', config('app.url')), '/') . '/subscription',
-            'View Subscription',
-        );
+        if (!$tier || (float)$tier->price($subscription->billing_cycle ?? 'monthly') <= 0) {
+            $period = $subscription->billing_cycle === 'yearly' ? '1 year' : '1 month';
+            $subscription->update([
+                'ends_at' => now()->add($period),
+            ]);
 
-        return response()->json([
-            'message' => 'Subscription renewed successfully',
-            'data' => $subscription->fresh()->load('tier'),
-        ]);
+            $tierName = $tier?->name ?? 'Subscription';
+            $this->sendNotificationMail(
+                $user,
+                'subscription',
+                "Subscription Renewed – {$tierName}",
+                [
+                    "Your {$tierName} plan has been renewed successfully.",
+                    "New expiry date: {$subscription->ends_at?->format('M d, Y')}",
+                ],
+                rtrim(env('FRONTEND_URL', config('app.url')), '/') . '/subscription',
+                'View Subscription',
+            );
+
+            return response()->json([
+                'message' => 'Subscription renewed successfully',
+                'data' => $subscription->fresh()->load('tier'),
+            ]);
+        }
+
+        $amount = (float)$tier->price($subscription->billing_cycle ?? 'monthly');
+        $currency = $tier->currency ?? 'usd';
+        $paymentMethod = $subscription->payment_method ?? config('payment.default', 'card');
+
+        if (!PaymentMethodService::isValid($paymentMethod, 'subscription')) {
+            return response()->json(['message' => 'Unsupported payment method: ' . $paymentMethod], 400);
+        }
+
+        if (in_array($paymentMethod, ['card', 'stripe'], true)) {
+            $stripeSettings = Setting::getStripeSettings();
+
+            if (empty($stripeSettings['secret_key']) || !$stripeSettings['enabled']) {
+                return response()->json(['message' => 'Stripe payment is not configured'], 500);
+            }
+
+            Stripe::setApiKey($stripeSettings['secret_key']);
+
+            $order = SubscriptionOrder::create([
+                'user_id' => $user->id,
+                'tier_id' => $tier->id,
+                'user_subscription_id' => $subscription->id,
+                'amount' => $amount,
+                'currency' => $currency,
+                'billing_cycle' => $subscription->billing_cycle ?? 'monthly',
+                'payment_method' => 'card',
+                'payment_status' => 'pending',
+                'notes' => 'Subscription renewal',
+            ]);
+
+            $session = \Stripe\Checkout\Session::create([
+                'payment_method_types' => ['card'],
+                'line_items' => [[
+                    'price_data' => [
+                        'currency' => strtolower($currency),
+                        'product_data' => ['name' => "{$tier->name} Renewal"],
+                        'unit_amount' => (int)($amount * 100),
+                    ],
+                    'quantity' => 1,
+                ]],
+                'mode' => 'payment',
+                'success_url' => rtrim(env('FRONTEND_URL', config('app.url')), '/') . '/react.oasis/checkout/confirm/' . $order->id,
+                'cancel_url' => rtrim(env('FRONTEND_URL', config('app.url')), '/') . '/react.oasis/subscription',
+                'metadata' => [
+                    'order_id' => (string)$order->id,
+                    'user_id' => (string)$user->id,
+                    'type' => 'renewal',
+                ],
+            ]);
+
+            $order->update([
+                'stripe_session_id' => $session->id,
+            ]);
+
+            return response()->json([
+                'message' => 'Redirecting to payment',
+                'data' => [
+                    'checkout_url' => $session->url,
+                    'session_id' => $session->id,
+                    'order_id' => $order->id,
+                ],
+            ]);
+        }
+
+        if ($paymentMethod === 'bank_transfer') {
+            SubscriptionOrder::create([
+                'user_id' => $user->id,
+                'tier_id' => $tier->id,
+                'user_subscription_id' => $subscription->id,
+                'amount' => $amount,
+                'currency' => $currency,
+                'billing_cycle' => $subscription->billing_cycle ?? 'monthly',
+                'payment_method' => 'bank_transfer',
+                'payment_status' => 'pending',
+                'notes' => 'Subscription renewal - pending bank transfer',
+            ]);
+
+            $subscription->update([
+                'status' => 'pending_payment',
+            ]);
+
+            $tierName = $tier->name ?? 'Subscription';
+            $this->sendNotificationMail(
+                $user,
+                'subscription',
+                "Renewal Pending – {$tierName}",
+                [
+                    "Your {$tierName} renewal request has been submitted.",
+                    "The subscription will renew once the payment is confirmed.",
+                ],
+                rtrim(env('FRONTEND_URL', config('app.url')), '/') . '/react.oasis/subscription',
+                'View Subscription',
+            );
+
+            return response()->json([
+                'message' => 'Renewal submitted. Awaiting payment confirmation.',
+                'data' => $subscription->fresh()->load('tier'),
+            ]);
+        }
+
+        return response()->json(['message' => 'Unsupported payment method: ' . $paymentMethod], 400);
     }
 
     public function reactivate(Request $request): JsonResponse

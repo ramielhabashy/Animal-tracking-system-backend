@@ -24,6 +24,14 @@ class OwnershipTransferController extends Controller
         $perPage = min((int) ($request->per_page ?? 15), 50);
         $status = $request->status;
         $type = $request->type;
+        $transferType = $request->transfer_type;
+        $search = $request->search;
+        $ownerId = $request->owner_id;
+
+        // Auto-expire pending transfers past their expiry date
+        OwnershipTransfer::where('status', 'pending')
+            ->where('expires_at', '<', now())
+            ->update(['status' => 'expired']);
 
         $query = OwnershipTransfer::with([
             'fromUser:id,name,email',
@@ -31,8 +39,16 @@ class OwnershipTransferController extends Controller
             'animals:id,animal_id,name,species',
         ])->orderByDesc('created_at');
 
-        if ($user->hasRole('Admin')) {
-            // Admin sees all
+        $isAdmin = $user->hasRole('Admin');
+
+        if ($isAdmin) {
+            // Admins see all — optionally filtered by owner_id
+            if ($ownerId) {
+                $query->where(function ($q) use ($ownerId) {
+                    $q->where('from_user_id', $ownerId)
+                      ->orWhere('to_user_id', $ownerId);
+                });
+            }
         } else {
             $query->forUser($user->id);
         }
@@ -43,9 +59,34 @@ class OwnershipTransferController extends Controller
         }
 
         if ($type === 'sent') {
-            $query->where('from_user_id', $user->id);
+            if ($isAdmin && !$ownerId) {
+                // Admin sees all sent transfers (no user restriction)
+            } else {
+                $query->where('from_user_id', $ownerId ?: $user->id);
+            }
         } elseif ($type === 'received') {
-            $query->where('to_user_id', $user->id);
+            if ($isAdmin && !$ownerId) {
+                // Admin sees all received transfers (no user restriction)
+            } else {
+                $query->where('to_user_id', $ownerId ?: $user->id);
+            }
+        }
+
+        if ($transferType) {
+            $query->where('transfer_type', $transferType);
+        }
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->whereHas('fromUser', function ($q2) use ($search) {
+                    $q2->where('name', 'like', "%{$search}%");
+                })->orWhereHas('toUser', function ($q2) use ($search) {
+                    $q2->where('name', 'like', "%{$search}%");
+                })->orWhereHas('animals', function ($q2) use ($search) {
+                    $q2->where('name', 'like', "%{$search}%")
+                      ->orWhere('animal_id', 'like', "%{$search}%");
+                });
+            });
         }
 
         $transfers = $query->paginate($perPage);
@@ -127,12 +168,12 @@ class OwnershipTransferController extends Controller
         $commissionAmount = 0;
 
         if ($commissionEnabled && !empty($validated['agreed_price'])) {
-            $commissionType = Setting::get('transfer_commission_type', 'percentage');
-            $commissionPercentage = (float) Setting::get('transfer_commission_percentage', 5);
+            $commissionType = Setting::get('transfer_commission_manual_type', Setting::get('transfer_commission_type', 'percentage'));
+            $commissionPercentage = (float) Setting::get('transfer_commission_manual_percentage', Setting::get('transfer_commission_percentage', 5));
             if ($commissionType === 'percentage') {
                 $commissionAmount = round($validated['agreed_price'] * $commissionPercentage / 100, 2);
             } else {
-                $commissionAmount = (float) Setting::get('transfer_commission_fixed', 0);
+                $commissionAmount = (float) Setting::get('transfer_commission_manual_fixed', Setting::get('transfer_commission_fixed', 0));
             }
         }
 
@@ -145,6 +186,7 @@ class OwnershipTransferController extends Controller
                 'to_user_id' => $toUser->id,
                 'status' => 'pending',
                 'transfer_type' => 'manual',
+                'group_id' => $validated['group_id'] ?? null,
                 'notes' => $validated['notes'] ?? null,
                 'agreed_price' => $validated['agreed_price'] ?? null,
                 'commission_percentage' => $commissionPercentage,
@@ -192,6 +234,7 @@ class OwnershipTransferController extends Controller
             'toUser:id,name,email,phone',
             'animals:id,animal_id,name,species,breed,gender,owner_id',
             'animals.owner:id,name',
+            'group:id,name,color',
             'historyEntries' => function ($q) {
                 $q->orderByDesc('created_at');
             },
@@ -454,6 +497,7 @@ class OwnershipTransferController extends Controller
 
         $perPage = min((int) ($request->per_page ?? 20), 50);
         $status = $request->status;
+        $transferType = $request->transfer_type;
 
         $query = OwnershipTransfer::with([
             'fromUser:id,name,email',
@@ -463,6 +507,10 @@ class OwnershipTransferController extends Controller
 
         if ($status) {
             $query->whereIn('status', explode(',', $status));
+        }
+
+        if ($transferType) {
+            $query->where('transfer_type', $transferType);
         }
 
         $transfers = $query->paginate($perPage);

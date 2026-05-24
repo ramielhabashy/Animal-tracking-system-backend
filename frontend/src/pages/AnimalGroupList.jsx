@@ -342,13 +342,13 @@ export default function AnimalGroupList() {
         <div className="flex bg-gray-100 rounded-lg p-0.5">
           <button
             onClick={() => setViewMode('tiles')}
-            className={`p-2 rounded-md text-sm transition-colors ${viewMode === 'tiles' ? 'bg-white shadow-sm text-[#002819]' : 'text-gray-500 hover:text-gray-700'}`}
+            className={`p-2 rounded-md text-sm transition-colors ${viewMode === 'tiles' ? 'bg-white shadow-sm text-brand-primary' : 'text-gray-500 hover:text-gray-700'}`}
           >
             <MaterialSymbol icon="grid_view" size={18} />
           </button>
           <button
             onClick={() => setViewMode('list')}
-            className={`p-2 rounded-md text-sm transition-colors ${viewMode === 'list' ? 'bg-white shadow-sm text-[#002819]' : 'text-gray-500 hover:text-gray-700'}`}
+            className={`p-2 rounded-md text-sm transition-colors ${viewMode === 'list' ? 'bg-white shadow-sm text-brand-primary' : 'text-gray-500 hover:text-gray-700'}`}
           >
             <MaterialSymbol icon="table_rows" size={18} />
           </button>
@@ -435,15 +435,15 @@ export default function AnimalGroupList() {
                           <button onClick={() => openShepherdModal(group)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-blue-700" title={t('groupsPage.manageShepherds') || 'Shepherds'}>
                             <MaterialSymbol icon="group" size={16} />
                           </button>
-                          <button onClick={() => openAssignModal(group)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-[#002819]" title={t('groupsPage.assign')}>
+                          <button onClick={() => openAssignModal(group)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-brand-primary" title={t('groupsPage.assign')}>
                             <MaterialSymbol icon="person_add" size={16} />
                           </button>
                           {canTransfer && (
-                            <button onClick={() => { setTransferGroup(group); setShowTransfer(true); }} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-[#002819]" title="Transfer Group">
+                            <button onClick={() => { setTransferGroup(group); setShowTransfer(true); }} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-brand-primary" title="Transfer Group">
                               <MaterialSymbol icon="swap_horiz" size={16} />
                             </button>
                           )}
-                          <button onClick={() => openEditModal(group)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-[#002819]" title={t('common.edit')}>
+                          <button onClick={() => openEditModal(group)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-brand-primary" title={t('common.edit')}>
                             <MaterialSymbol icon="edit" size={16} />
                           </button>
                           <button onClick={() => deleteGroup(group)} className="p-1.5 rounded-lg hover:bg-red-50 text-gray-500 hover:text-red-600" title={t('common.delete')}>
@@ -463,7 +463,7 @@ export default function AnimalGroupList() {
           {Object.entries(groupsByOwner).map(([ownerName, ownerGroups]) => (
             <div key={ownerName}>
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#002819] to-[#06402B] flex items-center justify-center text-white text-sm font-bold">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-primary to-brand-secondary flex items-center justify-center text-white text-sm font-bold">
                   {ownerName === 'Unassigned' ? '?' : ownerName.charAt(0).toUpperCase()}
                 </div>
                 <h3 className="font-bold text-lg text-gray-900">{ownerName}</h3>
@@ -754,7 +754,7 @@ function GroupCard({ group, t, isRtl, isShepherd, canManage, onAssign, onEdit, o
           <div className="w-4 h-4 rounded shrink-0" style={{ backgroundColor: group.color }} />
           <h3 className="font-semibold text-gray-900 truncate">{group.name} <TranslateButton text={group.name} /></h3>
           {showOwner && group.owner && (
-            <span className="text-xs px-2 py-1 bg-[#D4AF37]/10 text-[#735c00] rounded-full shrink-0">
+            <span className="text-xs px-2 py-1 bg-brand-accent/10 text-tertiary-container rounded-full shrink-0">
               {group.owner.name}
             </span>
           )}

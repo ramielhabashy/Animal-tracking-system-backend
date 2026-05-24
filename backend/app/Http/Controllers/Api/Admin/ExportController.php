@@ -14,10 +14,9 @@ class ExportController extends Controller
 {
     public function exportAnimals(Request $request)
     {
-        $userId = $request->header('X-User-Id');
-        $userRole = $request->header('X-User-Role');
-        
-        if ($userRole !== 'Admin') {
+        $user = $request->user();
+
+        if ($user?->getPrimaryRoleName() !== 'Admin') {
             return response()->json(['message' => 'Unauthorized', 'error' => 'unauthorized'], 403);
         }
 
@@ -51,10 +50,9 @@ class ExportController extends Controller
 
     public function exportDevices(Request $request)
     {
-        $userId = $request->header('X-User-Id');
-        $userRole = $request->header('X-User-Role');
-        
-        if ($userRole !== 'Admin') {
+        $user = $request->user();
+
+        if ($user?->getPrimaryRoleName() !== 'Admin') {
             return response()->json(['message' => 'Unauthorized', 'error' => 'unauthorized'], 403);
         }
 
@@ -85,10 +83,9 @@ class ExportController extends Controller
 
     public function exportGeofences(Request $request)
     {
-        $userId = $request->header('X-User-Id');
-        $userRole = $request->header('X-User-Role');
-        
-        if ($userRole !== 'Admin') {
+        $user = $request->user();
+
+        if ($user?->getPrimaryRoleName() !== 'Admin') {
             return response()->json(['message' => 'Unauthorized', 'error' => 'unauthorized'], 403);
         }
 
@@ -119,10 +116,9 @@ class ExportController extends Controller
 
     public function exportUsers(Request $request)
     {
-        $userId = $request->header('X-User-Id');
-        $userRole = $request->header('X-User-Role');
-        
-        if ($userRole !== 'Admin') {
+        $user = $request->user();
+
+        if ($user?->getPrimaryRoleName() !== 'Admin') {
             return response()->json(['message' => 'Unauthorized', 'error' => 'unauthorized'], 403);
         }
 
@@ -151,9 +147,9 @@ class ExportController extends Controller
 
     public function exportDatabase(Request $request)
     {
-        $userRole = $request->header('X-User-Role');
+        $user = $request->user();
 
-        if ($userRole !== 'Admin') {
+        if ($user?->getPrimaryRoleName() !== 'Admin') {
             return response()->json(['message' => 'Unauthorized', 'error' => 'unauthorized'], 403);
         }
 
@@ -165,11 +161,14 @@ class ExportController extends Controller
         $fileName = 'oasis_database_' . date('Y-m-d') . '.sql';
         $tempFile = storage_path('app/' . $fileName);
 
-        $command = "mysqldump --user={$dbUser} --password={$dbPass} --host={$dbHost} {$dbName} > {$tempFile}";
-
-        if (PHP_OS_FAMILY === 'Windows') {
-            $command = "mysqldump --user={$dbUser} --password={$dbPass} --host={$dbHost} {$dbName} > \"{$tempFile}\"";
-        }
+        $command = sprintf(
+            'mysqldump --user=%s --password=%s --host=%s %s > %s',
+            escapeshellarg($dbUser),
+            escapeshellarg($dbPass),
+            escapeshellarg($dbHost),
+            escapeshellarg($dbName),
+            escapeshellarg($tempFile)
+        );
 
         exec($command, $output, $returnVar);
 

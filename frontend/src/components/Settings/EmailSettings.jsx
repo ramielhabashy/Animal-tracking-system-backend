@@ -109,7 +109,7 @@ export default function EmailSettings({ dir, message, setMessage, saving, setSav
 
   return (
     <SettingsCard icon="mail" title="Email Settings" description="Configure SMTP, email notifications, and send test emails">
-      <h4 className="text-lg font-bold text-[#002819] mb-4 pb-2 border-b border-[#F4F4EF]">SMTP Configuration</h4>
+      <h4 className="text-lg font-bold text-brand-primary mb-4 pb-2 border-b border-[#F4F4EF]">SMTP Configuration</h4>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <InputField
@@ -164,21 +164,21 @@ export default function EmailSettings({ dir, message, setMessage, saving, setSav
         <button
           onClick={handleSaveSmtp}
           disabled={saving}
-          className="flex-1 py-3 bg-[#002819] text-white rounded-xl font-bold hover:bg-[#06402b] transition disabled:opacity-50"
+          className="flex-1 py-3 bg-brand-primary text-white rounded-xl font-bold hover:bg-brand-secondary transition disabled:opacity-50"
         >
           {saving ? t('common.loading') : t('common.save')}
         </button>
         <button
           onClick={handleTestSmtp}
           disabled={testing}
-          className="px-6 py-3 bg-[#D4AF37] text-white rounded-xl font-bold hover:bg-[#c9a030] transition disabled:opacity-50"
+          className="px-6 py-3 bg-brand-accent text-white rounded-xl font-bold hover:bg-brand-accent transition disabled:opacity-50"
         >
           {testing ? t('common.loading') : t('settings.sendTest')}
         </button>
       </div>
 
-      <h4 className="text-lg font-bold text-[#002819] mb-4 pb-2 border-b border-[#F4F4EF]">Email Notification Preferences</h4>
-      <p className="text-sm text-[#717973] mb-4">Choose which events trigger email notifications to users</p>
+      <h4 className="text-lg font-bold text-brand-primary mb-4 pb-2 border-b border-[#F4F4EF]">Email Notification Preferences</h4>
+      <p className="text-sm text-on-surface-subtle mb-4">Choose which events trigger email notifications to users</p>
 
       <div className="space-y-3">
         {notificationCheckboxes.map(({ key, label, description }) => (
@@ -196,7 +196,7 @@ export default function EmailSettings({ dir, message, setMessage, saving, setSav
         <button
           onClick={handleSaveEmailPrefs}
           disabled={saving}
-          className="w-full py-3 bg-[#002819] text-white rounded-xl font-bold hover:bg-[#06402b] transition disabled:opacity-50"
+          className="w-full py-3 bg-brand-primary text-white rounded-xl font-bold hover:bg-brand-secondary transition disabled:opacity-50"
         >
           {saving ? t('common.loading') : 'Save Notification Preferences'}
         </button>

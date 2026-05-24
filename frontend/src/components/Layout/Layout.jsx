@@ -149,21 +149,21 @@ const visibleNavItems = navItems.filter(item => !item.roles || item.roles.includ
   };
 
   return (
-    <div className="min-h-screen bg-[#FAF1F5]">
+    <div className="min-h-screen bg-brand-light">
       <aside className={`hidden md:flex flex-col h-screen fixed top-0 bg-gradient-to-b from-[#FAF1F5] to-[#F4F4EF] py-6 px-4 z-50 transition-all duration-300 start-0 ${sidebarCollapsed ? 'w-20' : 'w-72'}`}>
         <div className={`mb-8 ${sidebarCollapsed ? 'px-1' : ''}`}>
           <div className={`flex items-center gap-4 ${sidebarCollapsed ? 'justify-center' : ''}`}>
             {logoUrl ? (
               <img src={storageUrl(logoUrl)} alt={platformName} className="w-14 h-14 object-contain rounded-2xl flex-shrink-0" />
             ) : (
-              <div className="w-14 h-14 bg-gradient-to-br from-[#002819] to-[#06402B] rounded-2xl flex items-center justify-center shadow-lg shadow-[#002819]/20 flex-shrink-0">
-                <MaterialSymbol icon="eco" size={28} className="text-[#D4AF37]" fill />
+              <div className="w-14 h-14 bg-gradient-to-br from-brand-primary to-brand-secondary rounded-2xl flex items-center justify-center shadow-lg shadow-brand-primary/20 flex-shrink-0">
+                <MaterialSymbol icon="eco" size={28} className="text-brand-accent" fill />
               </div>
             )}
             {!sidebarCollapsed && (
               <div>
-                <h1 className="text-xl font-black text-[#002819] leading-tight">{platformName}</h1>
-                <p className="text-[11px] uppercase tracking-wider text-[#06402B]/60 font-semibold">
+                <h1 className="text-xl font-black text-brand-primary leading-tight">{platformName}</h1>
+                <p className="text-[11px] uppercase tracking-wider text-brand-secondary/60 font-semibold">
                   {copyrightText}
                 </p>
               </div>
@@ -173,7 +173,7 @@ const visibleNavItems = navItems.filter(item => !item.roles || item.roles.includ
 
         <button
           onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-          className={`absolute top-8 w-8 h-8 rounded-xl bg-[#F4F4EF] flex items-center justify-center text-[#404943] hover:bg-[#E3E3DE] transition-colors ${sidebarCollapsed ? 'end-8' : 'end-4'}`}
+          className={`absolute top-8 w-8 h-8 rounded-xl bg-surface-light flex items-center justify-center text-on-surface-variant hover:bg-surface-high transition-colors ${sidebarCollapsed ? 'end-8' : 'end-4'}`}
         >
           <MaterialSymbol 
             icon={sidebarCollapsed ? (isRtl ? 'chevron_left' : 'chevron_right') : (isRtl ? 'chevron_right' : 'chevron_left')} 
@@ -197,8 +197,8 @@ const visibleNavItems = navItems.filter(item => !item.roles || item.roles.includ
                       className={`w-full flex items-center gap-4 px-4 py-4 rounded-2xl font-semibold text-sm transition-all duration-300 ${
                         sidebarCollapsed ? 'justify-center px-0' : `px-5 ${isRtl ? 'flex-row-reverse' : ''}`} ${
                         isActive
-                          ? 'bg-gradient-to-br from-[#002819] to-[#06402B] text-white shadow-lg shadow-[#002819]/20'
-                          : 'text-[#404943] hover:bg-[#F4F4EF]'
+                          ? 'bg-gradient-to-br from-brand-primary to-brand-secondary text-white shadow-lg shadow-brand-primary/20'
+                          : 'text-on-surface-variant hover:bg-surface-light'
                       }`}
                     >
                       <MaterialSymbol
@@ -229,8 +229,8 @@ const visibleNavItems = navItems.filter(item => !item.roles || item.roles.includ
                                 isRtl ? 'flex-row-reverse' : ''
                               } ${
                                 isActive
-                                  ? 'bg-[#D4AF37]/15 text-[#002819] font-semibold'
-                                  : 'text-[#404943]/70 hover:bg-[#F4F4EF] hover:text-[#404943]'
+                                  ? 'bg-brand-accent/15 text-brand-primary font-semibold'
+                                  : 'text-on-surface-variant/70 hover:bg-surface-light hover:text-on-surface-variant'
                               }`
                             }
                           >
@@ -251,8 +251,8 @@ const visibleNavItems = navItems.filter(item => !item.roles || item.roles.includ
                       `flex items-center gap-4 px-4 py-4 rounded-2xl font-semibold text-sm transition-all duration-300 ${
                         sidebarCollapsed ? 'justify-center px-0' : `px-5 ${isRtl ? 'flex-row-reverse' : ''}`} ${
                         isActive
-                          ? 'bg-gradient-to-br from-[#002819] to-[#06402B] text-white shadow-lg shadow-[#002819]/20'
-                          : 'text-[#404943] hover:bg-[#F4F4EF]'
+                          ? 'bg-gradient-to-br from-brand-primary to-brand-secondary text-white shadow-lg shadow-brand-primary/20'
+                          : 'text-on-surface-variant hover:bg-surface-light'
                       }`
                     }
                   >
@@ -272,26 +272,27 @@ const visibleNavItems = navItems.filter(item => !item.roles || item.roles.includ
         <div className="mt-auto pt-8">
           <NavLink
             to="/profile"
-            className={`flex items-center gap-4 mt-6 p-3 rounded-2xl bg-[#F4F4EF] hover:bg-[#E3E3DE] transition-colors ${sidebarCollapsed ? 'justify-center p-2' : ''} ${!sidebarCollapsed && isRtl ? 'flex-row-reverse' : ''}`}
+            className={`flex items-center gap-4 mt-6 p-3 rounded-2xl bg-surface-light hover:bg-surface-high transition-colors ${sidebarCollapsed ? 'justify-center p-2' : ''} ${!sidebarCollapsed && isRtl ? 'flex-row-reverse' : ''}`}
           >
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#002819] to-[#06402B] flex items-center justify-center text-white font-bold text-lg shadow-md flex-shrink-0">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-brand-primary to-brand-secondary flex items-center justify-center text-white font-bold text-lg shadow-md flex-shrink-0">
               {user?.name?.charAt(0)?.toUpperCase() || 'U'}
             </div>
             {!sidebarCollapsed && (
               <div className="flex-1 text-start">
-                <p className="text-sm font-bold text-[#002819]">{user?.name || 'User'}</p>
-                <p className="text-xs text-[#404943]/60">{user?.role || 'Guest'}</p>
+                <p className="text-sm font-bold text-brand-primary">{user?.name || 'User'}</p>
+                <p className="text-xs text-on-surface-variant/60">{user?.role || 'Guest'}</p>
               </div>
             )}
           </NavLink>
         </div>
       </aside>
 
-      <main className="transition-all duration-300 flex flex-col min-h-screen" style={{ marginInlineStart: sidebarCollapsed ? '5rem' : '18rem' }}>
+      <main className={`transition-all duration-300 flex flex-col min-h-screen ${sidebarCollapsed ? 'md:ms-20' : 'md:ms-72'}`}>
         <Header />
         <div className="flex-1 p-8 lg:p-10">
           <Outlet />
         </div>
+        <div className="h-24" />
         <Footer />
       </main>
       <AIAssistant />

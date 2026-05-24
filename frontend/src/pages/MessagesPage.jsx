@@ -117,7 +117,8 @@ export default function MessagesPage() {
       const res = await apiFetch('/api/users?per_page=100');
       if (res.ok) {
         const data = await res.json();
-        setUsers(data.data || []);
+        const userId = user?.id;
+        setUsers((data.data || []).filter(u => u.id !== userId));
       }
     } catch (e) {
     } finally {
@@ -298,31 +299,31 @@ export default function MessagesPage() {
     : [];
 
   return (
-    <div className="flex h-[calc(100vh-8rem)] bg-white rounded-3xl shadow-sm border border-[#E3E3DE] overflow-hidden" dir={dir}>
+    <div className="flex h-[calc(100vh-8rem)] bg-white rounded-3xl shadow-sm border border-surface-high overflow-hidden" dir={dir}>
       {/* Left sidebar */}
-      <div className={`w-80 lg:w-96 flex-shrink-0 border-e border-[#E3E3DE] flex flex-col bg-[#FAF5F1] ${isRtl ? 'border-s' : 'border-e'}`}>
-        <div className="p-4 border-b border-[#E3E3DE]">
+      <div className={`w-80 lg:w-96 flex-shrink-0 border-e border-surface-high flex flex-col bg-surface-light ${isRtl ? 'border-s' : 'border-e'}`}>
+        <div className="p-4 border-b border-surface-high">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-bold text-[#002819]">{t('commCenter.messages') || 'Messages'}</h2>
+            <h2 className="text-lg font-bold text-brand-primary">{t('commCenter.messages') || 'Messages'}</h2>
             <div className="relative">
               <button
                 onClick={() => setCreateDropdown(!createDropdown)}
-                className="w-9 h-9 rounded-xl bg-[#002819] text-white flex items-center justify-center hover:bg-[#06402B] transition-colors"
+                className="w-9 h-9 rounded-xl bg-brand-primary text-white flex items-center justify-center hover:bg-brand-secondary transition-colors"
               >
                 <MaterialSymbol icon="edit" size={18} />
               </button>
               {createDropdown && (
-                <div className={`absolute top-full mt-1 bg-white rounded-xl shadow-lg border border-[#E3E3DE] py-1 z-50 min-w-[180px] ${isRtl ? 'start-0' : 'end-0'}`}>
+                <div className={`absolute top-full mt-1 bg-white rounded-xl shadow-lg border border-surface-high py-1 z-50 min-w-[180px] ${isRtl ? 'start-0' : 'end-0'}`}>
                   <button
                     onClick={() => { setCreateDropdown(false); setShowNewMsg(true); }}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-[#404943] hover:bg-[#F4F4EF] transition-colors"
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-on-surface-variant hover:bg-surface-light transition-colors"
                   >
                     <MaterialSymbol icon="chat" size={18} />
                     {t('commCenter.newMessage') || 'New Message'}
                   </button>
                   <button
                     onClick={() => { setCreateDropdown(false); setShowNewTicket(true); }}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-[#404943] hover:bg-[#F4F4EF] transition-colors"
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-on-surface-variant hover:bg-surface-light transition-colors"
                   >
                     <MaterialSymbol icon="confirmation_number" size={18} />
                     {t('commCenter.newTicket') || 'New Ticket'}
@@ -332,13 +333,13 @@ export default function MessagesPage() {
             </div>
           </div>
           <div className="relative">
-            <MaterialSymbol icon="search" size={18} className="absolute top-1/2 -translate-y-1/2 text-[#404943]/50" style={{ [isRtl ? 'right' : 'left']: '12px' }} />
+            <MaterialSymbol icon="search" size={18} className="absolute top-1/2 -translate-y-1/2 text-on-surface-variant/50 start-3" />
             <input
               type="text"
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder={t('commCenter.searchConversations') || 'Search conversations...'}
-              className={`w-full bg-white border border-[#E3E3DE] rounded-xl py-2.5 text-sm text-[#404943] placeholder:text-[#404943]/40 focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/30 focus:border-[#D4AF37] ${isRtl ? 'pr-10 pl-4' : 'pl-10 pr-4'}`}
+              className={`w-full bg-white border border-surface-high rounded-xl py-2.5 text-sm text-on-surface-variant placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent ${isRtl ? 'pr-10 pl-4' : 'pl-10 pr-4'}`}
             />
           </div>
           <div className="flex gap-1 mt-3">
@@ -348,8 +349,8 @@ export default function MessagesPage() {
                 onClick={() => setTab(key)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
                   tab === key
-                    ? 'bg-[#002819] text-white'
-                    : 'text-[#404943]/60 hover:text-[#404943] hover:bg-[#F4F4EF]'
+                    ? 'bg-brand-primary text-white'
+                    : 'text-on-surface-variant/60 hover:text-on-surface-variant hover:bg-surface-light'
                 }`}
               >
                 {key === 'all' ? (t('common.all') || 'All') : key === 'unread' ? (t('commCenter.unread') || 'Unread') : (t('commCenter.tickets') || 'Tickets')}
@@ -360,12 +361,12 @@ export default function MessagesPage() {
         <div className="flex-1 overflow-y-auto">
           {loadingList ? (
             <div className="flex items-center justify-center h-32">
-              <MaterialSymbol icon="progress_activity" size={24} className="text-[#D4AF37] animate-spin" />
+              <MaterialSymbol icon="progress_activity" size={24} className="text-brand-accent animate-spin" />
             </div>
           ) : filteredConversations.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-48 px-6 text-center">
-              <MaterialSymbol icon="chat" size={40} className="text-[#404943]/20 mb-3" />
-              <p className="text-sm text-[#404943]/50 font-medium">{t('commCenter.noConversations') || 'No conversations yet'}</p>
+              <MaterialSymbol icon="chat" size={40} className="text-on-surface-variant/20 mb-3" />
+              <p className="text-sm text-on-surface-variant/50 font-medium">{t('commCenter.noConversations') || 'No conversations yet'}</p>
             </div>
           ) : (
             filteredConversations.map(conv => {
@@ -377,10 +378,7 @@ export default function MessagesPage() {
                 <button
                   key={conv.id}
                   onClick={() => { selectConversation(conv); markAsRead(conv.id); }}
-                  className={`w-full text-start px-4 py-3 border-b border-[#E3E3DE]/50 hover:bg-[#F4F4EF] transition-colors relative ${
-                    isActive ? 'bg-[#F4F4EF] border-s-2 border-s-[#D4AF37]' : ''
-                  } ${isRtl ? 'border-s-2' : 'border-s-2'}`}
-                  style={isActive ? { borderInlineStartColor: '#D4AF37', borderInlineStartWidth: '3px' } : {}}
+                  className={`w-full text-start px-4 py-3 border-b border-surface-high/50 hover:bg-surface-light transition-colors relative ${isActive ? 'bg-surface-light border-s-[3px] border-s-accent' : ''} ${isRtl ? 'border-s-2' : 'border-s-2'}`}
                 >
                   <div className="flex items-start gap-3">
                     <div
@@ -391,10 +389,10 @@ export default function MessagesPage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className={`flex items-center gap-2 ${isRtl ? 'flex-row-reverse' : ''}`}>
-                        <span className="text-sm font-semibold text-[#002819] truncate flex-1">
+                        <span className="text-sm font-semibold text-brand-primary truncate flex-1">
                           {displayName}
                         </span>
-                        <span className="text-[11px] text-[#404943]/50 whitespace-nowrap">
+                        <span className="text-[11px] text-on-surface-variant/50 whitespace-nowrap">
                           {relativeTime(conv.messages?.[0]?.created_at || conv.updated_at, t)}
                         </span>
                       </div>
@@ -403,18 +401,18 @@ export default function MessagesPage() {
                           <span className={`w-2 h-2 rounded-full flex-shrink-0 ${PRIORITY_COLORS[priority] || 'bg-gray-400'}`} />
                         )}
                         {conv.type === 'ticket' && (
-                          <span className="text-[10px] font-semibold uppercase text-[#D4AF37] flex-shrink-0">
+                          <span className="text-[10px] font-semibold uppercase text-brand-accent flex-shrink-0">
                             {t('commCenter.ticket') || 'Ticket'}
                           </span>
                         )}
-                        <span className="text-xs text-[#404943]/60 truncate flex-1">
+                        <span className="text-xs text-on-surface-variant/60 truncate flex-1">
                           {conv.messages?.[0]?.body || ''}
                         </span>
                       </div>
                     </div>
                   </div>
                   {(conv.unread_count || 0) > 0 && (
-                    <span className="absolute top-3 end-3 min-w-[18px] h-[18px] rounded-full bg-[#002819] text-white text-[10px] font-bold flex items-center justify-center px-1">
+                    <span className="absolute top-3 end-3 min-w-[18px] h-[18px] rounded-full bg-brand-primary text-white text-[10px] font-bold flex items-center justify-center px-1">
                       {conv.unread_count > 99 ? '99+' : conv.unread_count}
                     </span>
                   )}
@@ -429,18 +427,18 @@ export default function MessagesPage() {
       <div className="flex-1 flex flex-col">
         {!activeConv ? (
           <div className="flex-1 flex flex-col items-center justify-center text-center px-6">
-            <MaterialSymbol icon="chat" size={64} className="text-[#404943]/10 mb-4" />
-            <h3 className="text-lg font-bold text-[#404943]/40 mb-1">
+            <MaterialSymbol icon="chat" size={64} className="text-on-surface-variant/10 mb-4" />
+            <h3 className="text-lg font-bold text-on-surface-variant/40 mb-1">
               {t('commCenter.startConversation') || 'Start a new conversation'}
             </h3>
-            <p className="text-sm text-[#404943]/30 max-w-xs">
+            <p className="text-sm text-on-surface-variant/30 max-w-xs">
               {t('commCenter.selectChat') || 'Select a conversation from the list or create a new one'}
             </p>
           </div>
         ) : (
           <>
             {/* Chat header */}
-            <div className="px-5 py-4 border-b border-[#E3E3DE] bg-white flex items-center gap-4">
+            <div className="px-5 py-4 border-b border-surface-high bg-white flex items-center gap-4">
               <div
                 className="w-10 h-10 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
                 style={{ backgroundColor: getAvatarColor(activeConv.id) }}
@@ -449,7 +447,7 @@ export default function MessagesPage() {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <h3 className="text-sm font-bold text-[#002819] truncate">
+                  <h3 className="text-sm font-bold text-brand-primary truncate">
                     {activeConv.subject || (t('commCenter.direct') || 'Direct Message')}
                   </h3>
                   {activeConv.type === 'ticket' && (
@@ -466,7 +464,7 @@ export default function MessagesPage() {
                     <span className={`w-2 h-2 rounded-full ${PRIORITY_COLORS[activeConv.priority] || 'bg-gray-400'}`} />
                   )}
                 </div>
-                <p className="text-xs text-[#404943]/50 truncate mt-0.5">
+                <p className="text-xs text-on-surface-variant/50 truncate mt-0.5">
               {otherParticipants.map(p => p.name).join(', ') || '—'}
               {(activeConv?.participants?.length || 0) > 0 && !otherParticipants.length && (
                 <span className="italic">({t('commCenter.participants') || 'Participants'})</span>
@@ -475,28 +473,28 @@ export default function MessagesPage() {
               </div>
               <button
                 onClick={() => { navigate('/messages', { replace: true }); setActiveConv(null); }}
-                className="w-8 h-8 rounded-xl text-[#404943]/50 hover:text-[#404943] hover:bg-[#F4F4EF] flex items-center justify-center transition-colors"
+                className="w-8 h-8 rounded-xl text-on-surface-variant/50 hover:text-on-surface-variant hover:bg-surface-light flex items-center justify-center transition-colors"
               >
                 <MaterialSymbol icon="close" size={18} />
               </button>
             </div>
 
             {/* Messages area */}
-            <div className="flex-1 overflow-y-auto px-5 py-4 bg-[#FAF5F1] relative" ref={chatAreaRef} onScroll={e => {
+            <div className="flex-1 overflow-y-auto px-5 py-4 bg-surface-light relative" ref={chatAreaRef} onScroll={e => {
               const el = e.target;
               setShowScrollDown(el.scrollHeight - el.scrollTop - el.clientHeight > 150);
             }}>
               {showScrollDown && (
                 <button
                   onClick={() => msgEndRef.current?.scrollIntoView({ behavior: 'smooth' })}
-                  className="absolute bottom-4 end-4 w-10 h-10 rounded-full bg-[#002819] text-white shadow-lg flex items-center justify-center hover:bg-[#06402B] transition-colors z-10"
+                  className="absolute bottom-4 end-4 w-10 h-10 rounded-full bg-brand-primary text-white shadow-lg flex items-center justify-center hover:bg-brand-secondary transition-colors z-10"
                 >
                   <MaterialSymbol icon="expand_circle_down" size={20} />
                 </button>
               )}
               {loadingMsgs ? (
                 <div className="flex items-center justify-center h-full">
-                  <MaterialSymbol icon="progress_activity" size={24} className="text-[#D4AF37] animate-spin" />
+                  <MaterialSymbol icon="progress_activity" size={24} className="text-brand-accent animate-spin" />
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -504,7 +502,7 @@ export default function MessagesPage() {
                     <div className="text-center">
                       <button
                         onClick={loadEarlier}
-                        className="text-xs font-semibold text-[#D4AF37] hover:text-[#B8942F] transition-colors"
+                        className="text-xs font-semibold text-brand-accent hover:text-[#B8942F] transition-colors"
                       >
                         {t('common.loadMore') || 'Load earlier messages'}...
                       </button>
@@ -512,8 +510,8 @@ export default function MessagesPage() {
                   )}
                   {messages.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-full text-center">
-                      <MaterialSymbol icon="sms" size={32} className="text-[#404943]/20 mb-2" />
-                      <p className="text-sm text-[#404943]/50">{t('commCenter.noMessages') || 'No messages yet'}</p>
+                      <MaterialSymbol icon="sms" size={32} className="text-on-surface-variant/20 mb-2" />
+                      <p className="text-sm text-on-surface-variant/50">{t('commCenter.noMessages') || 'No messages yet'}</p>
                     </div>
                   ) : (
                     messages.map((msg, idx) => {
@@ -533,28 +531,28 @@ export default function MessagesPage() {
                                 >
                                   {getInitials(msg.sender?.name || msg.sender_name || 'U')}
                                 </div>
-                                <span className="text-[11px] font-semibold text-[#404943]/60">
+                                <span className="text-[11px] font-semibold text-on-surface-variant/60">
                                   {isOwn ? (t('common.you') || 'You') : (msg.sender?.name || msg.sender_name || 'User')}
                                 </span>
-                                <span className="text-[10px] text-[#404943]/40">
+                                <span className="text-[10px] text-on-surface-variant/40">
                                   {relativeTime(msg.created_at, t)}
                                 </span>
                               </div>
                             )}
                             {isSameSender && (
-                              <div className={`text-[10px] text-[#404943]/40 mb-1 ${isRtl ? 'text-end' : ''}`}>
+                              <div className={`text-[10px] text-on-surface-variant/40 mb-1 ${isRtl ? 'text-end' : ''}`}>
                                 {relativeTime(msg.created_at, t)}
                               </div>
                             )}
                             {msg.parent && (
-                              <div className={`mb-1 px-3 py-1.5 rounded-lg bg-[#F4F4EF] border-s-2 border-s-[#D4AF37] text-xs text-[#404943]/60 italic max-w-[300px] truncate ${isRtl ? 'border-s-2' : 'border-s-2'}`}>
+                              <div className={`mb-1 px-3 py-1.5 rounded-lg bg-surface-light border-s-2 border-s-[#D4AF37] text-xs text-on-surface-variant/60 italic max-w-[300px] truncate ${isRtl ? 'border-s-2' : 'border-s-2'}`}>
                                 {msg.parent.body || ''}
                               </div>
                             )}
                             <div className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${
                               isOwn
-                                ? 'bg-[#002819] text-white rounded-br-md'
-                                : 'bg-white text-[#404943] shadow-sm border border-[#E3E3DE] rounded-bl-md'
+                                ? 'bg-brand-primary text-white rounded-br-md'
+                                : 'bg-white text-on-surface-variant shadow-sm border border-surface-high rounded-bl-md'
                             }`}>
                               <p className="whitespace-pre-wrap break-words">{msg.body}</p>
                             </div>
@@ -566,11 +564,11 @@ export default function MessagesPage() {
                                     href={storageUrl(att.file_path || att.path)}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#F4F4EF] text-xs text-[#404943]/70 hover:text-[#002819] transition-colors"
+                                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-light text-xs text-on-surface-variant/70 hover:text-brand-primary transition-colors"
                                   >
                                     <MaterialSymbol icon="attach_file" size={14} />
                                     <span className="truncate max-w-[150px]">{att.original_name || att.name || 'File'}</span>
-                                    <span className="text-[#404943]/40">({formatFileSize(att.file_size || att.size)})</span>
+                                    <span className="text-on-surface-variant/40">({formatFileSize(att.file_size || att.size)})</span>
                                   </a>
                                 ))}
                               </div>
@@ -578,14 +576,14 @@ export default function MessagesPage() {
                             <div className={`flex gap-2 mt-1 ${isOwn ? 'justify-end' : 'justify-start'} ${isRtl ? 'flex-row-reverse' : ''}`}>
                               <button
                                 onClick={() => setReplyingTo(msg)}
-                                className="text-[10px] text-[#404943]/40 hover:text-[#D4AF37] transition-colors"
+                                className="text-[10px] text-on-surface-variant/40 hover:text-brand-accent transition-colors"
                               >
                                 {t('commCenter.reply') || 'Reply'}
                               </button>
                               {isOwn && (
                                 <button
                                   onClick={() => setShowDeleteConfirm(msg.id)}
-                                  className="text-[10px] text-[#404943]/40 hover:text-red-500 transition-colors"
+                                  className="text-[10px] text-on-surface-variant/40 hover:text-red-500 transition-colors"
                                 >
                                   {t('common.delete') || 'Delete'}
                                 </button>
@@ -603,24 +601,24 @@ export default function MessagesPage() {
 
             {/* Reply indicator */}
             {replyingTo && (
-              <div className="px-5 py-2 bg-[#F4F4EF] border-t border-[#E3E3DE] flex items-center gap-2">
-                <MaterialSymbol icon="reply" size={16} className="text-[#D4AF37]" />
-                <span className="text-xs text-[#404943]/60 truncate flex-1">
+              <div className="px-5 py-2 bg-surface-light border-t border-surface-high flex items-center gap-2">
+                <MaterialSymbol icon="reply" size={16} className="text-brand-accent" />
+                <span className="text-xs text-on-surface-variant/60 truncate flex-1">
                   {t('commCenter.reply') || 'Reply'} to: {replyingTo.body || ''}
                 </span>
-                <button onClick={() => setReplyingTo(null)} className="text-[#404943]/40 hover:text-[#404943]">
+                <button onClick={() => setReplyingTo(null)} className="text-on-surface-variant/40 hover:text-on-surface-variant">
                   <MaterialSymbol icon="close" size={14} />
                 </button>
               </div>
             )}
 
             {/* Input area */}
-            <div className="px-5 py-3 border-t border-[#E3E3DE] bg-white">
+            <div className="px-5 py-3 border-t border-surface-high bg-white">
               {selectedFile && (
-                <div className="mb-2 flex items-center gap-2 px-3 py-2 rounded-xl bg-[#F4F4EF] text-xs text-[#404943]">
-                  <MaterialSymbol icon="insert_drive_file" size={16} className="text-[#D4AF37]" />
+                <div className="mb-2 flex items-center gap-2 px-3 py-2 rounded-xl bg-surface-light text-xs text-on-surface-variant">
+                  <MaterialSymbol icon="insert_drive_file" size={16} className="text-brand-accent" />
                   <span className="truncate flex-1">{selectedFile.name}</span>
-                  <span className="text-[#404943]/40">({formatFileSize(selectedFile.size)})</span>
+                  <span className="text-on-surface-variant/40">({formatFileSize(selectedFile.size)})</span>
                   <button onClick={() => { setSelectedFile(null); if (fileInputRef.current) fileInputRef.current.value = ''; }} className="text-red-400 hover:text-red-600">
                     <MaterialSymbol icon="close" size={14} />
                   </button>
@@ -634,12 +632,12 @@ export default function MessagesPage() {
                   onKeyDown={handleKeyDown}
                   placeholder={t('commCenter.typeMessage') || 'Type your message...'}
                   rows={1}
-                  className={`flex-1 bg-[#FAF5F1] border border-[#E3E3DE] rounded-xl px-4 py-2.5 text-sm text-[#404943] placeholder:text-[#404943]/40 focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/30 focus:border-[#D4AF37] resize-none max-h-[200px] ${isRtl ? 'text-right' : ''}`}
+                  className={`flex-1 bg-surface-light border border-surface-high rounded-xl px-4 py-2.5 text-sm text-on-surface-variant placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent resize-none max-h-[200px] ${isRtl ? 'text-right' : ''}`}
                 />
                 <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  className="w-10 h-10 rounded-xl text-[#404943]/50 hover:text-[#002819] hover:bg-[#F4F4EF] flex items-center justify-center transition-colors flex-shrink-0"
+                  className="w-10 h-10 rounded-xl text-on-surface-variant/50 hover:text-brand-primary hover:bg-surface-light flex items-center justify-center transition-colors flex-shrink-0"
                 >
                   <MaterialSymbol icon="attach_file" size={20} />
                 </button>
@@ -648,8 +646,8 @@ export default function MessagesPage() {
                   disabled={!textInput.trim() && !selectedFile || sending}
                   className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors flex-shrink-0 ${
                     (!textInput.trim() && !selectedFile) || sending
-                      ? 'bg-[#E3E3DE] text-[#404943]/30 cursor-not-allowed'
-                      : 'bg-[#002819] text-white hover:bg-[#06402B]'
+                      ? 'bg-surface-high text-on-surface-variant/30 cursor-not-allowed'
+                      : 'bg-brand-primary text-white hover:bg-brand-secondary'
                   }`}
                 >
                   <MaterialSymbol icon="send" size={18} fill />
@@ -692,9 +690,9 @@ export default function MessagesPage() {
       {showDeleteConfirm && (
         <ModalOverlay onClose={() => setShowDeleteConfirm(null)}>
           <div className="bg-white rounded-2xl p-6 max-w-sm w-full mx-4 shadow-xl">
-            <h3 className="text-lg font-bold text-[#002819] mb-2">{t('commCenter.confirmDelete') || 'Delete this message?'}</h3>
+            <h3 className="text-lg font-bold text-brand-primary mb-2">{t('commCenter.confirmDelete') || 'Delete this message?'}</h3>
             <div className="flex gap-3 mt-6 justify-end">
-              <button onClick={() => setShowDeleteConfirm(null)} className="px-4 py-2 rounded-xl text-sm font-semibold text-[#404943] hover:bg-[#F4F4EF] transition-colors">
+              <button onClick={() => setShowDeleteConfirm(null)} className="px-4 py-2 rounded-xl text-sm font-semibold text-on-surface-variant hover:bg-surface-light transition-colors">
                 {t('common.cancel') || 'Cancel'}
               </button>
               <button onClick={() => deleteMessage(showDeleteConfirm)} className="px-4 py-2 rounded-xl text-sm font-semibold bg-red-500 text-white hover:bg-red-600 transition-colors">
@@ -766,23 +764,48 @@ function CreateForm({ title, form, setForm, users, loadingUsers, isRtl, t, isTic
 
   const isAdmin = user?.role === 'Admin';
   const isOwner = user?.role === 'Owner';
+  const isTeamRole = !isAdmin && !isOwner; // Shepherd, Doctor, Manager, etc.
+  const managedByOwner = user?.managed_by;
+
+  const selectMyOwner = () => {
+    if (!managedByOwner) return;
+    setForm(prev => ({
+      ...prev,
+      participant_ids: prev.participant_ids.includes(managedByOwner)
+        ? prev.participant_ids.filter(id => id !== managedByOwner)
+        : [...prev.participant_ids, managedByOwner],
+    }));
+  };
+
+  const selectMyTeam = () => {
+    const teamIds = users
+      .filter(u => u.managed_by === managedByOwner || u.id === managedByOwner)
+      .map(u => u.id);
+    const allSelected = teamIds.every(id => form.participant_ids.includes(id));
+    setForm(prev => ({
+      ...prev,
+      participant_ids: allSelected
+        ? prev.participant_ids.filter(id => !teamIds.includes(id))
+        : [...new Set([...prev.participant_ids, ...teamIds])],
+    }));
+  };
 
   return (
     <div className="bg-white rounded-2xl w-[520px] max-w-[95vw] max-h-[90vh] overflow-y-auto shadow-xl" dir={isRtl ? 'rtl' : 'ltr'}>
-      <div className="px-6 py-4 border-b border-[#E3E3DE] flex items-center justify-between">
-        <h3 className="text-lg font-bold text-[#002819]">{title}</h3>
-        <button onClick={onCancel} className="w-8 h-8 rounded-xl text-[#404943]/50 hover:text-[#404943] hover:bg-[#F4F4EF] flex items-center justify-center">
+      <div className="px-6 py-4 border-b border-surface-high flex items-center justify-between">
+        <h3 className="text-lg font-bold text-brand-primary">{title}</h3>
+        <button onClick={onCancel} className="w-8 h-8 rounded-xl text-on-surface-variant/50 hover:text-on-surface-variant hover:bg-surface-light flex items-center justify-center">
           <MaterialSymbol icon="close" size={18} />
         </button>
       </div>
       <div className="p-6 space-y-4">
         {isTicket && (
           <div>
-            <label className="block text-xs font-semibold text-[#404943]/70 mb-1.5">{t('commCenter.type') || 'Type'}</label>
+            <label className="block text-xs font-semibold text-on-surface-variant/70 mb-1.5">{t('commCenter.type') || 'Type'}</label>
             <select
               value={form.type}
               onChange={e => setForm(prev => ({ ...prev, type: e.target.value }))}
-              className="w-full bg-[#FAF5F1] border border-[#E3E3DE] rounded-xl px-4 py-2.5 text-sm text-[#404943] focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/30 focus:border-[#D4AF37]"
+              className="w-full bg-surface-light border border-surface-high rounded-xl px-4 py-2.5 text-sm text-on-surface-variant focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent"
             >
               <option value="ticket">{t('commCenter.ticket') || 'Ticket'}</option>
             </select>
@@ -790,11 +813,11 @@ function CreateForm({ title, form, setForm, users, loadingUsers, isRtl, t, isTic
         )}
         {!isTicket && (
           <div>
-            <label className="block text-xs font-semibold text-[#404943]/70 mb-1.5">{t('commCenter.type') || 'Type'}</label>
+            <label className="block text-xs font-semibold text-on-surface-variant/70 mb-1.5">{t('commCenter.type') || 'Type'}</label>
             <select
               value={form.type}
               onChange={e => setForm(prev => ({ ...prev, type: e.target.value }))}
-              className="w-full bg-[#FAF5F1] border border-[#E3E3DE] rounded-xl px-4 py-2.5 text-sm text-[#404943] focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/30 focus:border-[#D4AF37]"
+              className="w-full bg-surface-light border border-surface-high rounded-xl px-4 py-2.5 text-sm text-on-surface-variant focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent"
             >
               <option value="direct">{t('commCenter.direct') || 'Direct Message'}</option>
               <option value="group">{t('commCenter.group') || 'Group'}</option>
@@ -802,22 +825,22 @@ function CreateForm({ title, form, setForm, users, loadingUsers, isRtl, t, isTic
           </div>
         )}
         <div>
-          <label className="block text-xs font-semibold text-[#404943]/70 mb-1.5">{t('commCenter.subject') || 'Subject'}</label>
+          <label className="block text-xs font-semibold text-on-surface-variant/70 mb-1.5">{t('commCenter.subject') || 'Subject'}</label>
           <input
             type="text"
             value={form.subject}
             onChange={e => setForm(prev => ({ ...prev, subject: e.target.value }))}
             placeholder={isTicket ? (t('commCenter.ticketSubjectPlaceholder') || 'e.g., Device malfunction') : (t('commCenter.subjectPlaceholder') || 'e.g., Herd health update')}
-            className="w-full bg-[#FAF5F1] border border-[#E3E3DE] rounded-xl px-4 py-2.5 text-sm text-[#404943] placeholder:text-[#404943]/40 focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/30 focus:border-[#D4AF37]"
+            className="w-full bg-surface-light border border-surface-high rounded-xl px-4 py-2.5 text-sm text-on-surface-variant placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent"
           />
         </div>
         {isTicket && (
           <div>
-            <label className="block text-xs font-semibold text-[#404943]/70 mb-1.5">{t('commCenter.priority') || 'Priority'}</label>
+            <label className="block text-xs font-semibold text-on-surface-variant/70 mb-1.5">{t('commCenter.priority') || 'Priority'}</label>
             <select
               value={form.priority}
               onChange={e => setForm(prev => ({ ...prev, priority: e.target.value }))}
-              className="w-full bg-[#FAF5F1] border border-[#E3E3DE] rounded-xl px-4 py-2.5 text-sm text-[#404943] focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/30 focus:border-[#D4AF37]"
+              className="w-full bg-surface-light border border-surface-high rounded-xl px-4 py-2.5 text-sm text-on-surface-variant focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent"
             >
               {['low', 'medium', 'high', 'urgent'].map(p => (
                 <option key={p} value={p}>{t(`commCenter.${p}`) || p.charAt(0).toUpperCase() + p.slice(1)}</option>
@@ -826,20 +849,20 @@ function CreateForm({ title, form, setForm, users, loadingUsers, isRtl, t, isTic
           </div>
         )}
         <div>
-          <label className="block text-xs font-semibold text-[#404943]/70 mb-1.5">{t('commCenter.participants') || 'Participants'}</label>
+          <label className="block text-xs font-semibold text-on-surface-variant/70 mb-1.5">{t('commCenter.participants') || 'Participants'}</label>
 
           {/* Role filter chips */}
           <div className="flex flex-wrap gap-1.5 mb-2">
             <button onClick={() => setRoleFilter('')}
               className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-colors ${
-                !roleFilter ? 'bg-[#002819] text-white' : 'bg-[#F4F4EF] text-[#404943] hover:bg-[#E3E3DE]'
+                !roleFilter ? 'bg-brand-primary text-white' : 'bg-surface-light text-on-surface-variant hover:bg-surface-high'
               }`}>
               {t('common.all') || 'All'}
             </button>
             {sortedRoles.map(role => (
               <button key={role} onClick={() => setRoleFilter(role)}
                 className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-colors ${
-                  roleFilter === role ? 'bg-[#002819] text-white' : 'bg-[#F4F4EF] text-[#404943] hover:bg-[#E3E3DE]'
+                  roleFilter === role ? 'bg-brand-primary text-white' : 'bg-surface-light text-on-surface-variant hover:bg-surface-high'
                 }`}>
                 {role}
               </button>
@@ -850,15 +873,15 @@ function CreateForm({ title, form, setForm, users, loadingUsers, isRtl, t, isTic
           {isAdmin && (
             <div className="flex flex-wrap gap-1.5 mb-2">
               <button onClick={() => selectAllByRole('Admin')}
-                className="px-2 py-1 rounded-lg text-[10px] font-semibold bg-[#D4AF37]/10 text-[#735C00] hover:bg-[#D4AF37]/20 transition-colors">
+                className="px-2 py-1 rounded-lg text-[10px] font-semibold bg-brand-accent/10 text-tertiary-container hover:bg-brand-accent/20 transition-colors">
                 + {t('commCenter.techTeam') || 'Tech Team'}
               </button>
               <button onClick={() => selectAllByRole('Owner')}
-                className="px-2 py-1 rounded-lg text-[10px] font-semibold bg-[#002819]/10 text-[#002819] hover:bg-[#002819]/20 transition-colors">
+                className="px-2 py-1 rounded-lg text-[10px] font-semibold bg-brand-primary/10 text-brand-primary hover:bg-brand-primary/20 transition-colors">
                 + {t('commCenter.allOwners') || 'All Owners'}
               </button>
               <button onClick={() => selectAllByRole('Shepherd')}
-                className="px-2 py-1 rounded-lg text-[10px] font-semibold bg-[#06402B]/10 text-[#06402B] hover:bg-[#06402B]/20 transition-colors">
+                className="px-2 py-1 rounded-lg text-[10px] font-semibold bg-brand-secondary/10 text-brand-secondary hover:bg-brand-secondary/20 transition-colors">
                 + {t('commCenter.allShepherds') || 'All Shepherds'}
               </button>
               <button onClick={() => selectAllByRole('Doctor')}
@@ -874,11 +897,11 @@ function CreateForm({ title, form, setForm, users, loadingUsers, isRtl, t, isTic
           {isOwner && (
             <div className="flex flex-wrap gap-1.5 mb-2">
               <button onClick={() => selectAllByRole('Manager')}
-                className="px-2 py-1 rounded-lg text-[10px] font-semibold bg-[#D4AF37]/10 text-[#735C00] hover:bg-[#D4AF37]/20 transition-colors">
+                className="px-2 py-1 rounded-lg text-[10px] font-semibold bg-brand-accent/10 text-tertiary-container hover:bg-brand-accent/20 transition-colors">
                 + {t('commCenter.allManagers') || 'All Managers'}
               </button>
               <button onClick={() => selectAllByRole('Shepherd')}
-                className="px-2 py-1 rounded-lg text-[10px] font-semibold bg-[#06402B]/10 text-[#06402B] hover:bg-[#06402B]/20 transition-colors">
+                className="px-2 py-1 rounded-lg text-[10px] font-semibold bg-brand-secondary/10 text-brand-secondary hover:bg-brand-secondary/20 transition-colors">
                 + {t('commCenter.allShepherds') || 'All Shepherds'}
               </button>
               <button onClick={() => selectAllByRole('Doctor')}
@@ -886,7 +909,31 @@ function CreateForm({ title, form, setForm, users, loadingUsers, isRtl, t, isTic
                 + {t('commCenter.allDoctors') || 'All Doctors'}
               </button>
               <button onClick={() => selectAllByRole('Admin')}
-                className="px-2 py-1 rounded-lg text-[10px] font-semibold bg-[#002819]/10 text-[#002819] hover:bg-[#002819]/20 transition-colors">
+                className="px-2 py-1 rounded-lg text-[10px] font-semibold bg-brand-primary/10 text-brand-primary hover:bg-brand-primary/20 transition-colors">
+                + {t('commCenter.adminTeam') || 'Admin Team'}
+              </button>
+              <button onClick={() => setForm(prev => ({ ...prev, participant_ids: [] }))}
+                className="px-2 py-1 rounded-lg text-[10px] font-semibold bg-red-50 text-red-500 hover:bg-red-100 transition-colors">
+                {t('common.clear') || 'Clear'}
+              </button>
+            </div>
+          )}
+          {isTeamRole && (
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              {managedByOwner && (
+                <button onClick={selectMyOwner}
+                  className="px-2 py-1 rounded-lg text-[10px] font-semibold bg-brand-accent/10 text-tertiary-container hover:bg-brand-accent/20 transition-colors">
+                  + {t('commCenter.myOwner') || 'My Owner'}
+                </button>
+              )}
+              {managedByOwner && (
+                <button onClick={selectMyTeam}
+                  className="px-2 py-1 rounded-lg text-[10px] font-semibold bg-brand-secondary/10 text-brand-secondary hover:bg-brand-secondary/20 transition-colors">
+                  + {t('commCenter.myTeam') || 'My Team'}
+                </button>
+              )}
+              <button onClick={() => selectAllByRole('Admin')}
+                className="px-2 py-1 rounded-lg text-[10px] font-semibold bg-brand-primary/10 text-brand-primary hover:bg-brand-primary/20 transition-colors">
                 + {t('commCenter.adminTeam') || 'Admin Team'}
               </button>
               <button onClick={() => setForm(prev => ({ ...prev, participant_ids: [] }))}
@@ -901,13 +948,13 @@ function CreateForm({ title, form, setForm, users, loadingUsers, isRtl, t, isTic
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
             placeholder={t('common.search') || 'Search...'}
-            className="w-full bg-[#FAF5F1] border border-[#E3E3DE] rounded-xl px-4 py-2 text-sm text-[#404943] placeholder:text-[#404943]/40 focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/30 focus:border-[#D4AF37] mb-2"
+            className="w-full bg-surface-light border border-surface-high rounded-xl px-4 py-2 text-sm text-on-surface-variant placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent mb-2"
           />
 
           {/* Select / deselect all visible */}
           {filteredUsers.length > 0 && (
             <button onClick={selectAllFiltered}
-              className="text-[11px] font-medium text-[#D4AF37] hover:underline mb-1.5 block">
+              className="text-[11px] font-medium text-brand-accent hover:underline mb-1.5 block">
               {filteredUsers.every(u => form.participant_ids.includes(u.id))
                 ? (t('common.deselectAll') || 'Deselect all')
                 : (t('common.selectAll') || `Select all (${filteredUsers.length})`)}
@@ -916,15 +963,15 @@ function CreateForm({ title, form, setForm, users, loadingUsers, isRtl, t, isTic
 
           <div className="max-h-40 overflow-y-auto space-y-1">
             {loadingUsers ? (
-              <div className="text-center py-2"><MaterialSymbol icon="progress_activity" size={16} className="text-[#D4AF37] animate-spin inline" /></div>
+              <div className="text-center py-2"><MaterialSymbol icon="progress_activity" size={16} className="text-brand-accent animate-spin inline" /></div>
             ) : filteredUsers.length === 0 ? (
-              <p className="text-xs text-[#404943]/40 text-center py-2">{t('common.noData') || 'No data'}</p>
+              <p className="text-xs text-on-surface-variant/40 text-center py-2">{t('common.noData') || 'No data'}</p>
             ) : (
               filteredUsers.map(u => {
                 const selected = form.participant_ids.includes(u.id);
                 return (
                   <label key={u.id} className={`flex items-center gap-3 px-3 py-2 rounded-xl cursor-pointer transition-colors ${
-                    selected ? 'bg-[#002819]/10' : 'hover:bg-[#F4F4EF]'
+                    selected ? 'bg-brand-primary/10' : 'hover:bg-surface-light'
                   }`}>
                     <input
                       type="checkbox"
@@ -937,32 +984,32 @@ function CreateForm({ title, form, setForm, users, loadingUsers, isRtl, t, isTic
                       {getInitials(u.name || 'U')}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-[#002819] truncate">{u.name || u.email}</p>
-                      <p className="text-[11px] text-[#404943]/50 truncate">{u.role || ''}</p>
+                      <p className="text-sm font-medium text-brand-primary truncate">{u.name || u.email}</p>
+                      <p className="text-[11px] text-on-surface-variant/50 truncate">{u.role || ''}</p>
                     </div>
                   </label>
                 );
               })
             )}
             {form.participant_ids.length > 0 && (
-              <p className="text-[10px] text-[#404943]/40 text-center pt-1">
+              <p className="text-[10px] text-on-surface-variant/40 text-center pt-1">
                 {form.participant_ids.length} {t('commCenter.selected') || 'selected'}
               </p>
             )}
           </div>
         </div>
         <div>
-          <label className="block text-xs font-semibold text-[#404943]/70 mb-1.5">{t('commCenter.body') || 'Body'}</label>
+          <label className="block text-xs font-semibold text-on-surface-variant/70 mb-1.5">{t('commCenter.body') || 'Body'}</label>
           <textarea
             value={form.body}
             onChange={e => setForm(prev => ({ ...prev, body: e.target.value }))}
             placeholder={t('commCenter.typeMessage') || 'Type your message...'}
             rows={4}
-            className="w-full bg-[#FAF5F1] border border-[#E3E3DE] rounded-xl px-4 py-2.5 text-sm text-[#404943] placeholder:text-[#404943]/40 focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/30 focus:border-[#D4AF37] resize-none"
+            className="w-full bg-surface-light border border-surface-high rounded-xl px-4 py-2.5 text-sm text-on-surface-variant placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent resize-none"
           />
         </div>
         <div>
-          <label className="block text-xs font-semibold text-[#404943]/70 mb-1.5">{t('commCenter.attachments') || 'Attachments'}</label>
+          <label className="block text-xs font-semibold text-on-surface-variant/70 mb-1.5">{t('commCenter.attachments') || 'Attachments'}</label>
           <div className="flex items-center gap-3">
             <button
               onClick={() => {
@@ -974,14 +1021,14 @@ function CreateForm({ title, form, setForm, users, loadingUsers, isRtl, t, isTic
                 };
                 input.click();
               }}
-              className="px-4 py-2 rounded-xl border border-[#E3E3DE] text-sm text-[#404943] hover:bg-[#F4F4EF] transition-colors flex items-center gap-2"
+              className="px-4 py-2 rounded-xl border border-surface-high text-sm text-on-surface-variant hover:bg-surface-light transition-colors flex items-center gap-2"
             >
               <MaterialSymbol icon="attach_file" size={16} />
               {t('commCenter.selectFile') || 'Select file'}
             </button>
             {form.file && (
-              <span className="text-xs text-[#404943]/60 flex items-center gap-1">
-                <MaterialSymbol icon="insert_drive_file" size={14} className="text-[#D4AF37]" />
+              <span className="text-xs text-on-surface-variant/60 flex items-center gap-1">
+                <MaterialSymbol icon="insert_drive_file" size={14} className="text-brand-accent" />
                 {form.file.name}
                 <button onClick={() => setForm(prev => ({ ...prev, file: null }))} className="text-red-400 hover:text-red-600 ml-1">
                   <MaterialSymbol icon="close" size={12} />
@@ -991,8 +1038,8 @@ function CreateForm({ title, form, setForm, users, loadingUsers, isRtl, t, isTic
           </div>
         </div>
       </div>
-      <div className={`px-6 py-4 border-t border-[#E3E3DE] flex gap-3 ${isRtl ? 'flex-row-reverse' : 'justify-end'}`}>
-        <button onClick={onCancel} className="px-5 py-2.5 rounded-xl text-sm font-semibold text-[#404943] hover:bg-[#F4F4EF] transition-colors">
+      <div className={`px-6 py-4 border-t border-surface-high flex gap-3 ${isRtl ? 'flex-row-reverse' : 'justify-end'}`}>
+        <button onClick={onCancel} className="px-5 py-2.5 rounded-xl text-sm font-semibold text-on-surface-variant hover:bg-surface-light transition-colors">
           {t('common.cancel') || 'Cancel'}
         </button>
         <button
@@ -1000,8 +1047,8 @@ function CreateForm({ title, form, setForm, users, loadingUsers, isRtl, t, isTic
           disabled={!form.body.trim()}
           className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
             !form.body.trim()
-              ? 'bg-[#E3E3DE] text-[#404943]/30 cursor-not-allowed'
-              : 'bg-[#002819] text-white hover:bg-[#06402B]'
+              ? 'bg-surface-high text-on-surface-variant/30 cursor-not-allowed'
+              : 'bg-brand-primary text-white hover:bg-brand-secondary'
           }`}
         >
           {isTicket ? (t('commCenter.createTicket') || 'Create Ticket') : (t('commCenter.createConversation') || 'Create Conversation')}

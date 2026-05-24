@@ -10,6 +10,7 @@ use App\Models\Geofence;
 use App\Models\GeofenceAlert;
 use App\Models\User;
 use App\Services\NotificationService;
+use App\Models\Setting;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
@@ -23,6 +24,23 @@ class SimulatorController extends Controller
         $this->notificationService = $notificationService;
     }
 
+    protected function guardSimulator(Request $request, ?Device $device = null): bool
+    {
+        if ($request->user()?->getPrimaryRoleName() !== 'Admin') {
+            return false;
+        }
+
+        if (!Setting::getBoolean('device_simulator_enabled', true)) {
+            return false;
+        }
+
+        if ($device && $device->data_source !== 'simulated') {
+            return false;
+        }
+
+        return true;
+    }
+
     public function devices(): JsonResponse
     {
         $devices = Device::with(['animal' => function ($q) {
@@ -34,6 +52,10 @@ class SimulatorController extends Controller
 
     public function move(Request $request): JsonResponse
     {
+        if (!$this->guardSimulator($request)) {
+            return response()->json(['error' => 'Simulator is disabled or forbidden'], 403);
+        }
+
         $validated = $request->validate([
             'device_id' => 'required|exists:devices,id',
             'latitude' => 'required|numeric|between:-90,90',
@@ -46,6 +68,10 @@ class SimulatorController extends Controller
         ]);
 
         $device = Device::findOrFail($validated['device_id']);
+
+        if (!$this->guardSimulator($request, $device)) {
+            return response()->json(['error' => 'Cannot control real devices from simulator'], 403);
+        }
 
         if (!$device->animal_id) {
             return response()->json(['message' => 'No animal assigned to this device'], 422);
@@ -114,6 +140,10 @@ class SimulatorController extends Controller
             'moves.*.temperature' => 'nullable|numeric|min:20|max:45',
         ]);
 
+        if (!$this->guardSimulator($request)) {
+            return response()->json(['error' => 'Simulator is disabled or forbidden'], 403);
+        }
+
         $results = [];
 
         foreach ($validated['moves'] as $move) {
@@ -124,6 +154,10 @@ class SimulatorController extends Controller
                     'success' => false,
                     'message' => 'No animal assigned',
                 ];
+                continue;
+            }
+
+            if ($device->data_source !== 'simulated') {
                 continue;
             }
 
@@ -247,8 +281,16 @@ class SimulatorController extends Controller
             'level' => 'nullable|numeric|min:0|max:100',
         ]);
 
+        if (!$this->guardSimulator($request)) {
+            return response()->json(['error' => 'Simulator is disabled or forbidden'], 403);
+        }
+
         $level = $validated['level'] ?? 100;
         $device = Device::findOrFail($validated['device_id']);
+
+        if (!$this->guardSimulator($request, $device)) {
+            return response()->json(['error' => 'Cannot control real devices from simulator'], 403);
+        }
 
         $device->update([
             'battery_level' => $level,
@@ -273,12 +315,26 @@ class SimulatorController extends Controller
             'temperature' => 'nullable|numeric|min:20|max:45',
         ]);
 
+        if (!$this->guardSimulator($request)) {
+            return response()->json(['error' => 'Simulator is disabled or forbidden'], 403);
+        }
+
         $batteryDrain = $validated['battery_drain'] ?? 0;
         $results = [];
 
         foreach ($validated['device_ids'] as $deviceId) {
             $device = Device::find($deviceId);
-            if (!$device || !$device->animal_id) {
+            if (!$device) {
+                $results[] = ['device_id' => $deviceId, 'success' => false, 'message' => 'Device not found'];
+                continue;
+            }
+
+            if ($device->data_source !== 'simulated') {
+                $results[] = ['device_id' => $deviceId, 'success' => false, 'message' => 'Cannot control real devices from simulator'];
+                continue;
+            }
+
+            if (!$device->animal_id) {
                 $results[] = ['device_id' => $deviceId, 'success' => false, 'message' => 'No animal assigned'];
                 continue;
             }
@@ -334,6 +390,10 @@ class SimulatorController extends Controller
         $validated = $request->validate([
             'owner_id' => 'nullable|exists:users,id',
         ]);
+
+        if (!$this->guardSimulator($request)) {
+            return response()->json(['error' => 'Simulator is disabled or forbidden'], 403);
+        }
 
         $ownerId = $validated['owner_id'] ?? null;
 
@@ -418,14 +478,19 @@ class SimulatorController extends Controller
             'device_ids.*' => 'exists:devices,id',
         ]);
 
+        if (!$this->guardSimulator($request)) {
+            return response()->json(['error' => 'Simulator is disabled or forbidden'], 403);
+        }
+
         $count = 0;
         foreach ($validated['device_ids'] as $id) {
             $device = Device::find($id);
-            if ($device) {
-                LocationHistory::where('device_id', $device->id)->delete();
-                $device->delete();
-                $count++;
+            if (!$device || $device->data_source !== 'simulated') {
+                continue;
             }
+            LocationHistory::where('device_id', $device->id)->delete();
+            $device->delete();
+            $count++;
         }
 
         return response()->json([
@@ -445,7 +510,16 @@ class SimulatorController extends Controller
             'signal_strength' => 'nullable|integer|min:0|max:100',
         ]);
 
+        if (!$this->guardSimulator($request)) {
+            return response()->json(['error' => 'Simulator is disabled or forbidden'], 403);
+        }
+
         $device = Device::findOrFail($validated['device_id']);
+
+        if (!$this->guardSimulator($request, $device)) {
+            return response()->json(['error' => 'Cannot control real devices from simulator'], 403);
+        }
+
         $updateData = [];
 
         if (isset($validated['temperature'])) {
@@ -485,7 +559,16 @@ class SimulatorController extends Controller
             'is_lost' => 'required|boolean',
         ]);
 
+        if (!$this->guardSimulator($request)) {
+            return response()->json(['error' => 'Simulator is disabled or forbidden'], 403);
+        }
+
         $device = Device::findOrFail($validated['device_id']);
+
+        if (!$this->guardSimulator($request, $device)) {
+            return response()->json(['error' => 'Cannot control real devices from simulator'], 403);
+        }
+
         $device->update(['is_lost' => $validated['is_lost']]);
 
         if ($validated['is_lost']) {
@@ -514,7 +597,16 @@ class SimulatorController extends Controller
             'temperature' => 'required|numeric|min:20|max:45',
         ]);
 
+        if (!$this->guardSimulator($request)) {
+            return response()->json(['error' => 'Simulator is disabled or forbidden'], 403);
+        }
+
         $device = Device::findOrFail($validated['device_id']);
+
+        if (!$this->guardSimulator($request, $device)) {
+            return response()->json(['error' => 'Cannot control real devices from simulator'], 403);
+        }
+
         $device->update([
             'temperature' => $validated['temperature'],
             'last_temperature_update' => now(),
@@ -537,7 +629,11 @@ class SimulatorController extends Controller
             'battery_level' => 'nullable|integer|min:0|max:100',
         ]);
 
-        $query = Device::whereNotNull('animal_id');
+        if (!$this->guardSimulator($request)) {
+            return response()->json(['error' => 'Simulator is disabled or forbidden'], 403);
+        }
+
+        $query = Device::whereNotNull('animal_id')->where('data_source', 'simulated');
         if (!empty($validated['device_ids'])) {
             $query->whereIn('id', $validated['device_ids']);
         }

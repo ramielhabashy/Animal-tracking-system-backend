@@ -4,7 +4,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { MaterialSymbol } from 'react-material-symbols';
 import { apiFetch, storageUrl } from '../utils/api';
 import { useI18n } from '../i18n';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '../context/AuthContext';
 import { usePlatform } from '../context/PlatformContext';
 import { getAuthUser, setAuthToken, setAuthUser, setUserRole } from '../utils/cookies';
 import LanguageSwitcher from '../i18n/LanguageSwitcher';
@@ -20,13 +20,13 @@ function Stepper({ step, steps }) {
           <div className="flex flex-col items-center">
             <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300 ${
               step > i ? 'bg-emerald-500 text-white' :
-              step === i ? 'bg-[#002819] text-white shadow-md shadow-[#002819]/20' :
-              'bg-gray-100 text-[#717973]'
+              step === i ? 'bg-brand-primary text-white shadow-md shadow-brand-primary/20' :
+              'bg-gray-100 text-on-surface-subtle'
             }`}>
               {step > i ? <MaterialSymbol icon="check" size={20} /> : i + 1}
             </div>
             <span className={`text-[11px] mt-1.5 font-medium whitespace-nowrap transition-colors ${
-              step >= i ? 'text-[#002819]' : 'text-[#717973]'
+              step >= i ? 'text-brand-primary' : 'text-on-surface-subtle'
             }`}>
               {s}
             </span>
@@ -42,7 +42,8 @@ function Stepper({ step, steps }) {
 
 const formatPrice = (price, t) => {
   if (price === '0.00' || price === 0) return t('subscription.free') || 'Free';
-  return `$${parseFloat(price).toFixed(0)}`;
+  const n = parseFloat(price);
+  return `$${n % 1 === 0 ? n.toFixed(0) : n.toFixed(2)}`;
 };
 
 function SelectPlanStep({ tiers, onSelect }) {
@@ -52,33 +53,37 @@ function SelectPlanStep({ tiers, onSelect }) {
   return (
     <div className="space-y-6">
       <div className="text-center">
-        <h2 className="text-3xl font-bold text-[#002819]">{t('subscription.chooseYourPlan')}</h2>
-        <p className="text-[#404943] mt-2">{t('subscription.confirmDetails')}</p>
+        <h2 className="text-3xl font-bold text-brand-primary">{t('subscription.chooseYourPlan')}</h2>
+        <p className="text-on-surface-variant mt-2">{t('subscription.confirmDetails')}</p>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {tiers.map((tier) => {
-          const isFree = tier.price_monthly === '0.00' || tier.price_monthly === 0;
+          const displayPrice = tier.is_yearly_only ? tier.price_yearly : tier.price_monthly;
+          const isFree = displayPrice === '0.00' || displayPrice === 0;
           const isFeatured = tier.is_featured;
           return (
             <div key={tier.id} className={`relative bg-white rounded-2xl p-6 shadow-sm border-2 flex flex-col hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 ${
               isFeatured
-                ? 'border-[#002819] ring-2 ring-[#002819]/10 bg-gradient-to-b from-[#002819]/5 to-white md:scale-105 md:-translate-y-1'
-                : 'border-[#E3E3DE]'
+                ? 'border-brand-primary ring-2 ring-[#002819]/10 bg-gradient-to-b from-brand-primary/5 to-white md:scale-105 md:-translate-y-1'
+                : 'border-surface-high'
             }`}>
               {isFeatured && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#002819] text-white text-[11px] font-bold px-4 py-1 rounded-full whitespace-nowrap z-10 uppercase tracking-wider">
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-brand-primary text-white text-[11px] font-bold px-4 py-1 rounded-full whitespace-nowrap z-10 uppercase tracking-wider">
                   {tier.name}
                 </div>
               )}
               <div className="flex flex-col flex-1">
-                <h3 className="font-bold text-xl text-[#002819]">{tier.name}</h3>
+                <h3 className="font-bold text-xl text-brand-primary">{tier.name}</h3>
                 <div className="mt-2 mb-4">
-                  <span className={`font-bold text-[#002819] ${isFeatured ? 'text-4xl' : 'text-3xl'}`}>
-                    {isFree ? (t('subscription.free') || 'Free') : formatPrice(tier.price_monthly, t)}
+                  <span className={`font-bold text-brand-primary ${isFeatured ? 'text-4xl' : 'text-3xl'}`}>
+                    {isFree ? (t('subscription.free') || 'Free') : formatPrice(displayPrice, t)}
                   </span>
-                  {!isFree && <span className="text-[#717973]">{t('subscription.perMonth')}</span>}
+                  {!isFree && <span className="text-on-surface-subtle">{tier.is_yearly_only ? (t('subscription.perYear') || '/year') : (t('subscription.perMonth') || '/month')}</span>}
+                  {tier.is_yearly_only && !isFree && (
+                    <span className="block text-[10px] text-on-surface-subtle mt-0.5">{t('subscription.yearly') || 'Yearly'} — {t('subscription.billedYearly') || 'billed yearly'}</span>
+                  )}
                 </div>
-                <p className="text-sm text-[#717973] mb-4">{tier.description}</p>
+                <p className="text-sm text-on-surface-subtle mb-4">{tier.description}</p>
                 <ul className="space-y-2 mb-6 flex-1">
                   {[
                     { icon: 'pets', text: `${tier.max_animals === 0 ? (t('subscription.unlimited') || 'Unlimited') : tier.max_animals} ${(t('subscription.animals') || 'animals').toLowerCase()}` },
@@ -92,21 +97,21 @@ function SelectPlanStep({ tiers, onSelect }) {
                     tier.has_api_access && { icon: 'api', text: 'API Access' },
                     tier.has_ai_assistant && { icon: 'psychology', text: 'AI Assistant' },
                   ].filter(Boolean).map((item, idx) => (
-                    <li key={idx} className="flex items-center gap-2 text-sm text-[#404943]">
-                      <MaterialSymbol icon={item.icon} size={16} className="text-[#D4AF37] flex-shrink-0" />
+                    <li key={idx} className="flex items-center gap-2 text-sm text-on-surface-variant">
+                      <MaterialSymbol icon={item.icon} size={16} className="text-brand-accent flex-shrink-0" />
                       {item.text}
                     </li>
                   ))}
                 </ul>
                 <button
                   onClick={() => onSelect(tier)}
-                  className="w-full py-3 bg-[#002819] text-white rounded-xl font-bold hover:bg-[#06402B] transition"
+                  className="w-full py-3 bg-brand-primary text-white rounded-xl font-bold hover:bg-brand-secondary transition"
                 >
                   {isFree ? (t('subscription.activateFree') || 'Activate Free Plan') : (t('subscription.selectPlan') || 'Select Plan')}
                 </button>
-              </div>
-            </div>
-          );
+          </div>
+        </div>
+      );
         })}
       </div>
     </div>
@@ -120,37 +125,38 @@ function PlanSummaryStep({ tier, billingCycle, onCycleChange, onContinue, onBack
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-[#002819]">{t('subscription.reviewYourPlan') || 'Review Your Plan'}</h2>
-        <p className="text-[#404943] mt-1">{t('subscription.confirmDetails')}</p>
+        <h2 className="text-2xl font-bold text-brand-primary">{t('subscription.reviewYourPlan') || 'Review Your Plan'}</h2>
+        <p className="text-on-surface-variant mt-1">{t('subscription.confirmDetails')}</p>
       </div>
-      <div className="bg-white rounded-2xl p-6 shadow-sm border border-[#E3E3DE]">
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-surface-high">
         <div className={`flex items-center justify-between mb-4 ${isRtl ? 'flex-row-reverse' : ''}`}>
           <div>
-            <h3 className="text-xl font-bold text-[#002819]">{tier.name}</h3>
-            <p className="text-sm text-[#717973]">{tier.description}</p>
+            <h3 className="text-xl font-bold text-brand-primary">{tier.name}</h3>
+            <p className="text-sm text-on-surface-subtle">{tier.description}</p>
           </div>
           <div className={`${isRtl ? 'text-left' : 'text-right'}`}>
-            <span className="text-3xl font-bold text-[#002819]">{formatPrice(billingCycle === 'yearly' ? tier.price_yearly : tier.price_monthly, t)}</span>
-            <span className="text-[#717973]">/{billingCycle === 'yearly' ? (t('subscription.perYear') || 'yr') : (t('subscription.perMonth') || 'mo')}</span>
+            <span className="text-3xl font-bold text-brand-primary">{formatPrice(billingCycle === 'yearly' ? tier.price_yearly : tier.price_monthly, t)}</span>
+            <span className="text-on-surface-subtle">/{billingCycle === 'yearly' ? (t('subscription.perYear') || 'yr') : (t('subscription.perMonth') || 'mo')}</span>
           </div>
         </div>
 
         {!isYearlyOnly && (
           <div className="flex gap-2 mb-6">
             <button onClick={() => onCycleChange('monthly')}
-              className={`flex-1 py-3 rounded-xl font-medium transition ${billingCycle === 'monthly' ? 'bg-[#002819] text-white' : 'bg-gray-100 text-[#404943]'}`}>
+              className={`flex-1 py-3 rounded-xl font-medium transition ${billingCycle === 'monthly' ? 'bg-brand-primary text-white' : 'bg-gray-100 text-on-surface-variant'}`}>
               {t('subscription.monthly')} {tier.price_monthly !== '0.00' && `$${parseFloat(tier.price_monthly).toFixed(0)}/mo`}
             </button>
             <button onClick={() => onCycleChange('yearly')}
-              className={`flex-1 py-3 rounded-xl font-medium transition ${billingCycle === 'yearly' ? 'bg-[#002819] text-white' : 'bg-gray-100 text-[#404943]'}`}>
+              className={`flex-1 py-3 rounded-xl font-medium transition ${billingCycle === 'yearly' ? 'bg-brand-primary text-white' : 'bg-gray-100 text-on-surface-variant'}`}>
               {t('subscription.yearly')} {tier.price_yearly !== '0.00' && `$${parseFloat(tier.price_yearly).toFixed(0)}/yr`}
             </button>
           </div>
         )}
+
         {isYearlyOnly && (
-          <div className="bg-[#002819]/5 border border-[#002819]/20 rounded-xl p-3 mb-4 text-center">
-            <span className="text-sm font-semibold text-[#002819]">{t('subscription.yearly')} {tier.price_yearly !== '0.00' && `— $${parseFloat(tier.price_yearly).toFixed(0)}/yr`}</span>
-            <p className="text-xs text-[#717973] mt-1">This plan is yearly-only</p>
+          <div className="bg-brand-primary/5 border border-brand-primary/20 rounded-xl p-3 mb-4 text-center">
+            <span className="text-sm font-semibold text-brand-primary">{t('subscription.yearly')} {tier.price_yearly !== '0.00' && <>{'—'} {formatPrice(tier.price_yearly, t)}<span className="text-sm font-normal">/{t('subscription.perYearAbbr') || 'yr'}</span></>}</span>
+            <p className="text-xs text-on-surface-subtle mt-1">{t('subscription.yearlyOnlyInfo') || 'This plan is yearly-only'}</p>
           </div>
         )}
 
@@ -167,9 +173,9 @@ function PlanSummaryStep({ tier, billingCycle, onCycleChange, onContinue, onBack
             tier.has_api_access && { icon: 'api', text: 'API Access' },
             tier.has_ai_assistant && { icon: 'psychology', text: 'AI Assistant' },
           ].filter(Boolean).map((item, idx) => (
-            <li key={idx} className="flex items-center gap-3 text-sm text-[#404943]">
-              <div className="w-8 h-8 rounded-lg bg-[#D4AF37]/10 flex items-center justify-center">
-                <MaterialSymbol icon={item.icon} size={16} className="text-[#D4AF37]" />
+            <li key={idx} className="flex items-center gap-3 text-sm text-on-surface-variant">
+              <div className="w-8 h-8 rounded-lg bg-brand-accent/10 flex items-center justify-center">
+                <MaterialSymbol icon={item.icon} size={16} className="text-brand-accent" />
               </div>
               {item.text}
             </li>
@@ -179,11 +185,11 @@ function PlanSummaryStep({ tier, billingCycle, onCycleChange, onContinue, onBack
 
       <div className="flex gap-4">
         <button onClick={onBack}
-          className="flex-1 py-4 bg-gray-100 text-[#404943] rounded-xl font-bold hover:bg-gray-200 transition">
+          className="flex-1 py-4 bg-gray-100 text-on-surface-variant rounded-xl font-bold hover:bg-gray-200 transition">
           {t('subscription.changePlan') || 'Change Plan'}
         </button>
         <button onClick={onContinue}
-          className="flex-1 py-4 bg-[#002819] text-white rounded-xl font-bold hover:bg-[#06402B] transition">
+          className="flex-1 py-4 bg-brand-primary text-white rounded-xl font-bold hover:bg-brand-secondary transition">
           {t('subscription.continueToShipping') || 'Continue to Shipping'}
         </button>
       </div>
@@ -220,40 +226,40 @@ function ShippingStep({ address, onChange, onBack, onContinue }) {
   };
 
   const inputClass = (field) =>
-    `w-full bg-[#FAF5F1] border rounded-xl p-3 text-sm text-[#404943] placeholder:text-[#404943]/40 focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/30 focus:border-[#D4AF37] transition ${
-      errors[field] ? 'border-red-400' : 'border-[#E3E3DE]'
+    `w-full bg-surface-light border rounded-xl p-3 text-sm text-on-surface-variant placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition ${
+      errors[field] ? 'border-red-400' : 'border-surface-high'
     }`;
 
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-[#002819]">{t('subscription.shippingAddress') || 'Shipping Address'}</h2>
-        <p className="text-[#404943] mt-1">{t('subscription.shippingDescription') || 'Where should we ship your device?'}</p>
+        <h2 className="text-2xl font-bold text-brand-primary">{t('subscription.shippingAddress') || 'Shipping Address'}</h2>
+        <p className="text-on-surface-variant mt-1">{t('subscription.shippingDescription') || 'Where should we ship your device?'}</p>
       </div>
-      <div className="bg-white rounded-2xl p-6 shadow-sm border border-[#E3E3DE] space-y-4">
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-surface-high space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <div className="col-span-2">
-            <label className="block text-sm font-medium text-[#404943] mb-1">{t('subscription.fullName') || 'Full Name'}</label>
+            <label className="block text-sm font-medium text-on-surface-variant mb-1">{t('subscription.fullName') || 'Full Name'}</label>
             <input type="text" value={address.full_name} onChange={(e) => updateField('full_name', e.target.value)}
               placeholder="John Doe" className={inputClass('full_name')} />
           </div>
           <div className="col-span-2">
-            <label className="block text-sm font-medium text-[#404943] mb-1">{t('subscription.streetAddress') || 'Street Address'}</label>
+            <label className="block text-sm font-medium text-on-surface-variant mb-1">{t('subscription.streetAddress') || 'Street Address'}</label>
             <input type="text" value={address.street} onChange={(e) => updateField('street', e.target.value)}
               placeholder="123 Main Street" className={inputClass('street')} />
           </div>
           <div>
-            <label className="block text-sm font-medium text-[#404943] mb-1">{t('subscription.city') || 'City'}</label>
+            <label className="block text-sm font-medium text-on-surface-variant mb-1">{t('subscription.city') || 'City'}</label>
             <input type="text" value={address.city} onChange={(e) => updateField('city', e.target.value)}
               placeholder="Riyadh" className={inputClass('city')} />
           </div>
           <div>
-            <label className="block text-sm font-medium text-[#404943] mb-1">{t('subscription.zipCode') || 'ZIP Code'}</label>
+            <label className="block text-sm font-medium text-on-surface-variant mb-1">{t('subscription.zipCode') || 'ZIP Code'}</label>
             <input type="text" value={address.zip} onChange={(e) => updateField('zip', e.target.value)}
               placeholder="10001" className={inputClass('zip')} />
           </div>
           <div>
-            <label className="block text-sm font-medium text-[#404943] mb-1">{t('subscription.country') || 'Country'}</label>
+            <label className="block text-sm font-medium text-on-surface-variant mb-1">{t('subscription.country') || 'Country'}</label>
             <select value={address.country} onChange={(e) => updateField('country', e.target.value)}
               className={inputClass('country')}>
               <option value="">{t('subscription.selectCountry') || 'Select a country'}</option>
@@ -263,11 +269,11 @@ function ShippingStep({ address, onChange, onBack, onContinue }) {
         </div>
       </div>
       <div className="flex gap-4">
-        <button onClick={onBack} className="flex-1 py-4 bg-gray-100 text-[#404943] rounded-xl font-bold hover:bg-gray-200 transition">
+        <button onClick={onBack} className="flex-1 py-4 bg-gray-100 text-on-surface-variant rounded-xl font-bold hover:bg-gray-200 transition">
           {t('subscription.back') || 'Back'}
         </button>
         <button onClick={handleContinue}
-          className="flex-1 py-4 bg-[#002819] text-white rounded-xl font-bold hover:bg-[#06402B] transition disabled:opacity-50">
+          className="flex-1 py-4 bg-brand-primary text-white rounded-xl font-bold hover:bg-brand-secondary transition disabled:opacity-50">
           {t('subscription.continueToPayment') || 'Continue to Payment'}
         </button>
       </div>
@@ -275,7 +281,7 @@ function ShippingStep({ address, onChange, onBack, onContinue }) {
   );
 }
 
-function PaymentStep({ tier, billingCycle, orderId, stripeEnabled, onBack, onComplete, onError }) {
+function PaymentStep({ tier, billingCycle, orderId, stripeEnabled, paymentMethods = [], onBack, onComplete, onError }) {
   const { t, dir } = useI18n();
   const isRtl = dir === 'rtl';
   const [paymentMethod, setPaymentMethod] = useState(stripeEnabled ? 'stripe' : 'bank');
@@ -330,38 +336,34 @@ function PaymentStep({ tier, billingCycle, orderId, stripeEnabled, onBack, onCom
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-[#002819]">{t('subscription.payment') || 'Payment'}</h2>
-        <p className="text-[#404943] mt-1">{t('subscription.paymentDescription') || 'Choose your payment method'}</p>
+        <h2 className="text-2xl font-bold text-brand-primary">{t('subscription.payment') || 'Payment'}</h2>
+        <p className="text-on-surface-variant mt-1">{t('subscription.paymentDescription') || 'Choose your payment method'}</p>
       </div>
 
-      <div className="bg-[#f4f4ef] rounded-xl p-4">
+      <div className="bg-surface-light rounded-xl p-4">
         <div className={`flex justify-between ${isRtl ? 'flex-row-reverse' : ''}`}>
-          <span className="text-[#717973]">{t('subscription.plan') || 'Plan'}</span>
-          <span className="font-bold text-[#002819]">{tier.name} ({billingCycle})</span>
+          <span className="text-on-surface-subtle">{t('subscription.plan') || 'Plan'}</span>
+          <span className="font-bold text-brand-primary">{tier.name} ({billingCycle})</span>
         </div>
         <div className={`flex justify-between mt-2 ${isRtl ? 'flex-row-reverse' : ''}`}>
-          <span className="text-[#717973]">{t('subscription.amount') || 'Amount'}</span>
-          <span className="font-bold text-[#D4AF37]">{amount}</span>
+          <span className="text-on-surface-subtle">{t('subscription.amount') || 'Amount'}</span>
+          <span className="font-bold text-brand-accent">{amount}</span>
         </div>
       </div>
 
       <div className="flex gap-2 mb-6">
-        {stripeEnabled && (
-          <button onClick={() => setPaymentMethod('stripe')}
+        {(paymentMethods.length > 0
+          ? paymentMethods.filter(pm => pm.handler === 'stripe' ? stripeEnabled : true)
+          : [{ handler: 'stripe', name: 'Credit Card', icon: 'credit_card' }, { handler: 'bank_transfer', name: 'Bank Transfer', icon: 'account_balance' }]
+        ).map(pm => (
+          <button key={pm.handler} onClick={() => setPaymentMethod(pm.handler)}
             className={`flex-1 py-3 rounded-xl font-medium transition flex items-center justify-center gap-2 ${
-              paymentMethod === 'stripe' ? 'bg-[#002819] text-white' : 'bg-gray-100 text-[#404943]'
+              paymentMethod === pm.handler ? 'bg-brand-primary text-white' : 'bg-gray-100 text-on-surface-variant'
             }`}>
-            <MaterialSymbol icon="credit_card" size={18} />
-            {t('subscription.creditCard') || 'Credit Card'}
+            <MaterialSymbol icon={pm.icon || 'payments'} size={18} />
+            {pm.name}
           </button>
-        )}
-        <button onClick={() => setPaymentMethod('bank')}
-          className={`flex-1 py-3 rounded-xl font-medium transition flex items-center justify-center gap-2 ${
-            paymentMethod === 'bank' ? 'bg-[#002819] text-white' : 'bg-gray-100 text-[#404943]'
-          }`}>
-          <MaterialSymbol icon="account_balance" size={18} />
-          {t('subscription.bankTransfer') || 'Bank Transfer'}
-        </button>
+        ))}
       </div>
 
       {paymentMethod === 'stripe' ? (
@@ -375,7 +377,7 @@ function PaymentStep({ tier, billingCycle, orderId, stripeEnabled, onBack, onCom
             </div>
           </div>
           <button onClick={handleStripePayment} disabled={processing}
-            className="w-full py-4 bg-[#002819] text-white rounded-xl font-bold hover:bg-[#06402B] transition disabled:opacity-50 flex items-center justify-center gap-2">
+            className="w-full py-4 bg-brand-primary text-white rounded-xl font-bold hover:bg-brand-secondary transition disabled:opacity-50 flex items-center justify-center gap-2">
             {processing ? (
               <>{t('subscription.processing') || 'Processing...'}</>
             ) : (
@@ -383,7 +385,7 @@ function PaymentStep({ tier, billingCycle, orderId, stripeEnabled, onBack, onCom
             )}
           </button>
         </div>
-      ) : (
+      ) : paymentMethod === 'bank_transfer' ? (
         <div className="space-y-4">
           <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
             <h4 className="text-sm font-bold text-blue-700 mb-2 flex items-center gap-2">
@@ -398,17 +400,17 @@ function PaymentStep({ tier, billingCycle, orderId, stripeEnabled, onBack, onCom
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-[#404943] mb-2">
+            <label className="block text-sm font-medium text-on-surface-variant mb-2">
               {t('subscription.uploadProof') || 'Upload Payment Proof (PDF)'}
             </label>
             <input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={handleBankTransfer} disabled={uploading}
-              className="w-full text-sm text-[#404943] file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-[#002819] file:text-white hover:file:bg-[#06402B] transition file:cursor-pointer cursor-pointer" />
+              className="w-full text-sm text-on-surface-variant file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-brand-primary file:text-white hover:file:bg-brand-secondary transition file:cursor-pointer cursor-pointer" />
           </div>
         </div>
-      )}
+      ) : null}
 
       <button onClick={onBack}
-        className="w-full py-3 bg-gray-100 text-[#404943] rounded-xl font-medium hover:bg-gray-200 transition">
+        className="w-full py-3 bg-gray-100 text-on-surface-variant rounded-xl font-medium hover:bg-gray-200 transition">
         {t('subscription.back') || 'Back'}
       </button>
     </div>
@@ -465,45 +467,45 @@ function AccountStep({ tier, onComplete, onBack }) {
   return (
     <div className="space-y-6">
       <div className="text-center">
-        <h2 className="text-2xl font-bold text-[#002819]">{t('subscription.createAccount') || 'Create Your Account'}</h2>
-        <p className="text-[#404943] mt-1">
+        <h2 className="text-2xl font-bold text-brand-primary">{t('subscription.createAccount') || 'Create Your Account'}</h2>
+        <p className="text-on-surface-variant mt-1">
           {(t('subscription.createAccountDesc') || 'Enter your details to continue with {plan}').replace('{plan}', tier?.name || '')}
         </p>
       </div>
-      <form onSubmit={handleSubmit} className="bg-white rounded-2xl p-6 shadow-sm border border-[#E3E3DE] space-y-4">
+      <form onSubmit={handleSubmit} className="bg-white rounded-2xl p-6 shadow-sm border border-surface-high space-y-4">
         {error && <div className="p-4 bg-red-50 text-red-700 rounded-xl text-sm font-medium flex items-center gap-2">
           <MaterialSymbol icon="error" size={18} className="text-red-500 flex-shrink-0" />
           {error}
         </div>}
         <div>
-          <label className="block text-sm font-medium text-[#404943] mb-1">{t('subscription.fullName') || 'Full Name'}</label>
+          <label className="block text-sm font-medium text-on-surface-variant mb-1">{t('subscription.fullName') || 'Full Name'}</label>
           <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="John Doe" required
-            className="w-full bg-[#FAF5F1] border border-[#E3E3DE] rounded-xl p-3 text-sm text-[#404943] placeholder:text-[#404943]/40 focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/30 focus:border-[#D4AF37] transition" />
+            className="w-full bg-surface-light border border-surface-high rounded-xl p-3 text-sm text-on-surface-variant placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition" />
         </div>
         <div>
-          <label className="block text-sm font-medium text-[#404943] mb-1">{t('subscription.email') || 'Email'}</label>
+          <label className="block text-sm font-medium text-on-surface-variant mb-1">{t('subscription.email') || 'Email'}</label>
           <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="john@example.com" required
-            className="w-full bg-[#FAF5F1] border border-[#E3E3DE] rounded-xl p-3 text-sm text-[#404943] placeholder:text-[#404943]/40 focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/30 focus:border-[#D4AF37] transition" />
+            className="w-full bg-surface-light border border-surface-high rounded-xl p-3 text-sm text-on-surface-variant placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition" />
         </div>
         <div>
-          <label className="block text-sm font-medium text-[#404943] mb-1">{t('common.password') || 'Password'}</label>
+          <label className="block text-sm font-medium text-on-surface-variant mb-1">{t('common.password') || 'Password'}</label>
           <input type="password" value={password} onChange={(e) => setPassword(e.target.value)}
             placeholder={t('subscription.passwordMin') || 'Min 8 characters'} required minLength={8}
-            className="w-full bg-[#FAF5F1] border border-[#E3E3DE] rounded-xl p-3 text-sm text-[#404943] placeholder:text-[#404943]/40 focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/30 focus:border-[#D4AF37] transition" />
+            className="w-full bg-surface-light border border-surface-high rounded-xl p-3 text-sm text-on-surface-variant placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition" />
         </div>
         <div>
-          <label className="block text-sm font-medium text-[#404943] mb-1">{t('subscription.confirmPassword') || 'Confirm Password'}</label>
+          <label className="block text-sm font-medium text-on-surface-variant mb-1">{t('subscription.confirmPassword') || 'Confirm Password'}</label>
           <input type="password" value={passwordConfirmation} onChange={(e) => setPasswordConfirmation(e.target.value)}
             placeholder={t('subscription.repeatPassword') || 'Repeat your password'} required minLength={8}
-            className="w-full bg-[#FAF5F1] border border-[#E3E3DE] rounded-xl p-3 text-sm text-[#404943] placeholder:text-[#404943]/40 focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/30 focus:border-[#D4AF37] transition" />
+            className="w-full bg-surface-light border border-surface-high rounded-xl p-3 text-sm text-on-surface-variant placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition" />
         </div>
         <div className="flex gap-4 pt-2">
           <button type="button" onClick={onBack}
-            className="flex-1 py-4 bg-gray-100 text-[#404943] rounded-xl font-bold hover:bg-gray-200 transition">
+            className="flex-1 py-4 bg-gray-100 text-on-surface-variant rounded-xl font-bold hover:bg-gray-200 transition">
             {t('subscription.back') || 'Back'}
           </button>
           <button type="submit" disabled={creating}
-            className="flex-1 py-4 bg-[#002819] text-white rounded-xl font-bold hover:bg-[#06402B] transition disabled:opacity-50">
+            className="flex-1 py-4 bg-brand-primary text-white rounded-xl font-bold hover:bg-brand-secondary transition disabled:opacity-50">
             {creating ? (t('subscription.processing') || 'Creating Account...') : (t('subscription.createAccountAndContinue') || 'Create Account & Continue')}
           </button>
         </div>
@@ -523,27 +525,27 @@ function ConfirmationStep({ order, subscription, tier, isBankTransfer }) {
         <MaterialSymbol icon="check_circle" size={48} className="text-emerald-500" weight="fill" />
       </div>
       <div>
-        <h2 className="text-2xl font-bold text-[#002819]">
+        <h2 className="text-2xl font-bold text-brand-primary">
           {isBankTransfer ? (t('subscription.paymentProofSubmitted') || 'Payment Proof Submitted!') : (t('subscription.orderConfirmed') || 'Order Confirmed!')}
         </h2>
-        <p className="text-[#404943] mt-2 max-w-md mx-auto">
+        <p className="text-on-surface-variant mt-2 max-w-md mx-auto">
           {isBankTransfer ? (t('subscription.bankTransferDesc') || 'Your bank transfer proof has been received.') : (t('subscription.orderConfirmationDesc') || 'Your payment was successful.')}
         </p>
       </div>
 
       {order && (
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-[#E3E3DE] max-w-md mx-auto text-left">
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-surface-high max-w-md mx-auto text-left">
           <div className="space-y-3">
             <div className={`flex justify-between ${isRtl ? 'flex-row-reverse' : ''}`}>
-              <span className="text-[#717973]">{t('subscription.orderNum') || 'Order #'}</span>
-              <span className="font-bold text-[#002819]">#{order?.id || order.order_id}</span>
+              <span className="text-on-surface-subtle">{t('subscription.orderNum') || 'Order #'}</span>
+              <span className="font-bold text-brand-primary">#{order?.id || order.order_id}</span>
             </div>
             <div className={`flex justify-between ${isRtl ? 'flex-row-reverse' : ''}`}>
-              <span className="text-[#717973]">{t('subscription.plan') || 'Plan'}</span>
-              <span className="font-bold text-[#002819]">{tier?.name}</span>
+              <span className="text-on-surface-subtle">{t('subscription.plan') || 'Plan'}</span>
+              <span className="font-bold text-brand-primary">{tier?.name}</span>
             </div>
             <div className={`flex justify-between ${isRtl ? 'flex-row-reverse' : ''}`}>
-              <span className="text-[#717973]">{t('subscription.status') || 'Status'}</span>
+              <span className="text-on-surface-subtle">{t('subscription.status') || 'Status'}</span>
               <span className={`font-bold ${order?.payment_status === 'paid' ? 'text-emerald-600' : 'text-amber-600'}`}>
                 {order?.payment_status === 'paid' ? (t('subscription.paid') || 'Paid') : (t('subscription.pendingApproval') || 'Pending Approval')}
               </span>
@@ -553,12 +555,12 @@ function ConfirmationStep({ order, subscription, tier, isBankTransfer }) {
       )}
 
       {!isBankTransfer && (
-        <div className="bg-[#D4AF37]/10 border border-[#D4AF37]/40 rounded-2xl p-4 max-w-md mx-auto">
+        <div className="bg-brand-accent/10 border border-brand-accent/40 rounded-2xl p-4 max-w-md mx-auto">
           <div className="flex items-center gap-2 mb-2">
-            <MaterialSymbol icon="info" size={20} className="text-[#D4AF37]" />
-            <span className="font-bold text-[#002819]">{t('subscription.subscriptionStart') || 'Subscription Start'}</span>
+            <MaterialSymbol icon="info" size={20} className="text-brand-accent" />
+            <span className="font-bold text-brand-primary">{t('subscription.subscriptionStart') || 'Subscription Start'}</span>
           </div>
-          <p className="text-sm text-[#404943]">
+          <p className="text-sm text-on-surface-variant">
             {t('subscription.subscriptionInfo') || 'Your subscription will officially start when you activate your first device.'}
           </p>
         </div>
@@ -566,7 +568,7 @@ function ConfirmationStep({ order, subscription, tier, isBankTransfer }) {
 
       <div className="flex gap-4 justify-center">
         <button onClick={() => navigate(isBankTransfer ? '/subscription' : '/dashboard')}
-          className="py-4 px-8 bg-[#002819] text-white rounded-xl font-bold hover:bg-[#06402B] transition">
+          className="py-4 px-8 bg-brand-primary text-white rounded-xl font-bold hover:bg-brand-secondary transition">
           {isBankTransfer ? (t('subscription.viewSubscriptionStatus') || 'View Subscription Status') : (t('subscription.goToDashboard') || 'Go to Dashboard')}
         </button>
       </div>
@@ -603,6 +605,7 @@ export default function CheckoutPage() {
   const [error, setError] = useState(null);
   const [isBankTransfer, setIsBankTransfer] = useState(false);
   const [stripeEnabled, setStripeEnabled] = useState(true);
+  const [paymentMethods, setPaymentMethods] = useState([]);
 
   const embedMode = searchParams.get('embed') === '1';
   const tierId = searchParams.get('tier_id');
@@ -619,6 +622,9 @@ export default function CheckoutPage() {
   useEffect(() => {
     apiFetch('/api/settings/stripe-status').then(r => r.ok && r.json()).then(d => {
       if (d?.data) setStripeEnabled(d.data.enabled !== false);
+    }).catch(() => {});
+    apiFetch('/api/payment-methods').then(r => r.ok && r.json()).then(d => {
+      if (d?.data) setPaymentMethods(d.data);
     }).catch(() => {});
   }, []);
 
@@ -689,7 +695,10 @@ export default function CheckoutPage() {
   const handleSelectPlan = (selectedTier) => {
     setTier(selectedTier);
     if (selectedTier.is_yearly_only) setBillingCycle('yearly');
-    if (selectedTier.price_monthly === '0.00' || selectedTier.price_monthly === 0) {
+    const isFree = selectedTier.is_yearly_only
+      ? (selectedTier.price_yearly === '0.00' || selectedTier.price_yearly === 0)
+      : (selectedTier.price_monthly === '0.00' || selectedTier.price_monthly === 0);
+    if (isFree) {
       if (!user) { setStep(1); return; }
       handleActivateFree(selectedTier);
       return;
@@ -699,7 +708,11 @@ export default function CheckoutPage() {
   };
 
   const handleAccountComplete = () => {
-    if (tier && (tier.price_monthly === '0.00' || tier.price_monthly === 0)) {
+    if (!tier) { setStep(2); return; }
+    const isFree = tier.is_yearly_only
+      ? (tier.price_yearly === '0.00' || tier.price_yearly === 0)
+      : (tier.price_monthly === '0.00' || tier.price_monthly === 0);
+    if (isFree) {
       handleActivateFree(tier);
     } else {
       setStep(2);
@@ -790,29 +803,29 @@ export default function CheckoutPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#FAF5F1] flex items-center justify-center">
+      <div className="min-h-screen bg-surface-light flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin w-10 h-10 border-4 border-[#002819] border-t-transparent rounded-full mx-auto mb-4" />
-          <p className="text-[#404943]">{t('common.loading') || 'Loading...'}</p>
+          <div className="animate-spin w-10 h-10 border-4 border-brand-primary border-t-transparent rounded-full mx-auto mb-4" />
+          <p className="text-on-surface-variant">{t('common.loading') || 'Loading...'}</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#FAF5F1] flex flex-col">
-      {!embedMode && <header className="bg-white border-b border-[#E3E3DE] px-6 py-3">
+    <div className="min-h-screen bg-surface-light flex flex-col">
+      {!embedMode && <header className="bg-white border-b border-surface-high px-6 py-3">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           <div className="flex items-center gap-4">
             <button onClick={() => navigate('/')} className="flex items-center gap-3">
               {logoUrl ? (
                 <img src={storageUrl(logoUrl)} alt={platformName} className="w-9 h-9 object-contain rounded-lg" />
               ) : (
-                <div className="w-9 h-9 bg-gradient-to-br from-[#002819] to-[#06402B] rounded-xl flex items-center justify-center">
-                  <MaterialSymbol icon="eco" size={18} className="text-[#D4AF37]" fill />
+                <div className="w-9 h-9 bg-gradient-to-br from-brand-primary to-brand-secondary rounded-xl flex items-center justify-center">
+                  <MaterialSymbol icon="eco" size={18} className="text-brand-accent" fill />
                 </div>
               )}
-              <span className="text-lg font-bold text-[#002819]">{platformName}</span>
+              <span className="text-lg font-bold text-brand-primary">{platformName}</span>
             </button>
           </div>
           <LanguageSwitcher compact />
@@ -859,10 +872,14 @@ export default function CheckoutPage() {
           )}
           {step === 4 && (
             <PaymentStep
-              amount={parseFloat(billingCycle === 'yearly' ? tier?.price_yearly : tier?.price_monthly) || 0}
-              onSubmit={handlePayment}
+              tier={tier}
+              billingCycle={billingCycle}
+              orderId={orderId}
+              stripeEnabled={stripeEnabled}
+              paymentMethods={paymentMethods}
               onBack={() => setStep(3)}
-              loading={submitting}
+              onComplete={handlePaymentComplete}
+              onError={handlePaymentError}
             />
           )}
           {step === 5 && (

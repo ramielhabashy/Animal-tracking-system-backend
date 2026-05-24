@@ -21,6 +21,8 @@ export default function SimulatorPage({ embedded }) {
   const { t, dir } = useI18n();
   const isRtl = dir === 'rtl';
 
+  const [simulatorEnabled, setSimulatorEnabled] = useState(true);
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [devices, setDevices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);
@@ -42,10 +44,22 @@ export default function SimulatorPage({ embedded }) {
 
   useEffect(() => {
     fetchDevices();
+    fetchSettings();
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
   }, []);
+
+  const fetchSettings = async () => {
+    try {
+      const res = await apiFetch('/api/admin/settings/device-integration');
+      if (res?.ok) {
+        const data = await res.json();
+        setSimulatorEnabled(data.data?.device_simulator_enabled !== false);
+      }
+    } catch (e) {}
+    setSettingsLoaded(true);
+  };
 
   useEffect(() => {
     logEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -378,7 +392,19 @@ export default function SimulatorPage({ embedded }) {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin w-8 h-8 border-4 border-[#002819] border-t-transparent rounded-full" />
+        <div className="animate-spin w-8 h-8 border-4 border-brand-primary border-t-transparent rounded-full" />
+      </div>
+    );
+  }
+
+  if (settingsLoaded && !simulatorEnabled) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 gap-4">
+        <MaterialSymbol icon="simulation" size={48} className="text-on-surface-subtle" />
+        <h3 className="text-lg font-bold text-on-surface-variant">Simulator Disabled</h3>
+        <p className="text-sm text-on-surface-subtle text-center max-w-md">
+          The device simulator has been disabled by the admin. Enable it in Settings &rarr; Device Integration.
+        </p>
       </div>
     );
   }
@@ -388,8 +414,8 @@ export default function SimulatorPage({ embedded }) {
       {!embedded && (
         <div className={`flex items-center justify-between flex-wrap gap-4 ${isRtl ? 'flex-row-reverse' : ''}`}>
           <div>
-            <h1 className="text-3xl font-bold text-[#002819]">Device Simulator</h1>
-            <p className="text-[#404943] mt-1">Simulate device movement to test map, tracking, and geofences</p>
+            <h1 className="text-3xl font-bold text-brand-primary">Device Simulator</h1>
+            <p className="text-on-surface-variant mt-1">Simulate device movement to test map, tracking, and geofences</p>
           </div>
         </div>
       )}
@@ -399,7 +425,7 @@ export default function SimulatorPage({ embedded }) {
             value={intervalSec}
             onChange={e => setIntervalSec(parseInt(e.target.value))}
             disabled={running}
-            className="px-3 py-2 rounded-xl bg-[#F4F4EF] text-[#404943] text-sm font-medium border-0 focus:ring-2 focus:ring-[#D4AF37]"
+            className="px-3 py-2 rounded-xl bg-surface-light text-on-surface-variant text-sm font-medium border-0 focus:ring-2 focus:ring-brand-accent"
           >
             {INTERVAL_OPTIONS.map(opt => (
               <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -408,7 +434,7 @@ export default function SimulatorPage({ embedded }) {
           <select
             value={batteryDrain}
             onChange={e => setBatteryDrain(parseInt(e.target.value))}
-            className="px-3 py-2 rounded-xl bg-[#F4F4EF] text-[#404943] text-sm font-medium border-0 focus:ring-2 focus:ring-[#D4AF37]"
+            className="px-3 py-2 rounded-xl bg-surface-light text-on-surface-variant text-sm font-medium border-0 focus:ring-2 focus:ring-brand-accent"
             title="Battery drain per tick"
           >
             {BATTERY_DRAIN_OPTIONS.map(opt => (
@@ -428,7 +454,7 @@ export default function SimulatorPage({ embedded }) {
               onClick={startSimulation}
               disabled={!canRun}
               className={`px-5 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 transition ${
-                canRun ? 'bg-gradient-to-br from-[#002819] to-[#06402B] text-white shadow-lg shadow-[#002819]/20 hover:opacity-90' : 'bg-[#E3E3DE] text-[#717973] cursor-not-allowed'
+                canRun ? 'bg-gradient-to-br from-brand-primary to-brand-secondary text-white shadow-lg shadow-brand-primary/20 hover:opacity-90' : 'bg-surface-high text-on-surface-subtle cursor-not-allowed'
               }`}
             >
               <MaterialSymbol icon="play_arrow" size={18} />
@@ -461,7 +487,7 @@ export default function SimulatorPage({ embedded }) {
           </button>
           <button
             onClick={() => { fetchUnassignedAnimals(); setShowQuickAdd(true); }}
-            className="px-3 py-2 bg-[#002819] text-white rounded-xl text-xs font-bold hover:bg-[#06402b] transition flex items-center gap-1"
+            className="px-3 py-2 bg-brand-primary text-white rounded-xl text-xs font-bold hover:bg-brand-secondary transition flex items-center gap-1"
           >
             <MaterialSymbol icon="add" size={14} />
             Quick Add
@@ -485,7 +511,7 @@ export default function SimulatorPage({ embedded }) {
           )}
           <button
             onClick={fetchDevices}
-            className="px-3 py-2 bg-[#F4F4EF] rounded-xl text-xs font-bold text-[#404943] hover:bg-[#E3E3DE] transition"
+            className="px-3 py-2 bg-surface-light rounded-xl text-xs font-bold text-on-surface-variant hover:bg-surface-high transition"
           >
             <MaterialSymbol icon="refresh" size={14} />
             Reload
@@ -494,10 +520,10 @@ export default function SimulatorPage({ embedded }) {
       </div>
 
       {devices.length === 0 ? (
-        <div className="bg-[#F4F4EF] rounded-2xl p-12 text-center">
-          <MaterialSymbol icon="sensors_off" size={48} className="text-[#717973] mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-[#404943]">No devices found</h2>
-          <p className="text-[#717973] mt-2">Use <strong>Quick Add</strong> above to create a device and assign it to an animal, or <strong>Demo Mode</strong> to auto-generate test devices.</p>
+        <div className="bg-surface-light rounded-2xl p-12 text-center">
+          <MaterialSymbol icon="sensors_off" size={48} className="text-on-surface-subtle mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-on-surface-variant">No devices found</h2>
+          <p className="text-on-surface-subtle mt-2">Use <strong>Quick Add</strong> above to create a device and assign it to an animal, or <strong>Demo Mode</strong> to auto-generate test devices.</p>
         </div>
       ) : (
         <>
@@ -507,26 +533,26 @@ export default function SimulatorPage({ embedded }) {
               const isAuto = autoPilot[device.id] || false;
               const speed = speeds[device.id] || 3;
               return (
-                <div key={device.id} className={`bg-white rounded-2xl p-5 shadow-sm border transition ${isAuto ? 'border-[#D4AF37] ring-1 ring-[#D4AF37]/30' : 'border-[#eeeee9]'}`}>
+                <div key={device.id} className={`bg-white rounded-2xl p-5 shadow-sm border transition ${isAuto ? 'border-brand-accent ring-1 ring-brand-accent/30' : 'border-[#eeeee9]'}`}>
                   <div className={`flex items-center justify-between mb-3 ${isRtl ? 'flex-row-reverse' : ''}`}>
                     <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isAuto ? 'bg-[#D4AF37]/20 text-[#735C00]' : 'bg-[#F4F4EF] text-[#404943]'}`}>
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isAuto ? 'bg-brand-accent/20 text-tertiary-container' : 'bg-surface-light text-on-surface-variant'}`}>
                         <MaterialSymbol icon={device.type === 'collar' ? 'watch' : 'sensors'} size={20} />
                       </div>
                       <div>
-                        <p className="font-bold text-[#002819] text-sm">{device.name || device.device_id}</p>
-                        <p className="text-xs text-[#717973]">{device.animal?.animal_id || device.animal?.name || 'Unknown animal'}</p>
+                        <p className="font-bold text-brand-primary text-sm">{device.name || device.device_id}</p>
+                        <p className="text-xs text-on-surface-subtle">{device.animal?.animal_id || device.animal?.name || 'Unknown animal'}</p>
                       </div>
                     </div>
                     <label className="relative inline-flex items-center cursor-pointer">
                       <input type="checkbox" checked={isAuto} onChange={() => toggleAutoPilot(device.id)} className="sr-only peer" />
-                      <div className="w-9 h-5 bg-[#E3E3DE] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#002819]" />
+                      <div className="w-9 h-5 bg-surface-high peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-brand-primary" />
                     </label>
                   </div>
 
                     <div className={`flex items-center gap-4 mb-3 ${isRtl ? 'flex-row-reverse' : ''}`}>
                       <div className="flex-1">
-                        <p className="text-xs text-[#717973] font-medium">Latitude</p>
+                        <p className="text-xs text-on-surface-subtle font-medium">Latitude</p>
                         <input
                           type="number"
                           step="0.000001"
@@ -546,11 +572,11 @@ export default function SimulatorPage({ embedded }) {
                               if (res.ok) addLog(`${device.name || device.device_id} position → ${lat.toFixed(6)}, ${lng.toFixed(6)}`, 'success');
                             }).catch(e => addLog(`Move failed: ${e.message}`, 'error'));
                           }}
-                          className="w-full bg-[#F4F4EF] border border-transparent focus:border-[#D4AF37] rounded-lg px-2 py-1 text-sm font-mono font-bold text-[#002819] focus:outline-none focus:bg-white"
+                          className="w-full bg-surface-light border border-transparent focus:border-brand-accent rounded-lg px-2 py-1 text-sm font-mono font-bold text-brand-primary focus:outline-none focus:bg-white"
                         />
                       </div>
                       <div className="flex-1">
-                        <p className="text-xs text-[#717973] font-medium">Longitude</p>
+                        <p className="text-xs text-on-surface-subtle font-medium">Longitude</p>
                         <input
                           type="number"
                           step="0.000001"
@@ -570,7 +596,7 @@ export default function SimulatorPage({ embedded }) {
                               if (res.ok) addLog(`${device.name || device.device_id} position → ${lat.toFixed(6)}, ${lng.toFixed(6)}`, 'success');
                             }).catch(e => addLog(`Move failed: ${e.message}`, 'error'));
                           }}
-                          className="w-full bg-[#F4F4EF] border border-transparent focus:border-[#D4AF37] rounded-lg px-2 py-1 text-sm font-mono font-bold text-[#002819] focus:outline-none focus:bg-white"
+                          className="w-full bg-surface-light border border-transparent focus:border-brand-accent rounded-lg px-2 py-1 text-sm font-mono font-bold text-brand-primary focus:outline-none focus:bg-white"
                         />
                       </div>
                     <div className="text-right space-y-1">
@@ -583,7 +609,7 @@ export default function SimulatorPage({ embedded }) {
                         </span>
                         <button
                           onClick={() => rechargeDevice(device.id, 100)}
-                          className="text-[10px] px-1.5 py-0.5 bg-[#D4AF37]/10 text-[#735C00] rounded hover:bg-[#D4AF37]/20 transition"
+                          className="text-[10px] px-1.5 py-0.5 bg-brand-accent/10 text-tertiary-container rounded hover:bg-brand-accent/20 transition"
                           title="Recharge to 100%"
                         >
                           🔋
@@ -593,20 +619,20 @@ export default function SimulatorPage({ embedded }) {
                   </div>
 
                   <div className={`flex items-center gap-2 mb-3 ${isRtl ? 'flex-row-reverse' : ''}`}>
-                    <span className="text-xs text-[#717973] font-medium">Speed:</span>
+                    <span className="text-xs text-on-surface-subtle font-medium">Speed:</span>
                     <input
                       type="range"
                       min="1"
                       max="20"
                       value={speed}
                       onChange={e => handleSpeedChange(device.id, e.target.value)}
-                      className="flex-1 h-1.5 bg-[#E3E3DE] rounded-full appearance-none cursor-pointer accent-[#002819]"
+                      className="flex-1 h-1.5 bg-surface-high rounded-full appearance-none cursor-pointer accent-[#002819]"
                     />
-                    <span className="text-xs font-mono font-bold text-[#002819] w-8 text-right">{speed} km/h</span>
+                    <span className="text-xs font-mono font-bold text-brand-primary w-8 text-right">{speed} km/h</span>
                   </div>
 
                   <div className={`flex items-center gap-2 mb-3 ${isRtl ? 'flex-row-reverse' : ''}`}>
-                    <span className="text-xs text-[#717973] font-medium">Temp:</span>
+                    <span className="text-xs text-on-surface-subtle font-medium">Temp:</span>
                     <input
                       type="range"
                       min="35"
@@ -617,25 +643,25 @@ export default function SimulatorPage({ embedded }) {
                       onMouseUp={() => setTemperature(device.id)}
                       onTouchEnd={() => setTemperature(device.id)}
                       onKeyUp={e => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight') setTemperature(device.id); }}
-                      className="flex-1 h-1.5 bg-[#E3E3DE] rounded-full appearance-none cursor-pointer accent-amber-600"
+                      className="flex-1 h-1.5 bg-surface-high rounded-full appearance-none cursor-pointer accent-amber-600"
                     />
-                    <span className="text-xs font-mono font-bold text-[#002819] w-10 text-right">{(temperatures[device.id] ?? 38.0).toFixed(1)}°C</span>
+                    <span className="text-xs font-mono font-bold text-brand-primary w-10 text-right">{(temperatures[device.id] ?? 38.0).toFixed(1)}°C</span>
                   </div>
 
                   <div className={`flex gap-1.5 ${isRtl ? 'flex-row-reverse' : ''}`}>
-                    <button onClick={() => nudgeDevice(device.id, 0.001, 0)} className="flex-1 px-2 py-1.5 bg-[#F4F4EF] rounded-lg text-xs font-medium text-[#404943] hover:bg-[#E3E3DE] transition flex items-center justify-center gap-1">
+                    <button onClick={() => nudgeDevice(device.id, 0.001, 0)} className="flex-1 px-2 py-1.5 bg-surface-light rounded-lg text-xs font-medium text-on-surface-variant hover:bg-surface-high transition flex items-center justify-center gap-1">
                       <MaterialSymbol icon="arrow_upward" size={14} /> N
                     </button>
-                    <button onClick={() => nudgeDevice(device.id, -0.001, 0)} className="flex-1 px-2 py-1.5 bg-[#F4F4EF] rounded-lg text-xs font-medium text-[#404943] hover:bg-[#E3E3DE] transition flex items-center justify-center gap-1">
+                    <button onClick={() => nudgeDevice(device.id, -0.001, 0)} className="flex-1 px-2 py-1.5 bg-surface-light rounded-lg text-xs font-medium text-on-surface-variant hover:bg-surface-high transition flex items-center justify-center gap-1">
                       <MaterialSymbol icon="arrow_downward" size={14} /> S
                     </button>
-                    <button onClick={() => nudgeDevice(device.id, 0, -0.001)} className="flex-1 px-2 py-1.5 bg-[#F4F4EF] rounded-lg text-xs font-medium text-[#404943] hover:bg-[#E3E3DE] transition flex items-center justify-center gap-1">
+                    <button onClick={() => nudgeDevice(device.id, 0, -0.001)} className="flex-1 px-2 py-1.5 bg-surface-light rounded-lg text-xs font-medium text-on-surface-variant hover:bg-surface-high transition flex items-center justify-center gap-1">
                       <MaterialSymbol icon="arrow_back" size={14} /> W
                     </button>
-                    <button onClick={() => nudgeDevice(device.id, 0, 0.001)} className="flex-1 px-2 py-1.5 bg-[#F4F4EF] rounded-lg text-xs font-medium text-[#404943] hover:bg-[#E3E3DE] transition flex items-center justify-center gap-1">
+                    <button onClick={() => nudgeDevice(device.id, 0, 0.001)} className="flex-1 px-2 py-1.5 bg-surface-light rounded-lg text-xs font-medium text-on-surface-variant hover:bg-surface-high transition flex items-center justify-center gap-1">
                       <MaterialSymbol icon="arrow_forward" size={14} /> E
                     </button>
-                    <button onClick={() => randomNudge(device.id)} className="flex-1 px-2 py-1.5 bg-[#D4AF37]/10 rounded-lg text-xs font-medium text-[#735C00] hover:bg-[#D4AF37]/20 transition flex items-center justify-center gap-1">
+                    <button onClick={() => randomNudge(device.id)} className="flex-1 px-2 py-1.5 bg-brand-accent/10 rounded-lg text-xs font-medium text-tertiary-container hover:bg-brand-accent/20 transition flex items-center justify-center gap-1">
                       <MaterialSymbol icon="shuffle" size={14} /> Rand
                     </button>
                   </div>
@@ -647,19 +673,19 @@ export default function SimulatorPage({ embedded }) {
           <div className="bg-white rounded-2xl shadow-sm border border-[#eeeee9] overflow-hidden">
             <div className={`flex items-center justify-between px-5 py-3 border-b border-[#eeeee9] ${isRtl ? 'flex-row-reverse' : ''}`}>
               <div className="flex items-center gap-2">
-                <MaterialSymbol icon="terminal" size={18} className="text-[#717973]" />
-                <span className="font-bold text-sm text-[#404943]">Activity Log</span>
-                <span className="text-xs text-[#717973]">({logs.length} entries)</span>
+                <MaterialSymbol icon="terminal" size={18} className="text-on-surface-subtle" />
+                <span className="font-bold text-sm text-on-surface-variant">Activity Log</span>
+                <span className="text-xs text-on-surface-subtle">({logs.length} entries)</span>
               </div>
               <button onClick={clearLogs} className="text-xs text-red-500 hover:text-red-700 font-medium transition">Clear</button>
             </div>
-            <div className="h-48 overflow-y-auto p-4 bg-[#FAF1F5] font-mono text-xs">
+            <div className="h-48 overflow-y-auto p-4 bg-brand-light font-mono text-xs">
               {logs.length === 0 ? (
-                <p className="text-[#717973] italic">No activity yet. Toggle auto-pilot on devices and start the simulation.</p>
+                <p className="text-on-surface-subtle italic">No activity yet. Toggle auto-pilot on devices and start the simulation.</p>
               ) : (
                 logs.map((log, i) => (
-                  <div key={i} className={`mb-1 ${log.type === 'error' ? 'text-red-600' : log.type === 'success' ? 'text-emerald-700' : 'text-[#404943]'}`}>
-                    <span className="text-[#717973]">[{log.time}]</span> {log.msg}
+                  <div key={i} className={`mb-1 ${log.type === 'error' ? 'text-red-600' : log.type === 'success' ? 'text-emerald-700' : 'text-on-surface-variant'}`}>
+                    <span className="text-on-surface-subtle">[{log.time}]</span> {log.msg}
                   </div>
                 ))
               )}
@@ -673,28 +699,28 @@ export default function SimulatorPage({ embedded }) {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setShowQuickAdd(false)}>
           <div className="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold text-[#002819]">Quick Add Device</h3>
-              <button onClick={() => setShowQuickAdd(false)} className="p-1 hover:bg-[#F4F4EF] rounded-lg transition">
-                <MaterialSymbol icon="close" size={20} className="text-[#717973]" />
+              <h3 className="text-xl font-bold text-brand-primary">Quick Add Device</h3>
+              <button onClick={() => setShowQuickAdd(false)} className="p-1 hover:bg-surface-light rounded-lg transition">
+                <MaterialSymbol icon="close" size={20} className="text-on-surface-subtle" />
               </button>
             </div>
             <div className="space-y-4">
               <div>
-                <label className="text-xs font-bold uppercase tracking-widest text-[#404943]/70 px-1">Device Name</label>
+                <label className="text-xs font-bold uppercase tracking-widest text-on-surface-variant/70 px-1">Device Name</label>
                 <input
                   type="text"
                   value={quickAddName}
                   onChange={e => setQuickAddName(e.target.value)}
                   placeholder="e.g., Test Collar"
-                  className="w-full bg-[#F4F4EF] border-none rounded-xl px-4 py-3 mt-1 focus:ring-2 focus:ring-[#06402b]"
+                  className="w-full bg-surface-light border-none rounded-xl px-4 py-3 mt-1 focus:ring-2 focus:ring-brand-secondary"
                 />
               </div>
               <div>
-                <label className="text-xs font-bold uppercase tracking-widest text-[#404943]/70 px-1">Assign to Animal *</label>
+                <label className="text-xs font-bold uppercase tracking-widest text-on-surface-variant/70 px-1">Assign to Animal *</label>
                 <select
                   value={quickAddAnimalId}
                   onChange={e => setQuickAddAnimalId(e.target.value)}
-                  className="w-full bg-[#F4F4EF] border-none rounded-xl px-4 py-3 mt-1 appearance-none focus:ring-2 focus:ring-[#06402b]"
+                  className="w-full bg-surface-light border-none rounded-xl px-4 py-3 mt-1 appearance-none focus:ring-2 focus:ring-brand-secondary"
                 >
                   <option value="">Select an animal...</option>
                   {unassignedAnimals.map(animal => (
@@ -711,14 +737,14 @@ export default function SimulatorPage({ embedded }) {
             <div className="flex gap-3 mt-6">
               <button
                 onClick={() => setShowQuickAdd(false)}
-                className="flex-1 py-3 bg-[#F4F4EF] text-[#404943] rounded-xl font-bold text-sm hover:bg-[#E3E3DE] transition"
+                className="flex-1 py-3 bg-surface-light text-on-surface-variant rounded-xl font-bold text-sm hover:bg-surface-high transition"
               >
                 Cancel
               </button>
               <button
                 onClick={quickAddDevice}
                 disabled={!quickAddAnimalId}
-                className="flex-1 py-3 bg-[#002819] text-white rounded-xl font-bold text-sm hover:bg-[#06402b] transition disabled:opacity-50"
+                className="flex-1 py-3 bg-brand-primary text-white rounded-xl font-bold text-sm hover:bg-brand-secondary transition disabled:opacity-50"
               >
                 Add to Simulator
               </button>

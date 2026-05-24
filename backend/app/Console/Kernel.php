@@ -10,8 +10,12 @@ class Kernel extends ConsoleKernel
     protected function schedule(Schedule $schedule): void
     {
         $schedule->command('auctions:end-expired')->everyMinute();
+        $schedule->command('auctions:process-expired-payments')->everyMinute();
         $schedule->command('devices:update-live-data')->everyMinute();
+        $schedule->command('devices:poll-real-data')->everyFiveMinutes();
         $schedule->command('alerts:check-temperature')->everyFiveMinutes();
+        $schedule->command('subscriptions:check-expirations')->daily();
+        $schedule->command('subscriptions:send-renewal-reminders')->daily();
     }
 
     protected function commands(): void

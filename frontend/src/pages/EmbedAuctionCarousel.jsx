@@ -55,31 +55,31 @@ export default function EmbedAuctionCarousel() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-48 bg-[#FAF5F1]">
-        <div className="animate-spin w-6 h-6 border-3 border-[#002819] border-t-transparent rounded-full" />
+      <div className="flex items-center justify-center h-48 bg-surface-light">
+        <div className="animate-spin w-6 h-6 border-3 border-brand-primary border-t-transparent rounded-full" />
       </div>
     );
   }
 
   if (auctions.length === 0) {
     return (
-      <div className="flex items-center justify-center h-48 bg-[#FAF5F1]">
-        <p className="text-[#717973] text-sm font-medium">No active auctions</p>
+      <div className="flex items-center justify-center h-48 bg-surface-light">
+        <p className="text-on-surface-subtle text-sm font-medium">No active auctions</p>
       </div>
     );
   }
 
   return (
-    <div className="relative bg-[#FAF5F1] py-4 px-2">
+    <div className="relative bg-surface-light py-4 px-2">
       <div className="flex items-center justify-between mb-3 px-2">
-        <p className="text-sm font-bold text-[#002819] flex items-center gap-1">
+        <p className="text-sm font-bold text-brand-primary flex items-center gap-1">
           <MaterialSymbol icon="gavel" size={16} />
           {t('nav.auctions') || 'Auctions'}
         </p>
         <a
           href="/react.oasis/auctions"
           target="_top"
-          className="text-[10px] font-medium text-[#D4AF37] hover:underline"
+          className="text-[10px] font-medium text-brand-accent hover:underline"
         >
           {t('common.viewAll') || 'View All'}
         </a>
@@ -92,21 +92,20 @@ export default function EmbedAuctionCarousel() {
               onClick={() => scroll('left')}
               className={`absolute left-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 bg-white/90 rounded-full shadow-md flex items-center justify-center hover:bg-white transition opacity-0 group-hover:opacity-100 ${isRtl ? 'right-0 left-auto' : ''}`}
             >
-              <MaterialSymbol icon={isRtl ? 'chevron_right' : 'chevron_left'} size={20} className="text-[#002819]" />
+              <MaterialSymbol icon={isRtl ? 'chevron_right' : 'chevron_left'} size={20} className="text-brand-primary" />
             </button>
             <button
               onClick={() => scroll('right')}
               className={`absolute right-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 bg-white/90 rounded-full shadow-md flex items-center justify-center hover:bg-white transition opacity-0 group-hover:opacity-100 ${isRtl ? 'left-0 right-auto' : ''}`}
             >
-              <MaterialSymbol icon={isRtl ? 'chevron_left' : 'chevron_right'} size={20} className="text-[#002819]" />
+              <MaterialSymbol icon={isRtl ? 'chevron_left' : 'chevron_right'} size={20} className="text-brand-primary" />
             </button>
           </>
         )}
 
         <div
           ref={scrollRef}
-          className="flex gap-3 overflow-x-auto scroll-smooth pb-1"
-          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+          className="flex gap-3 overflow-x-auto scroll-smooth pb-1 no-scrollbar"
         >
           {auctions.map(auction => {
             const status = getStatusLabel(auction);
@@ -116,14 +115,14 @@ export default function EmbedAuctionCarousel() {
                 key={auction.id}
                 href={`/react.oasis/auctions/${auction.id}`}
                 target="_top"
-                className="flex-none w-56 bg-white rounded-xl border border-[#eeeee9] overflow-hidden hover:shadow-md hover:border-[#D4AF37]/30 transition-all group/card"
+                className="flex-none w-56 bg-white rounded-xl border border-[#eeeee9] overflow-hidden hover:shadow-md hover:border-brand-accent/30 transition-all group/card"
               >
                 <div className="h-28 bg-gradient-to-br from-[#f4f4ef] to-[#e8e8e0] relative overflow-hidden">
                   {imageUrl ? (
                     <img src={imageUrl} alt={auction.title} className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
-                      <MaterialSymbol icon="pets" size={32} className="text-[#D4AF37]/30" />
+                      <MaterialSymbol icon="pets" size={32} className="text-brand-accent/30" />
                     </div>
                   )}
                   <div className="absolute top-2 left-2">
@@ -134,16 +133,16 @@ export default function EmbedAuctionCarousel() {
                   </div>
                 </div>
                 <div className="p-3">
-                  <h3 className="font-bold text-[#002819] text-xs truncate group-hover/card:text-[#D4AF37] transition-colors">
+                  <h3 className="font-bold text-brand-primary text-xs truncate group-hover/card:text-brand-accent transition-colors">
                     {auction.title || `${auction.animal?.species || 'Animal'} Auction`}
                   </h3>
                   <div className="flex items-center justify-between mt-2">
                     <div>
-                      <p className="text-[9px] text-[#717973] uppercase tracking-wider">{t('common.currentBid') || 'Bid'}</p>
-                      <p className="font-bold text-[#002819] text-sm">{formatPrice(auction.current_bid)}</p>
+                      <p className="text-[9px] text-on-surface-subtle uppercase tracking-wider">{t('common.currentBid') || 'Bid'}</p>
+                      <p className="font-bold text-brand-primary text-sm">{formatPrice(auction.current_bid)}</p>
                     </div>
                     {auction.owner && (
-                      <p className="text-[10px] text-[#404943] truncate max-w-[80px]">{auction.owner.name}</p>
+                      <p className="text-[10px] text-on-surface-variant truncate max-w-[80px]">{auction.owner.name}</p>
                     )}
                   </div>
                 </div>
@@ -153,9 +152,9 @@ export default function EmbedAuctionCarousel() {
         </div>
       </div>
 
-      <div className="text-center mt-3 text-[9px] text-[#717973]">
+      <div className="text-center mt-3 text-[9px] text-on-surface-subtle">
         {t('embedCodesSection.poweredBy') || 'Powered by'}{' '}
-        <a href="/react.oasis/" target="_top" className="text-[#002819] font-semibold hover:underline">
+        <a href="/react.oasis/" target="_top" className="text-brand-primary font-semibold hover:underline">
           Oasis Trace
         </a>
       </div>

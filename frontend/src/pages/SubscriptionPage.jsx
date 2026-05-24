@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { MaterialSymbol } from 'react-material-symbols';
 import { apiFetch } from '../utils/api';
 import { useI18n } from '../i18n';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '../context/AuthContext';
 import { getPendingSubscription, setPendingSubscription } from '../utils/cookies';
 
 const TIER_COLORS = ['#002819', '#06402B', '#D4AF37', '#002819'];
@@ -100,7 +100,7 @@ export default function SubscriptionPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin w-8 h-8 border-4 border-[#002819] border-t-transparent rounded-full" />
+        <div className="animate-spin w-8 h-8 border-4 border-brand-primary border-t-transparent rounded-full" />
       </div>
     );
   }
@@ -108,12 +108,12 @@ export default function SubscriptionPage() {
   return (
     <div className="flex-1 max-w-4xl mx-auto w-full p-6 sm:p-8 space-y-8">
       {!isAdmin && (isFromRegistration || isNewUser) && currentSubscription?.status !== 'active' && currentSubscription?.status !== 'pending_payment' && (
-        <div className="bg-gradient-to-br from-[#D4AF37]/15 via-[#D4AF37]/5 to-[#002819]/10 border border-[#D4AF37]/40 rounded-3xl p-8 text-center relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-40 h-40 bg-[#D4AF37]/10 rounded-full -translate-y-1/2 translate-x-1/2" />
-          <div className="absolute bottom-0 left-0 w-32 h-32 bg-[#002819]/5 rounded-full translate-y-1/2 -translate-x-1/2" />
-          <MaterialSymbol icon="celebration" size={48} className="text-[#D4AF37] mx-auto mb-3" weight="fill" />
-          <h2 className="text-2xl font-bold text-[#002819] mb-2">{t('subscription.welcomeToOasis')}</h2>
-          <p className="text-[#404943] max-w-lg mx-auto">
+        <div className="bg-gradient-to-br from-brand-accent/15 via-[#D4AF37]/5 to-brand-primary/10 border border-brand-accent/40 rounded-3xl p-8 text-center relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-40 h-40 bg-brand-accent/10 rounded-full -translate-y-1/2 translate-x-1/2" />
+          <div className="absolute bottom-0 left-0 w-32 h-32 bg-brand-primary/5 rounded-full translate-y-1/2 -translate-x-1/2" />
+          <MaterialSymbol icon="celebration" size={48} className="text-brand-accent mx-auto mb-3" weight="fill" />
+          <h2 className="text-2xl font-bold text-brand-primary mb-2">{t('subscription.welcomeToOasis')}</h2>
+          <p className="text-on-surface-variant max-w-lg mx-auto">
             {isFromRegistration ? t('subscription.selectPlanToStart') : t('subscription.selectPlanToUpgrade')}
           </p>
         </div>
@@ -121,23 +121,23 @@ export default function SubscriptionPage() {
 
       {!isAdmin && (
         <div className="text-center">
-          <h2 className="text-3xl font-bold text-[#002819]">{t('subscription.chooseYourPlan')}</h2>
-          <p className="text-[#404943] mt-2">{t('subscription.getStartedDescription')}</p>
+          <h2 className="text-3xl font-bold text-brand-primary">{t('subscription.chooseYourPlan')}</h2>
+          <p className="text-on-surface-variant mt-2">{t('subscription.getStartedDescription')}</p>
         </div>
       )}
 
       {!isAdmin && (
         <div className="flex items-center justify-center gap-3">
-          <span className={`text-sm font-semibold transition-colors ${billingCycle === 'monthly' ? 'text-[#002819]' : 'text-[#717973]'}`}>
+          <span className={`text-sm font-semibold transition-colors ${billingCycle === 'monthly' ? 'text-brand-primary' : 'text-on-surface-subtle'}`}>
             {t('subscription.monthly')}
           </span>
           <button
             onClick={() => setBillingCycle(billingCycle === 'monthly' ? 'yearly' : 'monthly')}
-            className={`relative w-14 h-7 rounded-full transition-colors ${billingCycle === 'yearly' ? 'bg-[#002819]' : 'bg-gray-300'}`}
+            className={`relative w-14 h-7 rounded-full transition-colors ${billingCycle === 'yearly' ? 'bg-brand-primary' : 'bg-gray-300'}`}
           >
             <div className={`absolute top-1 w-5 h-5 rounded-full bg-white shadow transition-transform ${billingCycle === 'yearly' ? 'translate-x-8' : 'translate-x-1'} ${isRtl ? (billingCycle === 'yearly' ? 'translate-x-[-2rem]' : 'translate-x-[-0.25rem]') : ''}`} />
           </button>
-          <span className={`text-sm font-semibold transition-colors ${billingCycle === 'yearly' ? 'text-[#002819]' : 'text-[#717973]'}`}>
+          <span className={`text-sm font-semibold transition-colors ${billingCycle === 'yearly' ? 'text-brand-primary' : 'text-on-surface-subtle'}`}>
             {t('subscription.yearly')}
           </span>
           {billingCycle === 'yearly' && (
@@ -155,8 +155,8 @@ export default function SubscriptionPage() {
       )}
 
       {!isAdmin && limits && currentSubscription?.status === 'active' && (
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-[#E3E3DE]">
-          <h3 className="font-bold text-[#002819] mb-4">{t('subscription.currentUsage')}</h3>
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-surface-high">
+          <h3 className="font-bold text-brand-primary mb-4">{t('subscription.currentUsage')}</h3>
           <div className="grid grid-cols-3 gap-4">
             {[
               { label: t('subscription.animals'), used: limits.animals?.used, max: limits.animals?.max, icon: 'pets' },
@@ -166,14 +166,14 @@ export default function SubscriptionPage() {
               const pct = item.max > 0 ? Math.round((item.used / item.max) * 100) : 0;
               return (
                 <div key={item.label} className="text-center">
-                  <MaterialSymbol icon={item.icon} size={24} className="text-[#D4AF37] mx-auto mb-1" />
-                  <div className="text-2xl font-bold text-[#002819]">
+                  <MaterialSymbol icon={item.icon} size={24} className="text-brand-accent mx-auto mb-1" />
+                  <div className="text-2xl font-bold text-brand-primary">
                     {item.used} / {item.max === 0 ? (t('subscription.unlimited') || 'Unlimited') : item.max}
                   </div>
-                  <div className="text-sm text-[#717973]">{item.label}</div>
+                  <div className="text-sm text-on-surface-subtle">{item.label}</div>
                   {item.max > 0 && (
                     <div className="mt-2 w-full bg-gray-100 rounded-full h-1.5">
-                      <div className="bg-[#002819] rounded-full h-1.5 transition-all" style={{ width: `${Math.min(pct, 100)}%` }} />
+                      <div className="bg-brand-primary rounded-full h-1.5 transition-all" style={{ width: `${Math.min(pct, 100)}%` }} />
                     </div>
                   )}
                 </div>
@@ -202,26 +202,26 @@ export default function SubscriptionPage() {
                   isFeatured && !isCurrent ? 'md:flex-[2] md:scale-105 md:-translate-y-2' : 'md:flex-1'
                 } ${
                   isCurrent
-                    ? 'border-[#D4AF37] ring-2 ring-[#D4AF37]/20'
+                    ? 'border-brand-accent ring-2 ring-brand-accent/20'
                     : isFeatured && !isCurrent
-                      ? 'border-[#002819] ring-2 ring-[#002819]/15 bg-gradient-to-b from-[#002819]/5 to-white'
+                      ? 'border-brand-primary ring-2 ring-[#002819]/15 bg-gradient-to-b from-brand-primary/5 to-white'
                       : isRecommended && !isCurrent
-                        ? 'border-[#002819]/20'
-                        : 'border-[#E3E3DE]'
+                        ? 'border-brand-primary/20'
+                        : 'border-surface-high'
                 }`}
               >
                 {isFeatured && !isCurrent && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#002819] text-white text-[11px] font-bold px-4 py-1 rounded-full whitespace-nowrap z-10 uppercase tracking-wider">
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-brand-primary text-white text-[11px] font-bold px-4 py-1 rounded-full whitespace-nowrap z-10 uppercase tracking-wider">
                     {tier.name}
                   </div>
                 )}
                 {isRecommended && !isCurrent && !isFeatured && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#D4AF37] text-white text-[10px] font-bold px-3 py-1 rounded-full whitespace-nowrap z-10">
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-brand-accent text-white text-[10px] font-bold px-3 py-1 rounded-full whitespace-nowrap z-10">
                     {t('subscription.recommended')}
                   </div>
                 )}
                 {savings > 0 && billingCycle === 'yearly' && (
-                  <div className={`absolute -top-3 end-3 text-white text-[10px] font-bold px-2 py-1 rounded-full z-10 ${isFeatured ? 'bg-[#002819]' : 'bg-emerald-500'}`}>
+                  <div className={`absolute -top-3 end-3 text-white text-[10px] font-bold px-2 py-1 rounded-full z-10 ${isFeatured ? 'bg-brand-primary' : 'bg-emerald-500'}`}>
                     {t('subscription.savePercent', { percent: savings })}
                   </div>
                 )}
@@ -234,14 +234,14 @@ export default function SubscriptionPage() {
                       <MaterialSymbol icon={TIER_ICONS[idx % TIER_ICONS.length] || 'eco'} size={isFeatured ? 26 : 22} style={{ color: TIER_COLORS[idx % TIER_COLORS.length] }} />
                     </div>
                     <div>
-                      <h3 className={`font-bold text-[#002819] ${isFeatured ? 'text-xl' : 'text-lg'}`}>{tier.name}</h3>
+                      <h3 className={`font-bold text-brand-primary ${isFeatured ? 'text-xl' : 'text-lg'}`}>{tier.name}</h3>
                       {isCurrent && (
-                        <span className="text-[10px] font-bold text-[#D4AF37] uppercase tracking-wider">
+                        <span className="text-[10px] font-bold text-brand-accent uppercase tracking-wider">
                           {t('subscription.currentPlan')}
                         </span>
                       )}
                       {tier.is_yearly_only && (
-                        <span className="text-[10px] font-bold text-[#06402B] bg-[#06402B]/10 px-2 py-0.5 rounded-full uppercase tracking-wider ml-2">
+                        <span className="text-[10px] font-bold text-brand-secondary bg-brand-secondary/10 px-2 py-0.5 rounded-full uppercase tracking-wider ml-2">
                           Yearly Only
                         </span>
                       )}
@@ -249,19 +249,19 @@ export default function SubscriptionPage() {
                   </div>
 
                   <div className="mb-4">
-                    <span className={`font-bold text-[#002819] ${isFeatured ? 'text-4xl' : 'text-3xl'}`}>{formatPrice(price)}</span>
+                    <span className={`font-bold text-brand-primary ${isFeatured ? 'text-4xl' : 'text-3xl'}`}>{formatPrice(price)}</span>
                     {price !== (t('subscription.free') || 'Free') && price !== '0' && (
-                      <span className="text-[#717973] text-sm">{priceLabel}</span>
+                      <span className="text-on-surface-subtle text-sm">{priceLabel}</span>
                     )}
                     {effectiveCycle === 'yearly' && savings > 0 && (
-                      <div className="text-xs text-[#717973] mt-0.5 line-through">
+                      <div className="text-xs text-on-surface-subtle mt-0.5 line-through">
                         ${(parseFloat(tier.price_monthly) * 12).toFixed(0)}/yr
                       </div>
                     )}
                   </div>
 
                   {tier.description && (
-                    <p className={`mb-4 ${isFeatured ? 'text-sm font-medium text-[#002819]' : 'text-sm text-[#717973]'}`}>{tier.description}</p>
+                    <p className={`mb-4 ${isFeatured ? 'text-sm font-medium text-brand-primary' : 'text-sm text-on-surface-subtle'}`}>{tier.description}</p>
                   )}
 
                   <ul className="space-y-2.5 mb-6 flex-1">
@@ -274,9 +274,9 @@ export default function SubscriptionPage() {
                       tier.has_advanced_reports && { icon: 'analytics', text: t('nav.reports') },
                       tier.has_api_access && { icon: 'api', text: 'API Access' },
                     ].filter(Boolean).map((item, i) => (
-                      <li key={i} className="flex items-center gap-2.5 text-sm text-[#404943]">
-                        <div className="w-6 h-6 rounded-lg bg-[#D4AF37]/10 flex items-center justify-center flex-shrink-0">
-                          <MaterialSymbol icon={item.icon} size={14} className="text-[#D4AF37]" />
+                      <li key={i} className="flex items-center gap-2.5 text-sm text-on-surface-variant">
+                        <div className="w-6 h-6 rounded-lg bg-brand-accent/10 flex items-center justify-center flex-shrink-0">
+                          <MaterialSymbol icon={item.icon} size={14} className="text-brand-accent" />
                         </div>
                         {item.text}
                       </li>
@@ -288,8 +288,8 @@ export default function SubscriptionPage() {
                       onClick={() => price === '0' || tier.price_monthly === '0.00' ? handleActivateFreePlan(tier) : goToCheckout(tier)}
                       className={`w-full py-3 rounded-xl font-bold transition-all duration-200 ${
                         isFeatured || isRecommended
-                          ? 'bg-[#002819] text-white hover:bg-[#06402B] shadow-md hover:shadow-lg'
-                          : 'bg-[#F4F4EF] text-[#002819] hover:bg-[#E3E3DE] border border-[#E3E3DE]'
+                          ? 'bg-brand-primary text-white hover:bg-brand-secondary shadow-md hover:shadow-lg'
+                          : 'bg-surface-light text-brand-primary hover:bg-surface-high border border-surface-high'
                       }`}
                     >
                       {price === '0' || tier.price_monthly === '0.00' ? (t('subscription.activateFree') || 'Activate Free Plan') : (t('subscription.subscribeNow') || 'Subscribe Now')}

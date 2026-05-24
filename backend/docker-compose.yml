@@ -1,6 +1,21 @@
 version: '3.8'
 
 services:
+  redis:
+    image: redis:7-alpine
+    container_name: oasis-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - oasis-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      timeout: 5s
+      retries: 5
+
   mysql:
     image: mysql:8.0
     container_name: oasis-mysql
@@ -44,6 +59,8 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     networks:
       - oasis-network
 
@@ -58,11 +75,13 @@ services:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf
     depends_on:
       - app
+      - redis
     networks:
       - oasis-network
 
 volumes:
   mysql_data:
+  redis_data:
 
 networks:
   oasis-network:

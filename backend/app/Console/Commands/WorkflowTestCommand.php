@@ -8,12 +8,14 @@ use Illuminate\Console\Command;
 
 class WorkflowTestCommand extends Command
 {
-    protected $signature = 'workflow:test';
+    protected $signature = 'workflow:test {--skip-cleanup : Skip data cleanup after test}';
     protected $description = 'Run the full business workflow test';
 
-    public function handle(WorkflowTestService $service): int
+    public function handle(): int
     {
         $this->info('Starting workflow test...');
+
+        $service = new WorkflowTestService($this->option('skip-cleanup'));
 
         $run = WorkflowTestRun::create([
             'status' => 'running',

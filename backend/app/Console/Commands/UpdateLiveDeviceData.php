@@ -14,7 +14,9 @@ class UpdateLiveDeviceData extends Command
 
     public function handle(): int
     {
-        $devicesWithAnimals = Device::whereNotNull('animal_id')->with('animal')->get();
+        $devicesWithAnimals = Device::whereNotNull('animal_id')
+            ->where('data_source', 'simulated')
+            ->with('animal')->get();
         $updatedAnimalIds = [];
         $count = 0;
         
@@ -58,6 +60,7 @@ class UpdateLiveDeviceData extends Command
                     'recorded_at' => now(),
                     'battery_level' => $device->battery_level,
                     'signal_strength' => $device->signal_strength ?? rand(60, 100),
+                    'data_source' => 'simulated',
                 ]);
                 
                 $updatedAnimalIds[] = $animal->id;

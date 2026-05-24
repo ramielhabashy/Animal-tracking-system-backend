@@ -11,9 +11,7 @@ import {
   MedicalTypeSettings,
   EmailSettings,
   StripeSettings,
-  GeminiSettings,
-  WhatsAppSettings,
-  TwilioSettings,
+  AISettings,
   TranslationApiSettings,
   MenuSettings,
   CountrySettings,
@@ -21,28 +19,32 @@ import {
   BannerSettings,
   TransferCommissionSettings,
   AuctionSettings,
+  DeviceIntegrationSettings,
+  PageSettings,
+  SubscriptionSettings,
 } from '../components/Settings';
 
 const tabs = [
   { id: 'general', labelKey: 'settings.general', icon: 'settings' },
-  { id: 'species', label: 'Species', icon: 'pets' },
-  { id: 'languages', labelKey: 'settings.languages', label: 'Languages', icon: 'language' },
-  { id: 'roles', labelKey: 'settings.roles', label: 'Roles', icon: 'admin_panel_settings' },
-  { id: 'taskTypes', label: 'Task Types', icon: 'task' },
-  { id: 'medicalTypes', label: 'Medical Types', icon: 'vaccines' },
-  { id: 'simulator', label: 'Simulator', icon: 'moving' },
-  { id: 'translation', label: 'Translation', icon: 'translate' },
-  { id: 'email', label: 'Email', icon: 'mail' },
+  { id: 'species', labelKey: 'settings.species', icon: 'pets' },
+  { id: 'languages', labelKey: 'settings.languages', icon: 'language' },
+  { id: 'roles', labelKey: 'settings.roles', icon: 'admin_panel_settings' },
+  { id: 'taskTypes', labelKey: 'settings.taskTypes', icon: 'task' },
+  { id: 'medicalTypes', labelKey: 'settings.medicalTypes', icon: 'vaccines' },
+  { id: 'simulator', labelKey: 'settings.simulator', icon: 'moving' },
+  { id: 'translation', labelKey: 'settings.translation', icon: 'translate' },
+  { id: 'email', labelKey: 'settings.email', icon: 'mail' },
   { id: 'stripe', labelKey: 'settings.stripe', icon: 'credit_card' },
-  { id: 'gemini', labelKey: 'settings.gemini', icon: 'psychology' },
-  { id: 'whatsapp', labelKey: 'settings.whatsapp', icon: 'chat' },
-  { id: 'twilio', labelKey: 'settings.twilio', icon: 'sms' },
-  { id: 'menu', label: 'Menu', icon: 'menu' },
-  { id: 'countries', label: 'Countries', icon: 'globe' },
-  { id: 'embedCodes', labelKey: 'settings.embedCodes', label: 'Embed Codes', icon: 'code' },
-  { id: 'announcements', labelKey: 'settings.announcements', label: 'Announcements', icon: 'campaign' },
-  { id: 'transferCommission', label: 'Transfer Commission', icon: 'swap_horiz' },
-  { id: 'auction', label: 'Auction', icon: 'gavel' },
+  { id: 'ai', labelKey: 'settings.ai', icon: 'psychology' },
+  { id: 'menu', labelKey: 'settings.menu', icon: 'menu' },
+  { id: 'countries', labelKey: 'settings.countries', icon: 'globe' },
+  { id: 'embedCodes', labelKey: 'settings.embedCodes', icon: 'code' },
+  { id: 'announcements', labelKey: 'settings.announcements', icon: 'campaign' },
+  { id: 'transferCommission', labelKey: 'settings.transferCommission', icon: 'swap_horiz' },
+  { id: 'subscription', labelKey: 'settings.subscription', icon: 'subscriptions' },
+  { id: 'auction', labelKey: 'settings.auction', icon: 'gavel' },
+  { id: 'deviceIntegration', labelKey: 'settings.deviceIntegration', icon: 'settings_ethernet' },
+  { id: 'pages', label: 'Pages', icon: 'description' },
 ];
 
 const SimulatorPage = React.lazy(() => import('./SimulatorPage'));
@@ -64,10 +66,10 @@ export default function SettingsPage() {
         <nav className={`flex text-xs text-[#4f6357] mb-2 uppercase tracking-widest font-bold ${isRtl ? 'flex-row-reverse' : ''}`}>
           <span>{t('common.settings')}</span>
           <span className="mx-2">/</span>
-          <span className="text-[#002819]">{t('settings.title')}</span>
+          <span className="text-brand-primary">{t('settings.title')}</span>
         </nav>
-        <h2 className="text-3xl font-bold text-[#002819]">{t('settings.title')}</h2>
-        <p className="text-[#404943] mt-1">{t('settings.subtitle')}</p>
+        <h2 className="text-3xl font-bold text-brand-primary">{t('settings.title')}</h2>
+        <p className="text-on-surface-variant mt-1">{t('settings.subtitle')}</p>
       </div>
 
       {message && (
@@ -87,23 +89,19 @@ export default function SettingsPage() {
           </button>
         </div>
       )}
-
       <div className="flex flex-wrap gap-2 bg-[#F4F4EF] p-1 rounded-xl w-fit">
-        {tabs.map(tab => (
+        {tabs.map(t => (
           <button
-            key={tab.id}
-            onClick={() => {
-              setActiveTab(tab.id);
-              setMessage(null);
-            }}
+            key={t.id}
+            onClick={() => { setActiveTab(t.id); setMessage(null); }}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all ${
-              activeTab === tab.id
+              activeTab === t.id
                 ? 'bg-white text-[#002819] shadow-sm'
                 : 'text-[#404943] hover:text-[#002819]'
             }`}
           >
-            <MaterialSymbol icon={tab.icon} size={18} />
-            {tabLabel(tab)}
+            <MaterialSymbol icon={t.icon} size={18} />
+            {tabLabel(t)}
           </button>
         ))}
       </div>
@@ -117,16 +115,17 @@ export default function SettingsPage() {
         {activeTab === 'medicalTypes' && <MedicalTypeSettings dir={dir} message={message} setMessage={setMessage} />}
         {activeTab === 'email' && <EmailSettings dir={dir} message={message} setMessage={setMessage} saving={saving} setSaving={setSaving} />}
         {activeTab === 'stripe' && <StripeSettings dir={dir} message={message} setMessage={setMessage} saving={saving} setSaving={setSaving} />}
-        {activeTab === 'gemini' && <GeminiSettings dir={dir} message={message} setMessage={setMessage} saving={saving} setSaving={setSaving} />}
-        {activeTab === 'whatsapp' && <WhatsAppSettings dir={dir} message={message} setMessage={setMessage} saving={saving} setSaving={setSaving} />}
-        {activeTab === 'twilio' && <TwilioSettings dir={dir} message={message} setMessage={setMessage} saving={saving} setSaving={setSaving} />}
         {activeTab === 'translation' && <TranslationApiSettings dir={dir} message={message} setMessage={setMessage} saving={saving} setSaving={setSaving} />}
         {activeTab === 'menu' && <MenuSettings dir={dir} message={message} setMessage={setMessage} />}
         {activeTab === 'countries' && <CountrySettings dir={dir} message={message} setMessage={setMessage} saving={saving} setSaving={setSaving} />}
         {activeTab === 'embedCodes' && <EmbedCodesSettings dir={dir} />}
         {activeTab === 'announcements' && <BannerSettings dir={dir} message={message} setMessage={setMessage} />}
+        {activeTab === 'subscription' && <SubscriptionSettings dir={dir} message={message} setMessage={setMessage} saving={saving} setSaving={setSaving} />}
         {activeTab === 'auction' && <AuctionSettings dir={dir} message={message} setMessage={setMessage} saving={saving} setSaving={setSaving} />}
         {activeTab === 'transferCommission' && <TransferCommissionSettings dir={dir} message={message} setMessage={setMessage} saving={saving} setSaving={setSaving} />}
+        {activeTab === 'ai' && <AISettings dir={dir} message={message} setMessage={setMessage} saving={saving} setSaving={setSaving} />}
+        {activeTab === 'deviceIntegration' && <DeviceIntegrationSettings dir={dir} message={message} setMessage={setMessage} saving={saving} setSaving={setSaving} />}
+        {activeTab === 'pages' && <PageSettings dir={dir} message={message} setMessage={setMessage} />}
         {activeTab === 'simulator' && (
           <React.Suspense fallback={
             <div className="flex items-center justify-center h-64">
@@ -135,6 +134,11 @@ export default function SettingsPage() {
           }>
             <SimulatorPage embedded />
           </React.Suspense>
+        )}
+        {loading && (
+          <div className="flex justify-center items-center min-h-[200px]">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#002819]"></div>
+          </div>
         )}
       </div>
     </div>

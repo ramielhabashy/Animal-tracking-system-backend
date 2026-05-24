@@ -240,16 +240,16 @@ export default function AuctionList() {
           <nav className="flex text-xs text-[#4f6357] mb-2 uppercase tracking-widest font-bold">
             <span>{t('auctionsPage.marketplace')}</span>
             <span className="mx-2">/</span>
-            <span className="text-[#002819]">{t('auctionsPage.camelAuctions')}</span>
+            <span className="text-brand-primary">{t('auctionsPage.camelAuctions')}</span>
           </nav>
-          <h2 className="text-4xl font-['Manrope'] font-extrabold text-[#002819] tracking-tight">
+          <h2 className="text-4xl font-['Manrope'] font-extrabold text-brand-primary tracking-tight">
             {filter === 'all' ? t('auctions.allAuctions') : filter === 'active' ? t('auctionsPage.liveAuctions') : filter === 'mine' ? t('auctions.myAuctions') : filter === 'sold' ? t('auctionsPage.sold') : t('auctionsPage.ended')}
           </h2>
-          <p className="text-[#404943] mt-1">{filteredAuctions.length} {filter === 'active' ? t('auctionsPage.live') : ''} {t('auctionsPage.auctions')}</p>
+          <p className="text-on-surface-variant mt-1">{filteredAuctions.length} {filter === 'active' ? t('auctionsPage.live') : ''} {t('auctionsPage.auctions')}</p>
         </div>
         <Link
           to="/auctions/new"
-          className={`px-6 py-3 bg-[#002819] text-white rounded-xl font-bold text-sm shadow-lg shadow-[#002819]/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2 ${isRtl ? 'flex-row-reverse' : ''}`}
+          className={`px-6 py-3 bg-brand-primary text-white rounded-xl font-bold text-sm shadow-lg shadow-brand-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2 ${isRtl ? 'flex-row-reverse' : ''}`}
         >
           <MaterialSymbol icon="add" size={20} />
           {t('auctionsPage.startAuction')}
@@ -263,8 +263,8 @@ export default function AuctionList() {
             onClick={() => setFilter(status)}
             className={`px-5 py-2 rounded-full text-sm font-semibold transition-all ${
               filter === status
-                ? 'bg-[#002819] text-white'
-                : 'bg-white text-[#404943] hover:bg-[#eeeee9] border border-[#c0c9c1]/30'
+                ? 'bg-brand-primary text-white'
+                : 'bg-white text-on-surface-variant hover:bg-surface-dim border border-outline/30'
             }`}
           >
             {status === 'mine' ? t('auctions.myAuctions') : status === 'pending' ? t('auctionsPage.pendingApproval') : status === 'payments' ? t('auctionsPage.payments') : status.charAt(0).toUpperCase() + status.slice(1)}
@@ -274,26 +274,26 @@ export default function AuctionList() {
 
       <div className={`flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between ${isRtl ? 'sm:flex-row-reverse' : ''}`}>
         <div className="relative flex-1 w-full sm:max-w-md">
-          <MaterialSymbol icon="search" size={18} className={`absolute top-1/2 -translate-y-1/2 text-[#717973] ${isRtl ? 'right-3' : 'left-3'}`} />
+          <MaterialSymbol icon="search" size={18} className={`absolute top-1/2 -translate-y-1/2 text-on-surface-subtle ${isRtl ? 'right-3' : 'left-3'}`} />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={t('common.search')}
-            className={`w-full py-2.5 bg-[#F4F4EF] rounded-xl border-none text-sm ${isRtl ? 'pr-10 pl-3 text-right' : 'pl-10 pr-3 text-left'} placeholder:text-[#717973]/60 focus:outline-none focus:ring-2 focus:ring-[#06402B]/20 transition-all`}
+            className={`w-full py-2.5 bg-surface-light rounded-xl border-none text-sm ${isRtl ? 'pr-10 pl-3 text-right' : 'pl-10 pr-3 text-left'} placeholder:text-on-surface-subtle/60 focus:outline-none focus:ring-2 focus:ring-brand-secondary/20 transition-all`}
           />
         </div>
-        <div className="flex items-center gap-2 bg-[#F4F4EF] rounded-xl p-1">
+        <div className="flex items-center gap-2 bg-surface-light rounded-xl p-1">
           <button
             onClick={() => setViewMode('tiles')}
-            className={`p-2 rounded-lg text-sm transition-all ${viewMode === 'tiles' ? 'bg-white shadow-sm text-[#002819]' : 'text-gray-500 hover:text-gray-700'}`}
+            className={`p-2 rounded-lg text-sm transition-all ${viewMode === 'tiles' ? 'bg-white shadow-sm text-brand-primary' : 'text-gray-500 hover:text-gray-700'}`}
             title={t('common.grid')}
           >
             <MaterialSymbol icon="grid_view" size={18} />
           </button>
           <button
             onClick={() => setViewMode('list')}
-            className={`p-2 rounded-lg text-sm transition-all ${viewMode === 'list' ? 'bg-white shadow-sm text-[#002819]' : 'text-gray-500 hover:text-gray-700'}`}
+            className={`p-2 rounded-lg text-sm transition-all ${viewMode === 'list' ? 'bg-white shadow-sm text-brand-primary' : 'text-gray-500 hover:text-gray-700'}`}
             title={t('common.list')}
           >
             <MaterialSymbol icon="table_rows" size={18} />
@@ -302,28 +302,28 @@ export default function AuctionList() {
       </div>
 
       {message && (
-        <div className={`p-4 rounded-xl ${message.type === 'success' ? 'bg-[#cfe5d6] text-[#002819]' : 'bg-[#ffdad6] text-[#93000a]'}`}>
+        <div className={`p-4 rounded-xl ${message.type === 'success' ? 'bg-[#cfe5d6] text-brand-primary' : 'bg-[#ffdad6] text-[#93000a]'}`}>
           {message.text}
         </div>
       )}
 
       {loading ? (
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin w-8 h-8 border-4 border-[#002819] border-t-transparent rounded-full" />
+          <div className="animate-spin w-8 h-8 border-4 border-brand-primary border-t-transparent rounded-full" />
         </div>
       ) : (
         <div className="space-y-10">
           {filter === 'all' && myAuctions.length === 0 && enrolledAuctions.length === 0 && (
             <div className="text-center py-16 bg-white rounded-[2rem] shadow-sm">
-              <MaterialSymbol icon="gavel" size={64} className="mx-auto text-[#c0c9c1] mb-4" />
-              <p className="text-[#404943] text-lg font-semibold">{t('auctionsPage.noActive')}</p>
-              <p className="text-[#717973] text-sm mt-2">{t('auctionsPage.startNew')}</p>
+              <MaterialSymbol icon="gavel" size={64} className="mx-auto text-outline mb-4" />
+              <p className="text-on-surface-variant text-lg font-semibold">{t('auctionsPage.noActive')}</p>
+              <p className="text-on-surface-subtle text-sm mt-2">{t('auctionsPage.startNew')}</p>
             </div>
           )}
           {filter === 'all' && myAuctions.length > 0 && (
             <div>
-              <h3 className={`text-xl font-bold text-[#002819] mb-4 flex items-center gap-2 ${isRtl ? 'flex-row-reverse' : ''}`}>
-                <MaterialSymbol icon="person" size={24} className="text-[#D4AF37]" />
+              <h3 className={`text-xl font-bold text-brand-primary mb-4 flex items-center gap-2 ${isRtl ? 'flex-row-reverse' : ''}`}>
+                <MaterialSymbol icon="person" size={24} className="text-brand-accent" />
                 {t('auctions.myAuctions')} ({myAuctions.length})
               </h3>
               <div className={viewMode === 'list' ? 'bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden' : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8'}>
@@ -340,8 +340,8 @@ export default function AuctionList() {
           
           {filter === 'all' && enrolledAuctions.length > 0 && (
             <div>
-              <h3 className={`text-xl font-bold text-[#002819] mb-4 flex items-center gap-2 ${isRtl ? 'flex-row-reverse' : ''}`}>
-                <MaterialSymbol icon="how_to_reg" size={24} className="text-[#06402B]" />
+              <h3 className={`text-xl font-bold text-brand-primary mb-4 flex items-center gap-2 ${isRtl ? 'flex-row-reverse' : ''}`}>
+                <MaterialSymbol icon="how_to_reg" size={24} className="text-brand-secondary" />
                 {t('auctionsPage.biddingOn')} ({enrolledAuctions.length})
               </h3>
               <div className={viewMode === 'list' ? 'bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden' : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8'}>
@@ -358,8 +358,8 @@ export default function AuctionList() {
           
           {filter === 'pending' && pendingAuctions.length === 0 && (
             <div className="text-center py-16 bg-white rounded-[2rem] shadow-sm">
-              <MaterialSymbol icon="check_circle" size={64} className="mx-auto text-[#c0c9c1] mb-4" />
-              <p className="text-[#404943] text-lg font-semibold">{t('auctionsPage.noPending')}</p>
+              <MaterialSymbol icon="check_circle" size={64} className="mx-auto text-outline mb-4" />
+              <p className="text-on-surface-variant text-lg font-semibold">{t('auctionsPage.noPending')}</p>
             </div>
           )}
           
@@ -372,8 +372,8 @@ export default function AuctionList() {
                       <MaterialSymbol icon="hourglass" size={28} className="text-amber-600" />
                     </div>
                     <div>
-                      <h4 className="font-bold text-[#002819]">{auction.title}</h4>
-                      <p className="text-sm text-[#717973]">
+                      <h4 className="font-bold text-brand-primary">{auction.title}</h4>
+                      <p className="text-sm text-on-surface-subtle">
                         {auction.animal?.animal_id} &middot; {formatPrice(auction.starting_price)} start
                         {auction.owner && <> &middot; by {auction.owner.name}</>}
                       </p>
@@ -395,9 +395,9 @@ export default function AuctionList() {
                     </button>
                     <button
                       onClick={() => navigate(`/auctions/${auction.id}`)}
-                      className="p-2 hover:bg-[#eeeee9] rounded-lg transition-colors"
+                      className="p-2 hover:bg-surface-dim rounded-lg transition-colors"
                     >
-                      <MaterialSymbol icon="open_in_new" size={18} className="text-[#717973]" />
+                      <MaterialSymbol icon="open_in_new" size={18} className="text-on-surface-subtle" />
                     </button>
                   </div>
                 </div>
@@ -407,8 +407,8 @@ export default function AuctionList() {
 
           {filter === 'payments' && paymentAuctions.length === 0 && (
             <div className="text-center py-16 bg-white rounded-[2rem] shadow-sm">
-              <MaterialSymbol icon="payments" size={64} className="mx-auto text-[#c0c9c1] mb-4" />
-              <p className="text-[#404943] text-lg font-semibold">{t('auctionsPage.noPayments')}</p>
+              <MaterialSymbol icon="payments" size={64} className="mx-auto text-outline mb-4" />
+              <p className="text-on-surface-variant text-lg font-semibold">{t('auctionsPage.noPayments')}</p>
             </div>
           )}
 
@@ -418,11 +418,11 @@ export default function AuctionList() {
                 <div key={auction.id} className="bg-white rounded-[2rem] p-6 shadow-sm border border-gray-100 flex items-center justify-between">
                   <div className="flex items-center gap-4">
                     <div className="w-14 h-14 rounded-xl bg-gray-100 flex items-center justify-center">
-                      <MaterialSymbol icon="payments" size={28} className="text-[#717973]" />
+                      <MaterialSymbol icon="payments" size={28} className="text-on-surface-subtle" />
                     </div>
                     <div>
-                      <h4 className="font-bold text-[#002819]">{auction.title}</h4>
-                      <p className="text-sm text-[#717973]">
+                      <h4 className="font-bold text-brand-primary">{auction.title}</h4>
+                      <p className="text-sm text-on-surface-subtle">
                         {formatPrice(auction.current_price)} &middot; {auction.animal?.animal_id}
                         {auction.winner && <> &middot; Winner: {auction.winner.name}</>}
                       </p>
@@ -438,7 +438,7 @@ export default function AuctionList() {
                   </div>
                   <button
                     onClick={() => navigate(`/auctions/${auction.id}`)}
-                    className="px-4 py-2 bg-[#002819] text-white rounded-xl text-sm font-bold hover:bg-[#06402b] transition-colors"
+                    className="px-4 py-2 bg-brand-primary text-white rounded-xl text-sm font-bold hover:bg-brand-secondary transition-colors"
                   >
                     {t('auctionsPage.viewDetails')}
                   </button>
@@ -449,8 +449,8 @@ export default function AuctionList() {
 
           {filter !== 'all' && filter !== 'pending' && filter !== 'payments' && displayAuctions.length === 0 && (
             <div className="text-center py-16 bg-white rounded-[2rem] shadow-sm">
-              <MaterialSymbol icon="gavel" size={64} className="mx-auto text-[#c0c9c1] mb-4" />
-              <p className="text-[#404943] text-lg font-semibold">{t('auctionsPage.noAuctions')}</p>
+              <MaterialSymbol icon="gavel" size={64} className="mx-auto text-outline mb-4" />
+              <p className="text-on-surface-variant text-lg font-semibold">{t('auctionsPage.noAuctions')}</p>
             </div>
           )}
           
@@ -471,9 +471,9 @@ export default function AuctionList() {
       )}
 
       {showBidModal && selectedAuction && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#002819]/40 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-primary/40 backdrop-blur-sm">
           <div className="bg-white w-full max-w-md rounded-3xl shadow-xl overflow-hidden">
-            <div className="px-6 py-4 bg-[#002819] text-white flex items-center justify-between">
+            <div className="px-6 py-4 bg-brand-primary text-white flex items-center justify-between">
               <div>
                 <h3 className="font-bold text-lg">{t('auctionsPage.placeYourBid')}</h3>
                 <p className="text-white/60 text-sm">{selectedAuction.title} <TranslateButton text={selectedAuction.title} /></p>
@@ -483,45 +483,45 @@ export default function AuctionList() {
               </button>
             </div>
             <div className="p-6 space-y-4">
-              <div className="bg-[#f4f4ef] rounded-2xl p-4">
+              <div className="bg-surface-light rounded-2xl p-4">
                 <div className="flex justify-between mb-2">
-                  <span className="text-[#404943] text-sm">{t('auctionsPage.currentPrice')}</span>
-                  <span className="font-bold text-[#1a1c19]">{formatPrice(selectedAuction.current_price)}</span>
+                  <span className="text-on-surface-variant text-sm">{t('auctionsPage.currentPrice')}</span>
+                  <span className="font-bold text-on-surface">{formatPrice(selectedAuction.current_price)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-[#404943] text-sm">{t('auctionsPage.minimumBid')}</span>
-                  <span className="font-bold text-[#002819]">{formatPrice(Math.ceil(selectedAuction.current_price) + 1)}</span>
+                  <span className="text-on-surface-variant text-sm">{t('auctionsPage.minimumBid')}</span>
+                  <span className="font-bold text-brand-primary">{formatPrice(Math.ceil(selectedAuction.current_price) + 1)}</span>
                 </div>
               </div>
 
               {message && (
-                <div className={`p-3 rounded-xl text-sm ${message.type === 'success' ? 'bg-[#cfe5d6] text-[#002819]' : 'bg-[#ffdad6] text-[#93000a]'}`}>
+                <div className={`p-3 rounded-xl text-sm ${message.type === 'success' ? 'bg-[#cfe5d6] text-brand-primary' : 'bg-[#ffdad6] text-[#93000a]'}`}>
                   {message.text}
                 </div>
               )}
 
               <div>
-                <label className="block text-xs font-bold text-[#404943] uppercase tracking-widest mb-2">{t('auctions.yourBid')} (SAR)</label>
+                <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-2">{t('auctions.yourBid')} (SAR)</label>
                 <input
                   type="number"
                   value={bidAmount}
                   onChange={(e) => setBidAmount(e.target.value)}
                   min={Math.ceil(selectedAuction.current_price) + 1}
-                  className="w-full bg-[#f4f4ef] border-none rounded-xl px-4 py-4 text-xl font-bold text-[#002819] focus:ring-2 focus:ring-[#D4AF37]"
+                  className="w-full bg-surface-light border-none rounded-xl px-4 py-4 text-xl font-bold text-brand-primary focus:ring-2 focus:ring-brand-accent"
                 />
               </div>
 
               <div className="flex gap-3 pt-4">
                 <button
                   onClick={() => setShowBidModal(false)}
-                  className="flex-1 py-3 bg-[#eeeee9] text-[#002819] rounded-xl font-bold text-sm hover:bg-[#e8e8e3]"
+                  className="flex-1 py-3 bg-surface-dim text-brand-primary rounded-xl font-bold text-sm hover:bg-surface-dim"
                 >
                   {t('common.cancel')}
                 </button>
                 <button
                   onClick={placeBid}
                   disabled={placing || !bidAmount}
-                  className={`flex-1 py-3 bg-[#002819] text-white rounded-xl font-bold text-sm hover:bg-[#06402b] disabled:opacity-50 flex items-center justify-center gap-2 ${isRtl ? 'flex-row-reverse' : ''}`}
+                  className={`flex-1 py-3 bg-brand-primary text-white rounded-xl font-bold text-sm hover:bg-brand-secondary disabled:opacity-50 flex items-center justify-center gap-2 ${isRtl ? 'flex-row-reverse' : ''}`}
                 >
                   {placing ? (
                     <>
@@ -542,7 +542,7 @@ export default function AuctionList() {
       )}
 
       {showRejectModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#002819]/40 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-primary/40 backdrop-blur-sm">
           <div className="bg-white w-full max-w-md rounded-3xl shadow-xl overflow-hidden">
             <div className="px-6 py-4 bg-red-600 text-white flex items-center justify-between">
               <h3 className="font-bold text-lg">{t('auctionsPage.rejectTitle')}</h3>
@@ -551,18 +551,18 @@ export default function AuctionList() {
               </button>
             </div>
             <div className="p-6 space-y-4">
-              <p className="text-sm text-[#717973]">{t('auctionsPage.rejectDesc')}</p>
+              <p className="text-sm text-on-surface-subtle">{t('auctionsPage.rejectDesc')}</p>
               <textarea
                 value={rejectNotes}
                 onChange={(e) => setRejectNotes(e.target.value)}
                 placeholder={t('auctionsPage.rejectNotesPlaceholder')}
-                className="w-full bg-[#f4f4ef] border-none rounded-xl p-4 text-[#002819] focus:ring-2 focus:ring-red-500/20 resize-none"
+                className="w-full bg-surface-light border-none rounded-xl p-4 text-brand-primary focus:ring-2 focus:ring-red-500/20 resize-none"
                 rows={3}
               />
               <div className="flex gap-3">
                 <button
                   onClick={() => { setShowRejectModal(false); setRejectAuctionId(null); setRejectNotes(''); }}
-                  className="flex-1 py-3 bg-[#eeeee9] text-[#002819] rounded-xl font-bold text-sm hover:bg-[#e8e8e3]"
+                  className="flex-1 py-3 bg-surface-dim text-brand-primary rounded-xl font-bold text-sm hover:bg-surface-dim"
                 >
                   {t('common.cancel')}
                 </button>
@@ -611,7 +611,7 @@ function AuctionCard({ auction, onBid, navigate, isRtl }) {
   };
 
   return (
-    <div className="bg-white rounded-[2rem] overflow-hidden shadow-[0px_12px_32px_rgba(6,64,43,0.06)] group hover:shadow-2xl transition-all duration-500 border border-[#c0c9c1]/10">
+    <div className="bg-white rounded-[2rem] overflow-hidden shadow-[0px_12px_32px_rgba(6,64,43,0.06)] group hover:shadow-2xl transition-all duration-500 border border-outline/10">
       <div className="relative h-56 overflow-hidden">
         {auction.animal?.identification_photo ? (
           <img
@@ -621,7 +621,7 @@ function AuctionCard({ auction, onBid, navigate, isRtl }) {
           />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-[#E3E3DE] to-[#cfe5d6] flex items-center justify-center">
-            <MaterialSymbol icon="pets" size={64} className="text-[#002819]/20" />
+            <MaterialSymbol icon="pets" size={64} className="text-brand-primary/20" />
           </div>
         )}
         
@@ -644,7 +644,7 @@ function AuctionCard({ auction, onBid, navigate, isRtl }) {
           </div>
         )}
         
-        <div className="absolute top-4 right-4 bg-[#D4AF37] text-white px-3 py-1.5 rounded-full flex items-center gap-1 shadow-lg">
+        <div className="absolute top-4 right-4 bg-brand-accent text-white px-3 py-1.5 rounded-full flex items-center gap-1 shadow-lg">
           {computedStatus === 'active' ? (
             <>
               <MaterialSymbol icon="schedule" size={16} />
@@ -662,7 +662,7 @@ function AuctionCard({ auction, onBid, navigate, isRtl }) {
       <div className="p-6">
         <div className="mb-4">
           <div className="flex items-center justify-between mb-1">
-            <p className="text-[10px] font-black text-[#735c00] uppercase tracking-[0.2em]">
+            <p className="text-[10px] font-black text-tertiary-container uppercase tracking-[0.2em]">
               {auction.animal?.animal_id || 'CML-XXX'}
             </p>
             {auction.owner && (
@@ -671,7 +671,7 @@ function AuctionCard({ auction, onBid, navigate, isRtl }) {
               </p>
             )}
           </div>
-          <h3 className="text-xl font-bold text-[#002819] font-['Manrope']">{auction.title} <TranslateButton text={auction.title} /></h3>
+          <h3 className="text-xl font-bold text-brand-primary font-['Manrope']">{auction.title} <TranslateButton text={auction.title} /></h3>
           <p className="text-sm text-[#4f6357]">
             {auction.animal?.species} {auction.animal?.breed && `• ${auction.animal.breed}`}
           </p>
@@ -684,14 +684,14 @@ function AuctionCard({ auction, onBid, navigate, isRtl }) {
             <p className="text-xs text-emerald-600 mt-1">Final: {formatPrice(auction.current_price)}</p>
           </div>
         ) : (
-          <div className="bg-[#f4f4ef] rounded-2xl p-4 mb-4 grid grid-cols-2 gap-4">
+          <div className="bg-surface-light rounded-2xl p-4 mb-4 grid grid-cols-2 gap-4">
             <div>
               <p className="text-[10px] font-bold text-[#4f6357] uppercase tracking-widest mb-1">Starting</p>
-              <p className="text-lg font-bold text-[#1a1c19]">{formatPrice(auction.starting_price)}</p>
+              <p className="text-lg font-bold text-on-surface">{formatPrice(auction.starting_price)}</p>
             </div>
             <div>
-              <p className="text-[10px] font-bold text-[#D4AF37] uppercase tracking-widest mb-1">Current Bid</p>
-              <p className="text-lg font-bold text-[#002819]">{formatPrice(auction.current_price)}</p>
+              <p className="text-[10px] font-bold text-brand-accent uppercase tracking-widest mb-1">Current Bid</p>
+              <p className="text-lg font-bold text-brand-primary">{formatPrice(auction.current_price)}</p>
             </div>
           </div>
         )}
@@ -706,14 +706,14 @@ function AuctionCard({ auction, onBid, navigate, isRtl }) {
         <div className={`flex items-center justify-between ${isRtl ? 'flex-row-reverse' : ''}`}>
           <button
             onClick={() => navigate(`/auctions/${auction.id}`)}
-            className="px-4 py-2 text-[#002819] hover:bg-[#eeeee9] rounded-xl font-medium text-sm transition-colors"
+            className="px-4 py-2 text-brand-primary hover:bg-surface-dim rounded-xl font-medium text-sm transition-colors"
           >
             View Details
           </button>
           {computedStatus === 'active' && (
             <button
               onClick={() => onBid(auction)}
-              className="px-6 py-2 bg-[#002819] text-white rounded-xl font-bold text-sm hover:bg-[#06402b] shadow-lg shadow-[#002819]/20 transition-all"
+              className="px-6 py-2 bg-brand-primary text-white rounded-xl font-bold text-sm hover:bg-brand-secondary shadow-lg shadow-brand-primary/20 transition-all"
             >
               Place Bid
             </button>

@@ -37,18 +37,20 @@ class MedicalRecordTest extends TestCase
     public function test_user_can_view_medical_record()
     {
         $user = $this->authenticateUser();
-        $record = MedicalRecord::factory()->create();
+        $animal = Animal::factory()->create(['owner_id' => $user->id]);
+        $record = MedicalRecord::factory()->create(['animal_id' => $animal->id, 'owner_id' => $user->id]);
 
         $response = $this->getJson("/api/medical-records/{$record->id}");
 
         $response->assertStatus(200)
-            ->assertJson(['id' => $record->id]);
+            ->assertJson(['data' => ['id' => $record->id]]);
     }
 
     public function test_user_can_update_medical_record()
     {
         $user = $this->authenticateUser();
-        $record = MedicalRecord::factory()->create();
+        $animal = Animal::factory()->create(['owner_id' => $user->id]);
+        $record = MedicalRecord::factory()->create(['animal_id' => $animal->id, 'owner_id' => $user->id]);
 
         $response = $this->putJson("/api/medical-records/{$record->id}", [
             'title' => 'Updated Medical Record',
@@ -61,7 +63,8 @@ class MedicalRecordTest extends TestCase
     public function test_user_can_delete_medical_record()
     {
         $user = $this->authenticateUser();
-        $record = MedicalRecord::factory()->create();
+        $animal = Animal::factory()->create(['owner_id' => $user->id]);
+        $record = MedicalRecord::factory()->create(['animal_id' => $animal->id, 'owner_id' => $user->id]);
 
         $response = $this->deleteJson("/api/medical-records/{$record->id}");
 

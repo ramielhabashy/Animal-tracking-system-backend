@@ -231,37 +231,35 @@ class AdminSettingsController extends Controller
         return response()->json(['message' => 'Gemini AI settings saved successfully']);
     }
 
-    public function getWhatsAppSettings(): JsonResponse
+    public function getAiSettings(): JsonResponse
     {
-        $settings = DB::table('settings')->where('key', 'like', 'whatsapp_%')->pluck('value', 'key')->toArray();
-        
+        $settings = DB::table('settings')
+            ->where('key', 'like', 'ai_%')
+            ->orWhere('key', 'like', 'gemini_%')
+            ->pluck('value', 'key')
+            ->toArray();
+
         return response()->json([
             'data' => [
-                'api_url' => $settings['whatsapp_api_url'] ?? env('WHATSAPP_API_URL', ''),
-                'api_token' => $settings['whatsapp_api_token'] ?? env('WHATSAPP_API_TOKEN', ''),
-                'phone_number_id' => $settings['whatsapp_phone_number_id'] ?? env('WHATSAPP_PHONE_NUMBER_ID', ''),
-                'business_account_id' => $settings['whatsapp_business_account_id'] ?? env('WHATSAPP_BUSINESS_ACCOUNT_ID', ''),
-                'enabled' => filter_var($settings['whatsapp_enabled'] ?? env('WHATSAPP_ENABLED', false), FILTER_VALIDATE_BOOLEAN),
+                'provider' => $settings['ai_provider'] ?? ($settings['gemini_enabled'] ?? false ? 'gemini' : 'disabled'),
+                'api_key' => $settings['ai_api_key'] ?? $settings['gemini_api_key'] ?? '',
+                'model' => $settings['ai_model'] ?? $settings['gemini_model'] ?? 'llama-3.3-70b-versatile',
             ]
         ]);
     }
 
-    public function saveWhatsAppSettings(Request $request): JsonResponse
+    public function saveAiSettings(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'api_url' => 'nullable|string',
-            'api_token' => 'nullable|string',
-            'phone_number_id' => 'nullable|string',
-            'business_account_id' => 'nullable|string',
-            'enabled' => 'boolean',
+            'provider' => 'required|in:disabled,groq,gemini,openai',
+            'api_key' => 'exclude_if:provider,disabled|required|string',
+            'model' => 'required|string',
         ]);
 
         $settings = [
-            'whatsapp_api_url' => $validated['api_url'] ?? '',
-            'whatsapp_api_token' => $validated['api_token'] ?? '',
-            'whatsapp_phone_number_id' => $validated['phone_number_id'] ?? '',
-            'whatsapp_business_account_id' => $validated['business_account_id'] ?? '',
-            'whatsapp_enabled' => $validated['enabled'] ?? false,
+            'ai_provider' => $validated['provider'],
+            'ai_api_key' => $validated['api_key'],
+            'ai_model' => $validated['model'],
         ];
 
         foreach ($settings as $key => $value) {
@@ -271,47 +269,7 @@ class AdminSettingsController extends Controller
             );
         }
 
-        return response()->json(['message' => 'WhatsApp settings saved successfully']);
-    }
-
-    public function getTwilioSettings(): JsonResponse
-    {
-        $settings = DB::table('settings')->where('key', 'like', 'twilio_%')->pluck('value', 'key')->toArray();
-        
-        return response()->json([
-            'data' => [
-                'account_sid' => $settings['twilio_account_sid'] ?? env('TWILIO_ACCOUNT_SID', ''),
-                'auth_token' => $settings['twilio_auth_token'] ?? env('TWILIO_AUTH_TOKEN', ''),
-                'phone_number' => $settings['twilio_phone_number'] ?? env('SMS_FROM_NUMBER', ''),
-                'enabled' => filter_var($settings['twilio_enabled'] ?? env('SMS_ENABLED', false), FILTER_VALIDATE_BOOLEAN),
-            ]
-        ]);
-    }
-
-    public function saveTwilioSettings(Request $request): JsonResponse
-    {
-        $validated = $request->validate([
-            'account_sid' => 'nullable|string',
-            'auth_token' => 'nullable|string',
-            'phone_number' => 'nullable|string',
-            'enabled' => 'boolean',
-        ]);
-
-        $settings = [
-            'twilio_account_sid' => $validated['account_sid'] ?? '',
-            'twilio_auth_token' => $validated['auth_token'] ?? '',
-            'twilio_phone_number' => $validated['phone_number'] ?? '',
-            'twilio_enabled' => $validated['enabled'] ?? false,
-        ];
-
-        foreach ($settings as $key => $value) {
-            DB::table('settings')->updateOrInsert(
-                ['key' => $key],
-                ['value' => $value, 'updated_at' => now()]
-            );
-        }
-
-        return response()->json(['message' => 'Twilio SMS settings saved successfully']);
+        return response()->json(['message' => 'AI settings saved successfully']);
     }
 
     public function getNotificationSettings(): JsonResponse
@@ -321,7 +279,6 @@ class AdminSettingsController extends Controller
         return response()->json([
             'data' => [
                 'email_notifications' => $settings['notification_email'] ?? true,
-                'sms_notifications' => $settings['notification_sms'] ?? false,
                 'push_notifications' => $settings['notification_push'] ?? true,
             ]
         ]);
@@ -353,6 +310,7 @@ class AdminSettingsController extends Controller
             'data' => [
                 'deepl_api_key' => $settings['translation_deepl_api_key'] ?? '',
                 'google_api_key' => $settings['translation_google_api_key'] ?? '',
+                'ai_enabled' => $settings['translation_ai_enabled'] ?? '0',
             ]
         ]);
     }
@@ -362,11 +320,16 @@ class AdminSettingsController extends Controller
         $validated = $request->validate([
             'deepl_api_key' => 'nullable|string',
             'google_api_key' => 'nullable|string',
+            'ai_enabled' => 'nullable|in:0,1,true,false',
         ]);
+
+        $aiEnabled = $validated['ai_enabled'] ?? '0';
+        $aiEnabled = in_array($aiEnabled, ['1', 'true'], true) ? '1' : '0';
 
         $settings = [
             'translation_deepl_api_key' => $validated['deepl_api_key'] ?? '',
             'translation_google_api_key' => $validated['google_api_key'] ?? '',
+            'translation_ai_enabled' => $aiEnabled,
         ];
 
         foreach ($settings as $key => $value) {
@@ -445,13 +408,20 @@ class AdminSettingsController extends Controller
 
     public function getAuctionSettings(): JsonResponse
     {
+        $soldCount = \App\Models\Auction::where('status', 'sold')->count();
+        $pendingPayments = \App\Models\Auction::where('status', 'sold')->where('payment_status', 'pending')->count();
+        $auctionTransfers = \App\Models\OwnershipTransfer::where('transfer_type', 'auction')->count();
+
         return response()->json([
             'data' => [
                 'auto_approve' => filter_var(DB::table('settings')->where('key', 'auction_auto_approve')->value('value') ?? false, FILTER_VALIDATE_BOOLEAN),
-                'commission_enabled' => filter_var(DB::table('settings')->where('key', 'transfer_commission_enabled')->value('value') ?? false, FILTER_VALIDATE_BOOLEAN),
-                'commission_type' => DB::table('settings')->where('key', 'transfer_commission_type')->value('value') ?? 'percentage',
-                'commission_percentage' => (float) (DB::table('settings')->where('key', 'transfer_commission_percentage')->value('value') ?? 5),
-                'commission_fixed' => (float) (DB::table('settings')->where('key', 'transfer_commission_fixed')->value('value') ?? 0),
+                'payment_expiry_hours' => (int) (DB::table('settings')->where('key', 'auction_payment_expiry_hours')->value('value') ?? 24),
+                'second_winner_enabled' => filter_var(DB::table('settings')->where('key', 'auction_second_winner_enabled')->value('value') ?? true, FILTER_VALIDATE_BOOLEAN),
+                'stats' => [
+                    'total_sold' => $soldCount,
+                    'pending_payments' => $pendingPayments,
+                    'auction_transfers' => $auctionTransfers,
+                ],
             ]
         ]);
     }
@@ -460,44 +430,215 @@ class AdminSettingsController extends Controller
     {
         $validated = $request->validate([
             'auto_approve' => 'boolean',
+            'payment_expiry_hours' => 'integer|min:1|max:168',
+            'second_winner_enabled' => 'boolean',
         ]);
 
-        DB::table('settings')->updateOrInsert(
-            ['key' => 'auction_auto_approve'],
-            ['value' => $validated['auto_approve'] ?? false, 'updated_at' => now()]
-        );
+        $settings = [
+            'auction_auto_approve' => $validated['auto_approve'] ?? false,
+            'auction_payment_expiry_hours' => $validated['payment_expiry_hours'] ?? 24,
+            'auction_second_winner_enabled' => $validated['second_winner_enabled'] ?? true,
+        ];
+
+        foreach ($settings as $key => $value) {
+            DB::table('settings')->updateOrInsert(
+                ['key' => $key],
+                ['value' => $value, 'updated_at' => now()]
+            );
+        }
 
         return response()->json(['message' => 'Auction settings saved successfully']);
+    }
+
+    public function getSubscriptionSettings(): JsonResponse
+    {
+        $settings = DB::table('settings')->where('key', 'like', 'subscription_%')->pluck('value', 'key')->toArray();
+
+        $gracePeriodDays = (int) ($settings['subscription_grace_period_days'] ?? 7);
+        $renewalReminderDays = (int) ($settings['subscription_renewal_reminder_days'] ?? 7);
+        $expiryNotificationDays = (int) ($settings['subscription_expiry_notification_days'] ?? 7);
+        $autoCancelAfterGrace = filter_var($settings['subscription_auto_cancel_after_grace'] ?? true, FILTER_VALIDATE_BOOLEAN);
+        $defaultBillingPeriodDays = (int) ($settings['subscription_default_billing_period_days'] ?? 30);
+
+        return response()->json([
+            'data' => [
+                'grace_period_days' => $gracePeriodDays,
+                'renewal_reminder_days' => $renewalReminderDays,
+                'expiry_notification_days' => $expiryNotificationDays,
+                'auto_cancel_after_grace' => $autoCancelAfterGrace,
+                'default_billing_period_days' => $defaultBillingPeriodDays,
+            ]
+        ]);
+    }
+
+    public function saveSubscriptionSettings(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'grace_period_days' => 'integer|min:0|max:90',
+            'renewal_reminder_days' => 'integer|min:0|max:30',
+            'expiry_notification_days' => 'integer|min:0|max:30',
+            'auto_cancel_after_grace' => 'boolean',
+            'default_billing_period_days' => 'integer|min:1|max:365',
+        ]);
+
+        $settings = [
+            'subscription_grace_period_days' => $validated['grace_period_days'] ?? 7,
+            'subscription_renewal_reminder_days' => $validated['renewal_reminder_days'] ?? 7,
+            'subscription_expiry_notification_days' => $validated['expiry_notification_days'] ?? 7,
+            'subscription_auto_cancel_after_grace' => $validated['auto_cancel_after_grace'] ?? true,
+            'subscription_default_billing_period_days' => $validated['default_billing_period_days'] ?? 30,
+        ];
+
+        foreach ($settings as $key => $value) {
+            DB::table('settings')->updateOrInsert(
+                ['key' => $key],
+                ['value' => $value, 'updated_at' => now()]
+            );
+        }
+
+        return response()->json(['message' => 'Subscription settings saved successfully']);
     }
 
     public function getTransferCommissionSettings(): JsonResponse
     {
         $settings = DB::table('settings')->where('key', 'like', 'transfer_commission_%')->pluck('value', 'key')->toArray();
 
+        $totalManual = \App\Models\OwnershipTransfer::where('transfer_type', 'manual')->count();
+        $totalAuction = \App\Models\OwnershipTransfer::where('transfer_type', 'auction')->count();
+        $totalCommission = \App\Models\OwnershipTransfer::where('status', 'completed')->sum('commission_amount');
+        $paidCommission = \App\Models\OwnershipTransfer::where('status', 'completed')->where('commission_paid', true)->sum('commission_amount');
+
         return response()->json([
             'data' => [
                 'enabled' => filter_var($settings['transfer_commission_enabled'] ?? false, FILTER_VALIDATE_BOOLEAN),
-                'type' => $settings['transfer_commission_type'] ?? 'percentage',
-                'percentage' => (float) ($settings['transfer_commission_percentage'] ?? 5.00),
-                'fixed' => (float) ($settings['transfer_commission_fixed'] ?? 0.00),
+                'manual' => [
+                    'type' => $settings['transfer_commission_manual_type'] ?? ($settings['transfer_commission_type'] ?? 'percentage'),
+                    'percentage' => (float) ($settings['transfer_commission_manual_percentage'] ?? $settings['transfer_commission_percentage'] ?? 5.00),
+                    'fixed' => (float) ($settings['transfer_commission_manual_fixed'] ?? $settings['transfer_commission_fixed'] ?? 0.00),
+                ],
+                'auction' => [
+                    'type' => $settings['transfer_commission_auction_type'] ?? ($settings['transfer_commission_type'] ?? 'percentage'),
+                    'percentage' => (float) ($settings['transfer_commission_auction_percentage'] ?? $settings['transfer_commission_percentage'] ?? 5.00),
+                    'fixed' => (float) ($settings['transfer_commission_auction_fixed'] ?? $settings['transfer_commission_fixed'] ?? 0.00),
+                ],
+                'stats' => [
+                    'total_manual_transfers' => $totalManual,
+                    'total_auction_transfers' => $totalAuction,
+                    'total_commission' => $totalCommission,
+                    'paid_commission' => $paidCommission,
+                    'pending_commission' => $totalCommission - $paidCommission,
+                ],
             ]
         ]);
+    }
+
+    public function getDeviceSettings(): JsonResponse
+    {
+        $settings = DB::table('settings')->where('key', 'like', 'device_%')->pluck('value', 'key')->toArray();
+
+        return response()->json([
+            'data' => [
+                'device_simulator_enabled' => filter_var($settings['device_simulator_enabled'] ?? true, FILTER_VALIDATE_BOOLEAN),
+                'device_real_data_enabled' => filter_var($settings['device_real_data_enabled'] ?? false, FILTER_VALIDATE_BOOLEAN),
+                'device_real_api_endpoint' => $settings['device_real_api_endpoint'] ?? '',
+                'device_real_api_key' => $settings['device_real_api_key'] ?? '',
+                'device_real_driver' => $settings['device_real_driver'] ?? 'sani',
+                'device_mqtt_enabled' => filter_var($settings['device_mqtt_enabled'] ?? false, FILTER_VALIDATE_BOOLEAN),
+                'device_mqtt_broker_host' => $settings['device_mqtt_broker_host'] ?? '',
+                'device_mqtt_broker_port' => (int) ($settings['device_mqtt_broker_port'] ?? 1883),
+                'device_mqtt_username' => $settings['device_mqtt_username'] ?? '',
+                'device_mqtt_password' => $settings['device_mqtt_password'] ?? '',
+                'device_mqtt_topic_prefix' => $settings['device_mqtt_topic_prefix'] ?? 'sani',
+            ]
+        ]);
+    }
+
+    public function saveDeviceSettings(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'device_simulator_enabled' => 'boolean',
+            'device_real_data_enabled' => 'boolean',
+            'device_real_api_endpoint' => 'nullable|string|max:500',
+            'device_real_api_key' => 'nullable|string|max:500',
+            'device_real_driver' => 'nullable|string|in:sani,custom,mqtt',
+            'device_mqtt_enabled' => 'boolean',
+            'device_mqtt_broker_host' => 'nullable|string|max:500',
+            'device_mqtt_broker_port' => 'nullable|integer|min:1|max:65535',
+            'device_mqtt_username' => 'nullable|string|max:255',
+            'device_mqtt_password' => 'nullable|string|max:500',
+            'device_mqtt_topic_prefix' => 'nullable|string|max:100',
+        ]);
+
+        $settings = [
+            'device_simulator_enabled' => $validated['device_simulator_enabled'] ?? true,
+            'device_real_data_enabled' => $validated['device_real_data_enabled'] ?? false,
+            'device_real_api_endpoint' => $validated['device_real_api_endpoint'] ?? '',
+            'device_real_api_key' => $validated['device_real_api_key'] ?? '',
+            'device_real_driver' => $validated['device_real_driver'] ?? 'sani',
+            'device_mqtt_enabled' => $validated['device_mqtt_enabled'] ?? false,
+            'device_mqtt_broker_host' => $validated['device_mqtt_broker_host'] ?? '',
+            'device_mqtt_broker_port' => $validated['device_mqtt_broker_port'] ?? 1883,
+            'device_mqtt_username' => $validated['device_mqtt_username'] ?? '',
+            'device_mqtt_password' => $validated['device_mqtt_password'] ?? '',
+            'device_mqtt_topic_prefix' => $validated['device_mqtt_topic_prefix'] ?? 'sani',
+        ];
+
+        foreach ($settings as $key => $value) {
+            DB::table('settings')->updateOrInsert(
+                ['key' => $key],
+                ['value' => is_bool($value) ? ($value ? '1' : '0') : $value, 'updated_at' => now()]
+            );
+        }
+
+        return response()->json(['message' => 'Device integration settings saved successfully']);
+    }
+
+    public function testMqttConnection(): JsonResponse
+    {
+        $host = DB::table('settings')->where('key', 'device_mqtt_broker_host')->value('value') ?? '';
+        $port = (int) (DB::table('settings')->where('key', 'device_mqtt_broker_port')->value('value') ?? 1883);
+        $username = DB::table('settings')->where('key', 'device_mqtt_username')->value('value') ?? '';
+        $password = DB::table('settings')->where('key', 'device_mqtt_password')->value('value') ?? '';
+
+        if (empty($host)) {
+            return response()->json(['message' => 'MQTT broker host not configured'], 400);
+        }
+
+        try {
+            $client = new \PhpMqtt\Client\MqttClient($host, $port, 'oasis-test-' . uniqid());
+            if (!empty($username)) {
+                $client->connect($username, $password);
+            } else {
+                $client->connect();
+            }
+            $client->disconnect();
+            return response()->json(['message' => 'MQTT connection successful']);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'message' => 'MQTT connection failed: ' . $e->getMessage()
+            ], 400);
+        }
     }
 
     public function saveTransferCommissionSettings(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'enabled' => 'boolean',
-            'type' => 'in:percentage,fixed',
-            'percentage' => 'numeric|min:0|max:100',
-            'fixed' => 'numeric|min:0',
+            'manual.type' => 'nullable|string|in:percentage,fixed',
+            'manual.percentage' => 'nullable|numeric|min:0|max:100',
+            'manual.fixed' => 'nullable|numeric|min:0',
+            'auction.type' => 'nullable|string|in:percentage,fixed',
+            'auction.percentage' => 'nullable|numeric|min:0|max:100',
+            'auction.fixed' => 'nullable|numeric|min:0',
         ]);
 
         $settings = [
             'transfer_commission_enabled' => $validated['enabled'] ?? false,
-            'transfer_commission_type' => $validated['type'] ?? 'percentage',
-            'transfer_commission_percentage' => $validated['percentage'] ?? 5.00,
-            'transfer_commission_fixed' => $validated['fixed'] ?? 0.00,
+            'transfer_commission_manual_type' => $validated['manual']['type'] ?? 'percentage',
+            'transfer_commission_manual_percentage' => $validated['manual']['percentage'] ?? 5.00,
+            'transfer_commission_manual_fixed' => $validated['manual']['fixed'] ?? 0.00,
+            'transfer_commission_auction_type' => $validated['auction']['type'] ?? 'percentage',
+            'transfer_commission_auction_percentage' => $validated['auction']['percentage'] ?? 5.00,
+            'transfer_commission_auction_fixed' => $validated['auction']['fixed'] ?? 0.00,
         ];
 
         foreach ($settings as $key => $value) {

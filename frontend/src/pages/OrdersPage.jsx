@@ -133,7 +133,7 @@ export function OrdersPanel({ embedded }) {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin w-8 h-8 border-4 border-[#002819] border-t-transparent rounded-full" />
+        <div className="animate-spin w-8 h-8 border-4 border-brand-primary border-t-transparent rounded-full" />
       </div>
     );
   }
@@ -145,10 +145,10 @@ export function OrdersPanel({ embedded }) {
           <nav className={`flex text-xs text-[#4f6357] mb-2 uppercase tracking-widest font-bold ${isRtl ? 'flex-row-reverse' : ''}`}>
             <span>Admin</span>
             <span className="mx-2">/</span>
-            <span className="text-[#002819]">Orders</span>
+            <span className="text-brand-primary">Orders</span>
           </nav>
-          <h2 className="text-3xl font-bold text-[#002819]">Subscription Orders</h2>
-          <p className="text-[#404943] mt-1">Manage orders, shipping, and payments</p>
+          <h2 className="text-3xl font-bold text-brand-primary">Subscription Orders</h2>
+          <p className="text-on-surface-variant mt-1">Manage orders, shipping, and payments</p>
         </div>
       )}
 
@@ -174,18 +174,18 @@ export function OrdersPanel({ embedded }) {
             { label: 'Shipped', value: stats.shipped, icon: 'local_shipping' },
             { label: 'Revenue', value: `$${parseFloat(stats.revenue || 0).toLocaleString()}`, icon: 'payments' },
           ].map((item) => (
-            <div key={item.label} className="bg-white rounded-2xl p-4 shadow-sm border border-[#E3E3DE]">
+            <div key={item.label} className="bg-white rounded-2xl p-4 shadow-sm border border-surface-high">
               <div className="flex items-center gap-2 mb-2">
-                <MaterialSymbol icon={item.icon} size={18} className="text-[#D4AF37]" />
-                <span className="text-xs text-[#717973]">{item.label}</span>
+                <MaterialSymbol icon={item.icon} size={18} className="text-brand-accent" />
+                <span className="text-xs text-on-surface-subtle">{item.label}</span>
               </div>
-              <p className="text-2xl font-bold text-[#002819]">{item.value}</p>
+              <p className="text-2xl font-bold text-brand-primary">{item.value}</p>
             </div>
           ))}
         </div>
       )}
 
-      <div className="flex flex-wrap gap-2 bg-[#F4F4EF] p-1 rounded-xl w-fit">
+      <div className="flex flex-wrap gap-2 bg-surface-light p-1 rounded-xl w-fit">
         {[
           { id: 'all', label: `All (${orders.length})` },
           { id: 'pending', label: `Pending (${statusCount('pending')})` },
@@ -196,7 +196,7 @@ export function OrdersPanel({ embedded }) {
             key={f.id}
             onClick={() => setFilter(f.id)}
             className={`px-4 py-2 rounded-lg font-medium text-sm transition ${
-              filter === f.id ? 'bg-white text-[#002819] shadow-sm' : 'text-[#404943] hover:text-[#002819]'
+              filter === f.id ? 'bg-white text-brand-primary shadow-sm' : 'text-on-surface-variant hover:text-brand-primary'
             }`}
           >
             {f.label}
@@ -204,52 +204,52 @@ export function OrdersPanel({ embedded }) {
         ))}
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-[#E3E3DE] overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-sm border border-surface-high overflow-hidden">
         {filteredOrders.length === 0 ? (
           <div className="text-center py-12">
-            <MaterialSymbol icon="receipt_long" size={48} className="text-[#717973] mx-auto mb-3" />
-            <p className="text-[#404943]">No orders found</p>
+            <MaterialSymbol icon="receipt_long" size={48} className="text-on-surface-subtle mx-auto mb-3" />
+            <p className="text-on-surface-variant">No orders found</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-[#E3E3DE]">
-                  <th className="text-left p-4 text-xs font-bold text-[#717973] uppercase tracking-wider">ID</th>
-                  <th className="text-left p-4 text-xs font-bold text-[#717973] uppercase tracking-wider">User</th>
-                  <th className="text-left p-4 text-xs font-bold text-[#717973] uppercase tracking-wider">Plan</th>
-                  <th className="text-left p-4 text-xs font-bold text-[#717973] uppercase tracking-wider">Amount</th>
-                  <th className="text-left p-4 text-xs font-bold text-[#717973] uppercase tracking-wider">Payment</th>
-                  <th className="text-left p-4 text-xs font-bold text-[#717973] uppercase tracking-wider">Shipping</th>
-                  <th className="text-left p-4 text-xs font-bold text-[#717973] uppercase tracking-wider">Date</th>
-                  <th className="text-left p-4 text-xs font-bold text-[#717973] uppercase tracking-wider">Actions</th>
+                <tr className="border-b border-surface-high">
+                  <th className="text-left p-4 text-xs font-bold text-on-surface-subtle uppercase tracking-wider">ID</th>
+                  <th className="text-left p-4 text-xs font-bold text-on-surface-subtle uppercase tracking-wider">User</th>
+                  <th className="text-left p-4 text-xs font-bold text-on-surface-subtle uppercase tracking-wider">Plan</th>
+                  <th className="text-left p-4 text-xs font-bold text-on-surface-subtle uppercase tracking-wider">Amount</th>
+                  <th className="text-left p-4 text-xs font-bold text-on-surface-subtle uppercase tracking-wider">Payment</th>
+                  <th className="text-left p-4 text-xs font-bold text-on-surface-subtle uppercase tracking-wider">Shipping</th>
+                  <th className="text-left p-4 text-xs font-bold text-on-surface-subtle uppercase tracking-wider">Date</th>
+                  <th className="text-left p-4 text-xs font-bold text-on-surface-subtle uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredOrders.map((order) => (
-                  <tr key={order.id} className="border-b border-[#E3E3DE] last:border-0 hover:bg-[#FAF1F5]/50">
-                    <td className="p-4 font-bold text-[#002819]">#{order.id}</td>
+                  <tr key={order.id} className="border-b border-surface-high last:border-0 hover:bg-brand-light/50">
+                    <td className="p-4 font-bold text-brand-primary">#{order.id}</td>
                     <td className="p-4">
-                      <p className="font-medium text-[#002819]">{order.user?.name || 'N/A'}</p>
-                      <p className="text-xs text-[#717973]">{order.user?.email || ''}</p>
+                      <p className="font-medium text-brand-primary">{order.user?.name || 'N/A'}</p>
+                      <p className="text-xs text-on-surface-subtle">{order.user?.email || ''}</p>
                     </td>
-                    <td className="p-4 text-[#404943]">{order.tier?.name || 'N/A'}</td>
-                    <td className="p-4 font-bold text-[#002819]">${parseFloat(order.amount || 0).toFixed(2)}</td>
+                    <td className="p-4 text-on-surface-variant">{order.tier?.name || 'N/A'}</td>
+                    <td className="p-4 font-bold text-brand-primary">${parseFloat(order.amount || 0).toFixed(2)}</td>
                     <td className="p-4">
                       <span className={`px-3 py-1 rounded-full text-xs font-bold ${STATUS_STYLES[order.payment_status] || 'bg-gray-100 text-gray-700'}`}>
                         {order.payment_status}
                       </span>
-                      <p className="text-xs text-[#717973] mt-1 capitalize">{order.payment_method || '-'}</p>
+                      <p className="text-xs text-on-surface-subtle mt-1 capitalize">{order.payment_method || '-'}</p>
                     </td>
                     <td className="p-4">
                       <span className={`px-3 py-1 rounded-full text-xs font-bold ${SHIPPING_STYLES[order.shipping_status] || 'bg-gray-100 text-gray-700'}`}>
                         {order.shipping_status}
                       </span>
                       {order.tracking_number && (
-                        <p className="text-xs text-[#717973] mt-1">#{order.tracking_number}</p>
+                        <p className="text-xs text-on-surface-subtle mt-1">#{order.tracking_number}</p>
                       )}
                     </td>
-                    <td className="p-4 text-sm text-[#717973]">
+                    <td className="p-4 text-sm text-on-surface-subtle">
                       {new Date(order.created_at).toLocaleDateString()}
                     </td>
                     <td className="p-4">
@@ -288,7 +288,7 @@ export function OrdersPanel({ embedded }) {
                             setShippingStatus(order.shipping_status || 'pending');
                             setTrackingNumber(order.tracking_number || '');
                           }}
-                          className="px-3 py-1.5 bg-[#002819] text-white rounded-lg text-xs font-bold hover:bg-[#06402B] transition"
+                          className="px-3 py-1.5 bg-brand-primary text-white rounded-lg text-xs font-bold hover:bg-brand-secondary transition"
                         >
                           Shipping
                         </button>
@@ -306,7 +306,7 @@ export function OrdersPanel({ embedded }) {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold text-[#002819]">Update Order #{editingOrder.id}</h3>
+              <h3 className="text-lg font-bold text-brand-primary">Update Order #{editingOrder.id}</h3>
               <button onClick={() => setEditingOrder(null)} className="p-2 hover:bg-gray-100 rounded-lg">
                 <MaterialSymbol icon="close" size={20} />
               </button>
@@ -314,7 +314,7 @@ export function OrdersPanel({ embedded }) {
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-[#404943] mb-1">Shipping Status</label>
+                <label className="block text-sm font-medium text-on-surface-variant mb-1">Shipping Status</label>
                 <select
                   value={shippingStatus}
                   onChange={(e) => setShippingStatus(e.target.value)}
@@ -326,7 +326,7 @@ export function OrdersPanel({ embedded }) {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-[#404943] mb-1">Tracking Number</label>
+                <label className="block text-sm font-medium text-on-surface-variant mb-1">Tracking Number</label>
                 <input
                   type="text"
                   value={trackingNumber}
@@ -337,7 +337,7 @@ export function OrdersPanel({ embedded }) {
               </div>
               <button
                 onClick={() => handleUpdateOrder(editingOrder)}
-                className="w-full py-3 bg-[#002819] text-white rounded-xl font-bold hover:bg-[#06402B] transition"
+                className="w-full py-3 bg-brand-primary text-white rounded-xl font-bold hover:bg-brand-secondary transition"
               >
                 Save
               </button>

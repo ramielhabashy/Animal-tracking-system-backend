@@ -47,27 +47,27 @@ export default function EmbedAuctionList() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FAF5F1]">
+    <div className="min-h-screen bg-surface-light">
       <div className="max-w-6xl mx-auto p-4 sm:p-6">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-xl font-bold text-[#002819]">
+            <h1 className="text-xl font-bold text-brand-primary">
               <MaterialSymbol icon="gavel" size={20} className="inline align-text-bottom mr-1" />
               Auctions
             </h1>
-            <p className="text-xs text-[#717973] mt-0.5">Live animal marketplace</p>
+            <p className="text-xs text-on-surface-subtle mt-0.5">Live animal marketplace</p>
           </div>
         </div>
 
         {loading ? (
           <div className="flex items-center justify-center h-48">
-            <div className="animate-spin w-6 h-6 border-3 border-[#002819] border-t-transparent rounded-full" />
+            <div className="animate-spin w-6 h-6 border-3 border-brand-primary border-t-transparent rounded-full" />
           </div>
         ) : auctions.length === 0 ? (
           <div className="text-center py-16 bg-white rounded-2xl border border-[#eeeee9]">
             <MaterialSymbol icon="gavel" size={48} className="text-[#E3E3DE] mx-auto mb-3" />
-            <p className="text-[#717973] font-medium">No active auctions</p>
-            <p className="text-xs text-[#717973] mt-1">Check back later for new listings</p>
+            <p className="text-on-surface-subtle font-medium">No active auctions</p>
+            <p className="text-xs text-on-surface-subtle mt-1">Check back later for new listings</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -79,14 +79,14 @@ export default function EmbedAuctionList() {
                   key={auction.id}
                   href={`/react.oasis/auctions/${auction.id}`}
                   target="_top"
-                  className="bg-white rounded-2xl border border-[#eeeee9] overflow-hidden hover:shadow-lg hover:border-[#D4AF37]/40 transition-all group block"
+                  className="bg-white rounded-2xl border border-[#eeeee9] overflow-hidden hover:shadow-lg hover:border-brand-accent/40 transition-all group block"
                 >
                   <div className="h-36 bg-gradient-to-br from-[#f4f4ef] to-[#e8e8e0] relative overflow-hidden">
                     {imageUrl ? (
                       <img src={imageUrl} alt={auction.title} className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
-                        <MaterialSymbol icon="pets" size={48} className="text-[#D4AF37]/40" />
+                        <MaterialSymbol icon="pets" size={48} className="text-brand-accent/40" />
                       </div>
                     )}
                     <div className="absolute top-3 left-3 flex gap-2">
@@ -97,23 +97,23 @@ export default function EmbedAuctionList() {
                     </div>
                   </div>
                   <div className="p-4">
-                    <h3 className="font-bold text-[#002819] text-sm truncate group-hover:text-[#D4AF37] transition-colors">
+                    <h3 className="font-bold text-brand-primary text-sm truncate group-hover:text-brand-accent transition-colors">
                       {auction.title || `${auction.animal?.species || 'Animal'} Auction`}
                     </h3>
                     {auction.animal && (
-                      <p className="text-xs text-[#717973] mt-0.5">
+                      <p className="text-xs text-on-surface-subtle mt-0.5">
                         {auction.animal.animal_id}{auction.animal.breed ? ` · ${auction.animal.breed}` : ''}
                       </p>
                     )}
                     <div className="flex items-center justify-between mt-3 pt-3 border-t border-[#f0f0eb]">
                       <div>
-                        <p className="text-[10px] text-[#717973] uppercase tracking-wider">Current Bid</p>
-                        <p className="font-bold text-[#002819]">{formatPrice(auction.current_bid)}</p>
+                        <p className="text-[10px] text-on-surface-subtle uppercase tracking-wider">Current Bid</p>
+                        <p className="font-bold text-brand-primary">{formatPrice(auction.current_bid)}</p>
                       </div>
                       {auction.owner && (
                         <div className="text-right">
-                          <p className="text-[10px] text-[#717973] uppercase tracking-wider">Seller</p>
-                          <p className="text-xs font-medium text-[#404943]">{auction.owner.name}</p>
+                          <p className="text-[10px] text-on-surface-subtle uppercase tracking-wider">Seller</p>
+                          <p className="text-xs font-medium text-on-surface-variant">{auction.owner.name}</p>
                         </div>
                       )}
                     </div>
@@ -124,9 +124,9 @@ export default function EmbedAuctionList() {
           </div>
         )}
 
-        <div className="text-center mt-6 text-[10px] text-[#717973]">
+        <div className="text-center mt-6 text-[10px] text-on-surface-subtle">
           {t('embedCodesSection.poweredBy') || 'Powered by'}{' '}
-          <a href="/react.oasis/" target="_top" className="text-[#002819] font-semibold hover:underline">
+          <a href="/react.oasis/" target="_top" className="text-brand-primary font-semibold hover:underline">
             Oasis Trace
           </a>
         </div>

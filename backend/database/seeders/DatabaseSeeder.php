@@ -25,6 +25,9 @@ class DatabaseSeeder extends Seeder
             // Subscriptions (depends on users and tiers)
             \Database\Seeders\UserSubscriptionSeeder::class,
             
+            // AI Quick Actions (no dependencies)
+            \Database\Seeders\AiQuickActionSeeder::class,
+            
             // Other data
             \Database\Seeders\DeviceSeeder::class,
             \Database\Seeders\AnimalSeeder::class,
@@ -37,6 +40,12 @@ class DatabaseSeeder extends Seeder
             \Database\Seeders\TaskSeeder::class,
             \Database\Seeders\SubscriptionOrderSeeder::class,
             \Database\Seeders\BannerSeeder::class,
+
+            // Static pages (privacy, terms, contact)
+            \Database\Seeders\PageSeeder::class,
+
+            // Extended translations for all missing groups
+            \Database\Seeders\ExtendTranslationSeeder::class,
 
             // Always last: clears old content data and creates fresh demo data
             \Database\Seeders\DemoDataSeeder::class,

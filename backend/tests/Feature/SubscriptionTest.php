@@ -8,6 +8,17 @@ use App\Models\UserSubscription;
 
 class SubscriptionTest extends TestCase
 {
+    protected function createSubscription(\App\Models\User $user, \App\Models\SubscriptionTier $tier): UserSubscription
+    {
+        return UserSubscription::create([
+            'user_id' => $user->id,
+            'tier_id' => $tier->id,
+            'status' => 'active',
+            'billing_cycle' => 'monthly',
+            'starts_at' => now(),
+            'ends_at' => now()->addMonth(),
+        ]);
+    }
     public function test_user_can_view_subscription_tiers()
     {
         $response = $this->getJson('/api/subscription/tiers');
@@ -44,7 +55,7 @@ class SubscriptionTest extends TestCase
         if ($freeTier) {
             $response = $this->postJson("/api/subscription/subscribe/{$freeTier->id}");
 
-            $response->assertStatus(200);
+            $response->assertStatus(201);
         } else {
             $this->assertTrue(true);
         }
@@ -53,6 +64,10 @@ class SubscriptionTest extends TestCase
     public function test_user_can_cancel_subscription()
     {
         $user = $this->authenticateUser();
+        $basicTier = SubscriptionTier::where('slug', 'basic')->first();
+        if ($basicTier) {
+            $this->createSubscription($user, $basicTier);
+        }
 
         $response = $this->postJson('/api/subscription/cancel');
 
@@ -69,6 +84,10 @@ class SubscriptionTest extends TestCase
     public function test_user_can_upgrade_subscription()
     {
         $user = $this->authenticateUser();
+        $freeTier = SubscriptionTier::where('slug', 'free')->first();
+        if ($freeTier) {
+            $this->createSubscription($user, $freeTier);
+        }
         $tier = SubscriptionTier::where('slug', '!=', 'free')->first();
 
         if ($tier) {
@@ -82,6 +101,10 @@ class SubscriptionTest extends TestCase
     public function test_user_can_downgrade_subscription()
     {
         $user = $this->authenticateUser();
+        $basicTier = SubscriptionTier::where('slug', 'basic')->first();
+        if ($basicTier) {
+            $this->createSubscription($user, $basicTier);
+        }
         $freeTier = SubscriptionTier::where('slug', 'free')->first();
 
         if ($freeTier) {

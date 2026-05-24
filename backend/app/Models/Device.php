@@ -33,6 +33,8 @@ class Device extends Model
         'last_ping',
         'last_temperature_update',
         'user_subscription_id',
+        'data_source',
+        'driver',
     ];
 
     protected $casts = [
@@ -44,6 +46,8 @@ class Device extends Model
         'advanced_tracking' => 'boolean',
         'last_ping' => 'datetime',
         'last_temperature_update' => 'datetime',
+        'data_source' => 'string',
+        'driver' => 'string',
     ];
 
     public function animal()
@@ -59,5 +63,15 @@ class Device extends Model
     public function userSubscription()
     {
         return $this->belongsTo(UserSubscription::class);
+    }
+
+    public function isSimulated(): bool
+    {
+        return $this->data_source === 'simulated';
+    }
+
+    public function isReal(): bool
+    {
+        return $this->data_source === 'real';
     }
 }

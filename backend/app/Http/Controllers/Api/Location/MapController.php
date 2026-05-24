@@ -61,12 +61,20 @@ class MapController extends Controller
 
         $hours = (int) $request->input('hours', 48);
 
-        $devices = $deviceQuery->get()->map(function ($device) use ($hours) {
-            $animal = $device->animal;
-            $locationHistory = $animal ? LocationHistory::where('animal_id', $animal->id)
+        $devices = $deviceQuery->get();
+        $animalIds = $devices->pluck('animal_id')->filter()->unique()->toArray();
+        $locationHistories = collect();
+        if (!empty($animalIds)) {
+            $locationHistories = LocationHistory::whereIn('animal_id', $animalIds)
                 ->where('recorded_at', '>=', Carbon::now()->subHours($hours))
                 ->orderBy('recorded_at', 'asc')
-                ->get(['latitude', 'longitude', 'speed', 'heading', 'recorded_at']) : collect();
+                ->get(['animal_id', 'latitude', 'longitude', 'speed', 'heading', 'recorded_at'])
+                ->groupBy('animal_id');
+        }
+
+        $devices = $devices->map(function ($device) use ($locationHistories) {
+            $animal = $device->animal;
+            $locationHistory = $animal ? ($locationHistories[$animal->id] ?? collect()) : collect();
 
             $hasGps = !is_null($device->gps_lat) && !is_null($device->gps_lng);
 
@@ -152,6 +160,7 @@ class MapController extends Controller
             ->get(['id', 'name', 'color', 'owner_id']);
 
         $users = User::query()
+            ->role('Owner')
             ->when($userRole !== 'Admin', function ($q) use ($userRole, $userId, $user) {
                 if ($userRole === 'Owner') {
                     $q->where(function ($sq) use ($userId) {
@@ -196,6 +205,47 @@ class MapController extends Controller
                 'east' => $devicesWithGps->isNotEmpty() ? $devicesWithGps->max('gps_lng') : 56.0,
                 'west' => $devicesWithGps->isNotEmpty() ? $devicesWithGps->min('gps_lng') : 51.0,
             ],
+        ]);
+    }
+
+    public function filters(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $userId = $user?->id;
+        $userRole = $user?->getPrimaryRoleName();
+
+        $ownerIds = null;
+        if ($userRole !== 'Admin') {
+            $ownerIds = match ($userRole) {
+                'Owner' => [$userId],
+                'Manager' => array_merge(
+                    User::where('managed_by', $userId)->pluck('id')->toArray(),
+                    [$userId]
+                ),
+                'Doctor', 'Shepherd' => $user?->managed_by ? [$user->managed_by] : [0],
+                default => [$userId],
+            };
+        }
+
+        $animalsQuery = Animal::query();
+        if ($ownerIds !== null) {
+            $animalsQuery->whereIn('owner_id', $ownerIds);
+        }
+
+        $species = (clone $animalsQuery)
+            ->whereHas('species')
+            ->with('species:id,name')
+            ->get()
+            ->pluck('species')
+            ->unique('id')
+            ->values();
+
+        $statuses = ['online', 'offline', 'low_signal', 'healthy', 'warning', 'critical', 'lost'];
+
+        return response()->json([
+            'species' => $species,
+            'statuses' => $statuses,
+            'groups' => [],
         ]);
     }
 }

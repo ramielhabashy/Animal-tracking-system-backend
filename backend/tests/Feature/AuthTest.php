@@ -6,6 +6,7 @@ use Tests\TestCase;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Facades\Notification;
 
 class AuthTest extends TestCase
 {
@@ -99,6 +100,8 @@ class AuthTest extends TestCase
 
     public function test_user_can_request_password_reset()
     {
+        Notification::fake();
+
         $user = $this->createUser(['email' => 'test@example.com']);
 
         $response = $this->postJson('/api/auth/forgot-password', [

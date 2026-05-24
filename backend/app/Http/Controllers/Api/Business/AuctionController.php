@@ -15,6 +15,7 @@ use App\Http\Resources\AuctionResource;
 use App\Http\Resources\BidResource;
 use App\Http\Controllers\Traits\OwnableAuthorization;
 use App\Http\Controllers\Traits\SendsEmailNotifications;
+use App\Services\AuctionPaymentService;
 use App\Http\Controllers\Controller;
 
 class AuctionController extends Controller
@@ -279,7 +280,8 @@ class AuctionController extends Controller
         ]);
 
         try {
-            \Stripe\Stripe::setApiKey(config('services.stripe.secret'));
+            $stripeSettings = \App\Models\Setting::getStripeSettings();
+            \Stripe\Stripe::setApiKey($stripeSettings['secret_key']);
 
             $charge = \Stripe\Charge::create([
                 'amount' => (int)($auction->current_price * 100),
@@ -306,6 +308,91 @@ class AuctionController extends Controller
                 $animal = $auction->animal;
                 if ($animal && $auction->winner_id) {
                     $animal->update(['owner_id' => $auction->winner_id]);
+
+                    // Create OwnershipTransfer + OwnershipHistory (same as verifyPayment)
+                    $commissionEnabled = Setting::getBoolean('transfer_commission_enabled', false);
+                    $commissionType = Setting::get('transfer_commission_auction_type', Setting::get('transfer_commission_type', 'percentage'));
+                    $commissionPercentage = (float) Setting::get('transfer_commission_auction_percentage', Setting::get('transfer_commission_percentage', 5));
+                    $commissionFixed = (float) Setting::get('transfer_commission_auction_fixed', Setting::get('transfer_commission_fixed', 0));
+                    $agreedPrice = $auction->current_price;
+                    $commissionAmount = 0;
+                    if ($commissionEnabled) {
+                        $commissionAmount = $commissionType === 'percentage'
+                            ? $agreedPrice * ($commissionPercentage / 100)
+                            : $commissionFixed;
+                    }
+
+                    $transfer = OwnershipTransfer::create([
+                        'from_user_id' => $auction->owner_id,
+                        'to_user_id' => $auction->winner_id,
+                        'status' => 'completed',
+                        'transfer_type' => 'auction',
+                        'reference_type' => 'auction',
+                        'reference_id' => $auction->id,
+                        'agreed_price' => $agreedPrice,
+                        'commission_percentage' => $commissionEnabled ? $commissionPercentage : 0,
+                        'commission_amount' => $commissionAmount,
+                        'commission_paid' => false,
+                        'completed_at' => now(),
+                    ]);
+                    $transfer->animals()->attach($auction->animal_id);
+
+                    OwnershipHistory::create([
+                        'animal_id' => $auction->animal_id,
+                        'from_user_id' => $auction->owner_id,
+                        'to_user_id' => $auction->winner_id,
+                        'transfer_id' => $transfer->id,
+                        'transfer_type' => 'auction',
+                        'reference_type' => 'auction',
+                        'reference_id' => $auction->id,
+                        'commission_amount' => $commissionAmount,
+                        'agreed_price' => $agreedPrice,
+                        'created_at' => now(),
+                    ]);
+
+                    // Notify original owner
+                    \App\Models\Notification::create([
+                        'user_id' => $auction->owner_id,
+                        'type' => 'auction_ownership_transferred',
+                        'title' => 'Animal Sold',
+                        'body' => "Your animal \"{$auction->title}\" has been sold and ownership transferred to the winning bidder.",
+                        'data' => [
+                            'auction_id' => $auction->id,
+                            'link' => "/auctions/{$auction->id}",
+                        ],
+                    ]);
+
+                    // Notify admins about pending commission
+                    if ($commissionAmount > 0) {
+                        $adminUsers = User::role('Admin')->get();
+                        foreach ($adminUsers as $admin) {
+                            \App\Models\Notification::create([
+                                'user_id' => $admin->id,
+                                'type' => 'auction_commission_due',
+                                'title' => 'Commission Pending',
+                                'body' => "Auction \"{$auction->title}\" completed — SAR {$commissionAmount} commission is pending.",
+                                'data' => [
+                                    'auction_id' => $auction->id,
+                                    'transfer_id' => $transfer->id ?? null,
+                                    'commission_amount' => $commissionAmount,
+                                ],
+                            ]);
+                        }
+                    }
+                }
+
+                // Notify winner
+                if ($auction->winner_id) {
+                    \App\Models\Notification::create([
+                        'user_id' => $auction->winner_id,
+                        'type' => 'auction_payment_verified',
+                        'title' => 'Payment successful!',
+                        'body' => "Your payment for \"{$auction->title}\" has been processed. The animal ownership has been transferred.",
+                        'data' => [
+                            'auction_id' => $auction->id,
+                            'link' => "/auctions/{$auction->id}",
+                        ],
+                    ]);
                 }
 
                 return response()->json([
@@ -689,12 +776,15 @@ class AuctionController extends Controller
             if ($sold) {
                 $secondHighest = $auction->secondHighestBid();
                 
+                $paymentExpiryHours = (int) Setting::get('auction_payment_expiry_hours', 24);
+                $secondWinnerEnabled = Setting::getBoolean('auction_second_winner_enabled', true);
+
                 $auction->update([
                     'status' => 'sold',
                     'winner_id' => $highestBid->user_id,
-                    'second_winner_id' => $secondHighest?->user_id,
+                    'second_winner_id' => $secondWinnerEnabled ? $secondHighest?->user_id : null,
                     'ended_at' => now(),
-                    'payment_expires_at' => now()->addHours(24),
+                    'payment_expires_at' => now()->addHours($paymentExpiryHours),
                     'payment_status' => 'pending',
                 ]);
 
@@ -702,7 +792,7 @@ class AuctionController extends Controller
                     'user_id' => $highestBid->user_id,
                     'type' => 'auction_won',
                     'title' => 'You won the auction!',
-                    'body' => "Congratulations! You won \"{$auction->title}\" for {$highestBid->amount} SAR. Complete payment within 24 hours.",
+                    'body' => "Congratulations! You won \"{$auction->title}\" for {$highestBid->amount} SAR. Complete payment within {$paymentExpiryHours} hours.",
                     'data' => [
                         'auction_id' => $auction->id,
                         'link' => "/auctions/{$auction->id}",
@@ -717,7 +807,7 @@ class AuctionController extends Controller
                         "Congratulations! You Won – {$auction->title}",
                         [
                             "You won \"{$auction->title}\" with a bid of {$highestBid->amount} SAR.",
-                            'Please complete your payment within 24 hours to secure the animal.',
+                            "Please complete your payment within {$paymentExpiryHours} hours to secure the animal.",
                         ],
                         rtrim(env('FRONTEND_URL', config('app.url')), '/') . "/auctions/{$auction->id}",
                         'Complete Payment',
@@ -876,9 +966,9 @@ class AuctionController extends Controller
             $animal = $auction->animal;
             if ($animal && $auction->winner_id) {
                 $commissionEnabled = Setting::getBoolean('transfer_commission_enabled', false);
-                $commissionType = Setting::get('transfer_commission_type', 'percentage');
-                $commissionPercentage = (float) Setting::get('transfer_commission_percentage', 5);
-                $commissionFixed = (float) Setting::get('transfer_commission_fixed', 0);
+                $commissionType = Setting::get('transfer_commission_auction_type', Setting::get('transfer_commission_type', 'percentage'));
+                $commissionPercentage = (float) Setting::get('transfer_commission_auction_percentage', Setting::get('transfer_commission_percentage', 5));
+                $commissionFixed = (float) Setting::get('transfer_commission_auction_fixed', Setting::get('transfer_commission_fixed', 0));
                 $agreedPrice = $auction->current_price;
                 $commissionAmount = 0;
                 if ($commissionEnabled) {
@@ -918,6 +1008,36 @@ class AuctionController extends Controller
                 $animal->update([
                     'owner_id' => $auction->winner_id,
                 ]);
+
+                // Notify original owner
+                \App\Models\Notification::create([
+                    'user_id' => $auction->owner_id,
+                    'type' => 'auction_ownership_transferred',
+                    'title' => 'Animal Sold',
+                    'body' => "Your animal \"{$auction->title}\" has been sold and ownership transferred to the winning bidder.",
+                    'data' => [
+                        'auction_id' => $auction->id,
+                        'link' => "/auctions/{$auction->id}",
+                    ],
+                ]);
+
+                // Notify admins about pending commission
+                if ($commissionAmount > 0) {
+                    $adminUsers = User::role('Admin')->get();
+                    foreach ($adminUsers as $admin) {
+                        \App\Models\Notification::create([
+                            'user_id' => $admin->id,
+                            'type' => 'auction_commission_due',
+                            'title' => 'Commission Pending',
+                            'body' => "Auction \"{$auction->title}\" completed — SAR {$commissionAmount} commission is pending.",
+                            'data' => [
+                                'auction_id' => $auction->id,
+                                'transfer_id' => $transfer->id,
+                                'commission_amount' => $commissionAmount,
+                            ],
+                        ]);
+                    }
+                }
             }
 
             if ($auction->winner_id) {
@@ -948,11 +1068,12 @@ class AuctionController extends Controller
                 }
             }
         } else {
+            $paymentExpiryHours = (int) Setting::get('auction_payment_expiry_hours', 24);
             $auction->update([
                 'payment_status' => 'rejected',
                 'verified_by' => $userId,
                 'payment_notes' => $notes,
-                'payment_expires_at' => now()->addHours(24),
+                'payment_expires_at' => now()->addHours($paymentExpiryHours),
             ]);
 
             if ($auction->winner_id) {
@@ -976,7 +1097,7 @@ class AuctionController extends Controller
                         "Payment Rejected – {$auction->title}",
                         [
                             'Your payment proof for "' . $auction->title . '" was rejected.' . ($notes ? " Reason: {$notes}" : ''),
-                            'Please upload a valid payment proof within 24 hours.',
+                            'Please upload a valid payment proof within {$paymentExpiryHours} hours.',
                         ],
                         rtrim(env('FRONTEND_URL', config('app.url')), '/') . "/auctions/{$auction->id}",
                         'View Auction',
@@ -984,7 +1105,8 @@ class AuctionController extends Controller
                 }
             }
 
-            $secondWinner = $auction->secondWinner;
+            $secondWinnerEnabled = Setting::getBoolean('auction_second_winner_enabled', true);
+            $secondWinner = $secondWinnerEnabled ? $auction->secondWinner : null;
             if ($secondWinner) {
                 $auction->update([
                     'winner_id' => $secondWinner->id,
@@ -1009,7 +1131,7 @@ class AuctionController extends Controller
                     "You're the New Winner! – {$auction->title}",
                     [
                         "The previous winner didn't complete payment. You've been promoted to winner for \"{$auction->title}\".",
-                        'Please complete your payment within 24 hours.',
+                        "Please complete your payment within {$paymentExpiryHours} hours.",
                     ],
                     rtrim(env('FRONTEND_URL', config('app.url')), '/') . "/auctions/{$auction->id}",
                     'Complete Payment',
@@ -1025,107 +1147,7 @@ class AuctionController extends Controller
 
     public function processExpiredPayments(): JsonResponse
     {
-        $expiredAuctions = Auction::where('status', 'sold')
-            ->where('payment_status', 'pending')
-            ->where('payment_expires_at', '<', now())
-            ->get();
-
-        $processed = 0;
-
-        foreach ($expiredAuctions as $auction) {
-            $secondWinner = $auction->secondWinner;
-            
-            $oldWinnerId = $auction->winner_id;
-
-            if ($secondWinner) {
-                $auction->update([
-                    'winner_id' => $secondWinner->id,
-                    'second_winner_id' => null,
-                    'payment_expires_at' => now()->addHours(24),
-                    'payment_status' => 'pending',
-                ]);
-
-                $oldWinner = User::find($oldWinnerId);
-
-                \App\Models\Notification::create([
-                    'user_id' => $oldWinnerId,
-                    'type' => 'auction_payment_rejected',
-                    'title' => 'Payment deadline passed',
-                    'body' => "Your payment deadline for \"{$auction->title}\" has expired. You've lost the winning position.",
-                    'data' => ['auction_id' => $auction->id],
-                ]);
-
-                if ($oldWinner) {
-                    $this->sendNotificationMail(
-                        $oldWinner,
-                        'auction_payment',
-                        "Payment Deadline Passed – {$auction->title}",
-                        [
-                            "Your payment deadline for \"{$auction->title}\" has expired.",
-                            "You've lost the winning position.",
-                        ],
-                        rtrim(env('FRONTEND_URL', config('app.url')), '/') . "/auctions/{$auction->id}",
-                        'View Auction',
-                    );
-                }
-
-                \App\Models\Notification::create([
-                    'user_id' => $secondWinner->id,
-                    'type' => 'auction_won',
-                    'title' => 'You\'re the new winner!',
-                    'body' => "The previous winner didn't pay on time. You've been promoted to winner for \"{$auction->title}\".",
-                    'data' => [
-                        'auction_id' => $auction->id,
-                        'link' => "/auctions/{$auction->id}",
-                    ],
-                ]);
-
-                $this->sendNotificationMail(
-                    $secondWinner,
-                    'auction_won',
-                    "You're the New Winner! – {$auction->title}",
-                    [
-                        "The previous winner didn't pay on time.",
-                        "You've been promoted to winner for \"{$auction->title}\". Please complete payment within 24 hours.",
-                    ],
-                    rtrim(env('FRONTEND_URL', config('app.url')), '/') . "/auctions/{$auction->id}",
-                    'Complete Payment',
-                );
-            } else {
-                $auction->update([
-                    'status' => 'ended',
-                    'payment_status' => 'expired',
-                ]);
-
-                if ($oldWinnerId) {
-                    $oldWinnerUser = User::find($oldWinnerId);
-
-                    \App\Models\Notification::create([
-                        'user_id' => $oldWinnerId,
-                        'type' => 'auction_payment_rejected',
-                        'title' => 'Payment deadline passed',
-                        'body' => "Your payment deadline for \"{$auction->title}\" has expired. The auction has been ended.",
-                        'data' => ['auction_id' => $auction->id],
-                    ]);
-
-                    if ($oldWinnerUser) {
-                        $this->sendNotificationMail(
-                            $oldWinnerUser,
-                            'auction_payment',
-                            "Payment Deadline Passed – {$auction->title}",
-                            [
-                                "Your payment deadline for \"{$auction->title}\" has expired.",
-                                'The auction has been ended.',
-                            ],
-                            rtrim(env('FRONTEND_URL', config('app.url')), '/') . "/auctions/{$auction->id}",
-                            'View Auction',
-                        );
-                    }
-                }
-            }
-            
-            $processed++;
-        }
+        $processed = AuctionPaymentService::processExpiredPayments();
 
         return response()->json([
             'message' => "Processed {$processed} expired payments",
@@ -1266,6 +1288,41 @@ class AuctionController extends Controller
 
         return response()->json([
             'data' => AuctionResource::collection($auctions),
+        ]);
+    }
+
+    public function stats(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $query = Auction::query();
+
+        if ($user && $user->getPrimaryRoleName() !== 'Admin') {
+            $userId = $user->id;
+            $query->where(function ($q) use ($userId) {
+                $q->where('owner_id', $userId)
+                  ->orWhere('winner_id', $userId);
+            });
+        }
+
+        return response()->json([
+            'total' => (clone $query)->count(),
+            'active' => (clone $query)->where('status', 'active')->count(),
+            'draft' => (clone $query)->where('status', 'draft')->count(),
+            'ended' => (clone $query)->where('status', 'ended')->count(),
+            'sold' => (clone $query)->where('status', 'sold')->count(),
+            'cancelled' => (clone $query)->where('status', 'cancelled')->count(),
+        ]);
+    }
+
+    public function bids(Request $request, Auction $auction): JsonResponse
+    {
+        $bids = $auction->bids()
+            ->with('user:id,name')
+            ->orderBy('created_at', 'desc')
+            ->paginate(50);
+
+        return response()->json([
+            'data' => BidResource::collection($bids),
         ]);
     }
 }

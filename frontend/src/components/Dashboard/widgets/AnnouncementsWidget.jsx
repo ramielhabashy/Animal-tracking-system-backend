@@ -5,9 +5,9 @@ import { useI18n } from '../../../i18n';
 
 const COLOR_STYLES = {
   dark: 'bg-stone-900 text-stone-300',
-  brand: 'bg-gradient-to-br from-[#002819] to-[#06402b] text-white',
+  brand: 'bg-gradient-to-br from-brand-primary to-brand-secondary text-white',
   amber: 'bg-amber-50 border border-amber-200 text-amber-800',
-  default: 'bg-[#f4f4ef]',
+  default: 'bg-surface-light',
 };
 
 export default function AnnouncementsWidget({ dashboardData }) {
@@ -23,7 +23,7 @@ export default function AnnouncementsWidget({ dashboardData }) {
 
   return (
     <div>
-      <h3 className="text-sm font-semibold text-[#002819] mb-3">
+      <h3 className="text-sm font-semibold text-brand-primary mb-3">
         {t('nav.announcements') || 'Announcements'}
       </h3>
       <div className="space-y-2">

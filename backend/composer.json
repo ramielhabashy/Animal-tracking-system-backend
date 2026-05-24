@@ -4,11 +4,17 @@
     "description": "The Oasis - Livestock Tracking Platform",
     "require": {
         "php": "^8.2",
+        "barryvdh/laravel-dompdf": "^3.1",
         "guzzlehttp/guzzle": "*",
         "laravel/framework": "^11.0",
+        "laravel/horizon": "^5.47",
         "laravel/sanctum": "^4.3",
         "laravel/tinker": "^2.9",
         "nunomaduro/collision": "^8.5",
+        "php-mqtt/laravel-client": "^1.8",
+        "predis/predis": "^3.4",
+        "sentry/sentry-laravel": "^4.25",
+        "spatie/flare-client-php": "^2.10",
         "spatie/laravel-permission": "^6.25",
         "spatie/laravel-translatable": "6.7",
         "stripe/stripe-php": "^20.0",
@@ -51,6 +57,9 @@
         "optimize-autoloader": true,
         "preferred-install": "dist",
         "sort-packages": true,
+        "platform": {
+            "php": "8.2.30"
+        },
         "allow-plugins": {
             "pestphp/pest-plugin": true,
             "php-http/discovery": true

@@ -69,4 +69,9 @@ class SubscriptionTier extends Model
     {
         return $trialDays > 0;
     }
+
+    public function price(string $billingCycle = 'monthly'): float
+    {
+        return (float)($billingCycle === 'yearly' ? $this->price_yearly : $this->price_monthly);
+    }
 }

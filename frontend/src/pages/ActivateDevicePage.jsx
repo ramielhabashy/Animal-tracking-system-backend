@@ -74,7 +74,7 @@ export default function ActivateDevicePage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin w-8 h-8 border-4 border-[#002819] border-t-transparent rounded-full" />
+        <div className="animate-spin w-8 h-8 border-4 border-brand-primary border-t-transparent rounded-full" />
       </div>
     );
   }
@@ -82,8 +82,8 @@ export default function ActivateDevicePage() {
   return (
     <div className="space-y-6 max-w-2xl mx-auto">
       <div>
-        <h2 className="text-3xl font-bold text-[#002819]">Activate Device</h2>
-        <p className="text-[#404943] mt-1">
+        <h2 className="text-3xl font-bold text-brand-primary">Activate Device</h2>
+        <p className="text-on-surface-variant mt-1">
           {activated
             ? 'Your subscription is now active!'
             : 'Enter your device serial number to activate your subscription.'}
@@ -107,18 +107,18 @@ export default function ActivateDevicePage() {
       )}
 
       {hasPendingOrders && !activated && (
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-[#E3E3DE]">
-          <h3 className="font-bold text-[#002819] mb-3">Pending Activations</h3>
-          <p className="text-sm text-[#717973] mb-4">
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-surface-high">
+          <h3 className="font-bold text-brand-primary mb-3">Pending Activations</h3>
+          <p className="text-sm text-on-surface-subtle mb-4">
             You have {orders.length} paid subscription(s) awaiting device activation.
           </p>
           <div className="space-y-3">
             {orders.map((order) => (
-              <div key={order.id} className="bg-[#F4F4EF] rounded-xl p-4">
+              <div key={order.id} className="bg-surface-light rounded-xl p-4">
                 <div className="flex items-center justify-between mb-2">
                   <div>
-                    <p className="font-bold text-[#002819]">{order.tier?.name || 'Subscription'}</p>
-                    <p className="text-xs text-[#717973]">Order #{order.id} — {new Date(order.created_at).toLocaleDateString()}</p>
+                    <p className="font-bold text-brand-primary">{order.tier?.name || 'Subscription'}</p>
+                    <p className="text-xs text-on-surface-subtle">Order #{order.id} — {new Date(order.created_at).toLocaleDateString()}</p>
                   </div>
                   <span className="text-emerald-600 font-bold text-sm">Paid</span>
                 </div>
@@ -132,10 +132,10 @@ export default function ActivateDevicePage() {
                      order.shipping_status === 'shipped' ? 'Shipped' : 'Awaiting shipment'}
                   </span>
                   {order.tracking_number && (
-                    <span className="text-[#717973]">Tracking: #{order.tracking_number}</span>
+                    <span className="text-on-surface-subtle">Tracking: #{order.tracking_number}</span>
                   )}
                   {!order.shipping_status || order.shipping_status === 'pending' ? (
-                    <span className="text-[#717973]">— Device not yet shipped</span>
+                    <span className="text-on-surface-subtle">— Device not yet shipped</span>
                   ) : null}
                 </div>
               </div>
@@ -145,9 +145,9 @@ export default function ActivateDevicePage() {
       )}
 
       {!activated && (
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-[#E3E3DE]">
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-surface-high">
           <div className="mb-4">
-            <label className="block text-sm font-medium text-[#404943] mb-2">Device ID / Serial Number</label>
+            <label className="block text-sm font-medium text-on-surface-variant mb-2">Device ID / Serial Number</label>
             <input
               type="text"
               value={deviceId}
@@ -160,7 +160,7 @@ export default function ActivateDevicePage() {
           <button
             onClick={handleActivate}
             disabled={activating || !hasPendingOrders}
-            className="w-full py-4 bg-[#002819] text-white rounded-xl font-bold text-lg hover:bg-[#06402B] transition disabled:opacity-50"
+            className="w-full py-4 bg-brand-primary text-white rounded-xl font-bold text-lg hover:bg-brand-secondary transition disabled:opacity-50"
           >
             {activating ? 'Activating...' : 'Activate Device & Start Subscription'}
           </button>
@@ -168,16 +168,16 @@ export default function ActivateDevicePage() {
       )}
 
       {!hasPendingOrders && !activated && (
-        <div className="bg-[#D4AF37]/10 border border-[#D4AF37] rounded-2xl p-6 text-center">
-          <MaterialSymbol icon="info" size={48} className="text-[#D4AF37] mx-auto mb-3" />
-          <h3 className="text-lg font-bold text-[#002819] mb-2">No Pending Orders</h3>
-          <p className="text-[#404943] mb-4">
+        <div className="bg-brand-accent/10 border border-brand-accent rounded-2xl p-6 text-center">
+          <MaterialSymbol icon="info" size={48} className="text-brand-accent mx-auto mb-3" />
+          <h3 className="text-lg font-bold text-brand-primary mb-2">No Pending Orders</h3>
+          <p className="text-on-surface-variant mb-4">
             You don't have any paid subscriptions waiting for activation.
             Subscribe to a plan first, then activate your device here.
           </p>
           <button
             onClick={() => navigate('/subscription/select')}
-            className="py-3 px-6 bg-[#002819] text-white rounded-xl font-bold hover:bg-[#06402B] transition"
+            className="py-3 px-6 bg-brand-primary text-white rounded-xl font-bold hover:bg-brand-secondary transition"
           >
             View Plans
           </button>
@@ -188,7 +188,7 @@ export default function ActivateDevicePage() {
         <div className="text-center space-y-4">
           <button
             onClick={() => navigate('/dashboard')}
-            className="py-4 px-8 bg-[#002819] text-white rounded-xl font-bold hover:bg-[#06402B] transition"
+            className="py-4 px-8 bg-brand-primary text-white rounded-xl font-bold hover:bg-brand-secondary transition"
           >
             Go to Dashboard
           </button>

@@ -107,11 +107,11 @@ export default function EmbedCodesSettings({ dir }) {
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-bold text-[#002819]">
+        <h3 className="text-lg font-bold text-brand-primary">
           <MaterialSymbol icon="code" size={22} className="inline align-text-bottom mr-1" />
           {t('embedCodesSection.title')}
         </h3>
-        <p className="text-sm text-[#717973] mt-1">{t('embedCodesSection.description')}</p>
+        <p className="text-sm text-on-surface-subtle mt-1">{t('embedCodesSection.description')}</p>
       </div>
 
       <div className="grid gap-6">
@@ -119,40 +119,40 @@ export default function EmbedCodesSettings({ dir }) {
           <div key={widget.id} className="bg-white rounded-2xl border border-[#eeeee9] overflow-hidden">
             <div className="p-5">
               <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-xl bg-[#f4f4ef] flex items-center justify-center shrink-0">
-                  <MaterialSymbol icon={widget.icon} size={24} className="text-[#002819]" />
+                <div className="w-12 h-12 rounded-xl bg-surface-light flex items-center justify-center shrink-0">
+                  <MaterialSymbol icon={widget.icon} size={24} className="text-brand-primary" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h4 className="font-bold text-[#002819]">{t(widget.titleKey)}</h4>
-                  <p className="text-sm text-[#717973] mt-0.5">{t(widget.descKey)}</p>
+                  <h4 className="font-bold text-brand-primary">{t(widget.titleKey)}</h4>
+                  <p className="text-sm text-on-surface-subtle mt-0.5">{t(widget.descKey)}</p>
 
                   <div className="flex flex-wrap gap-4 mt-4">
                     <div>
-                      <label className="block text-[10px] uppercase tracking-wider font-bold text-[#717973] mb-1">{t('embedCodesSection.height')}</label>
+                      <label className="block text-[10px] uppercase tracking-wider font-bold text-on-surface-subtle mb-1">{t('embedCodesSection.height')}</label>
                       <input
                         type="number"
                         value={heights[widget.id] ?? widget.defaultHeight}
                         onChange={e => setHeights(prev => ({ ...prev, [widget.id]: parseInt(e.target.value) || widget.defaultHeight }))}
-                        className="w-24 px-3 py-1.5 bg-[#f4f4ef] rounded-lg text-sm font-medium border-0 focus:ring-2 focus:ring-[#D4AF37]"
+                        className="w-24 px-3 py-1.5 bg-surface-light rounded-lg text-sm font-medium border-0 focus:ring-2 focus:ring-brand-accent"
                         min="100"
                         max="2000"
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] uppercase tracking-wider font-bold text-[#717973] mb-1">{t('embedCodesSection.width')}</label>
+                      <label className="block text-[10px] uppercase tracking-wider font-bold text-on-surface-subtle mb-1">{t('embedCodesSection.width')}</label>
                       <input
                         type="text"
                         value={widths[widget.id] ?? widget.defaultWidth}
                         onChange={e => setWidths(prev => ({ ...prev, [widget.id]: e.target.value }))}
-                        className="w-24 px-3 py-1.5 bg-[#f4f4ef] rounded-lg text-sm font-medium border-0 focus:ring-2 focus:ring-[#D4AF37]"
+                        className="w-24 px-3 py-1.5 bg-surface-light rounded-lg text-sm font-medium border-0 focus:ring-2 focus:ring-brand-accent"
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] uppercase tracking-wider font-bold text-[#717973] mb-1">{t('embedCodesSection.language')}</label>
+                      <label className="block text-[10px] uppercase tracking-wider font-bold text-on-surface-subtle mb-1">{t('embedCodesSection.language')}</label>
                       <select
                         value={(langs[widget.id] ?? currentLocale) || 'en'}
                         onChange={e => setLangs(prev => ({ ...prev, [widget.id]: e.target.value }))}
-                        className="px-3 py-1.5 bg-[#f4f4ef] rounded-lg text-sm font-medium border-0 focus:ring-2 focus:ring-[#D4AF37] appearance-none cursor-pointer"
+                        className="px-3 py-1.5 bg-surface-light rounded-lg text-sm font-medium border-0 focus:ring-2 focus:ring-brand-accent appearance-none cursor-pointer"
                       >
                         {LANGUAGES.map(l => (
                           <option key={l.code} value={l.code}>{l.label}</option>
@@ -164,7 +164,7 @@ export default function EmbedCodesSettings({ dir }) {
                         href={`/react.oasis${widget.path}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 px-3 py-1.5 bg-[#f4f4ef] rounded-lg text-xs font-medium text-[#404943] hover:bg-[#E3E3DE] transition"
+                        className="inline-flex items-center gap-1 px-3 py-1.5 bg-surface-light rounded-lg text-xs font-medium text-on-surface-variant hover:bg-surface-high transition"
                       >
                         <MaterialSymbol icon="open_in_new" size={14} />
                         {t('common.preview') || 'Preview'}

@@ -28,6 +28,7 @@ class AuctionTest extends TestCase
             'animal_id' => $animal->id,
             'starting_price' => 1000,
             'min_price' => 800,
+            'duration_hours' => 168,
             'ends_at' => now()->addDays(7)->toISOString(),
         ]);
 
@@ -38,18 +39,20 @@ class AuctionTest extends TestCase
     public function test_user_can_view_auction()
     {
         $user = $this->authenticateUser();
-        $auction = Auction::factory()->create();
+        $animal = Animal::factory()->create(['owner_id' => $user->id]);
+        $auction = Auction::factory()->create(['animal_id' => $animal->id, 'owner_id' => $user->id]);
 
         $response = $this->getJson("/api/auctions/{$auction->id}");
 
         $response->assertStatus(200)
-            ->assertJson(['id' => $auction->id]);
+            ->assertJson(['data' => ['id' => $auction->id]]);
     }
 
     public function test_user_can_update_own_auction()
     {
         $user = $this->authenticateUser();
-        $auction = Auction::factory()->create(['seller_id' => $user->id]);
+        $animal = Animal::factory()->create(['owner_id' => $user->id]);
+        $auction = Auction::factory()->create(['animal_id' => $animal->id, 'owner_id' => $user->id]);
 
         $response = $this->putJson("/api/auctions/{$auction->id}", [
             'title' => 'Updated Auction Title',
@@ -61,21 +64,25 @@ class AuctionTest extends TestCase
 
     public function test_user_can_place_bid()
     {
-        $user = $this->authenticateUser();
-        $auction = Auction::factory()->create(['status' => 'active']);
+        $owner = $this->createUser();
+        $bidder = $this->createUser(['email' => 'bidder@test.com']);
+        $this->authenticateUser($bidder);
+        $animal = Animal::factory()->create(['owner_id' => $owner->id]);
+        $auction = Auction::factory()->create(['animal_id' => $animal->id, 'owner_id' => $owner->id, 'status' => 'active']);
 
         $response = $this->postJson("/api/auctions/{$auction->id}/bid", [
             'amount' => 1500,
         ]);
 
-        $response->assertStatus(200);
-        $this->assertDatabaseHas('bids', ['auction_id' => $auction->id, 'bidder_id' => $user->id]);
+        $response->assertStatus(201);
+        $this->assertDatabaseHas('bids', ['auction_id' => $auction->id, 'user_id' => $bidder->id]);
     }
 
     public function test_user_can_view_my_auctions()
     {
         $user = $this->authenticateUser();
-        Auction::factory()->count(2)->create(['seller_id' => $user->id]);
+        $animal = Animal::factory()->create(['owner_id' => $user->id]);
+        Auction::factory()->count(2)->create(['animal_id' => $animal->id, 'owner_id' => $user->id]);
 
         $response = $this->getJson('/api/auctions/my');
 
@@ -85,7 +92,8 @@ class AuctionTest extends TestCase
     public function test_user_can_cancel_own_auction()
     {
         $user = $this->authenticateUser();
-        $auction = Auction::factory()->create(['seller_id' => $user->id, 'status' => 'active']);
+        $animal = Animal::factory()->create(['owner_id' => $user->id]);
+        $auction = Auction::factory()->create(['animal_id' => $animal->id, 'owner_id' => $user->id, 'status' => 'active']);
 
         $response = $this->postJson("/api/auctions/{$auction->id}/cancel");
 

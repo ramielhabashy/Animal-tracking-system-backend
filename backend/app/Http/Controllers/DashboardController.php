@@ -11,6 +11,7 @@ use App\Models\Task;
 use App\Models\Device;
 use App\Models\UserSubscription;
 use App\Models\User;
+use App\Models\Setting;
 
 class DashboardController extends Controller
 {
@@ -18,6 +19,16 @@ class DashboardController extends Controller
     {
         $user = $request->user();
         $ownerId = $this->resolveOwnerId($user);
+
+        $realDataEnabled = Setting::getBoolean('device_real_data_enabled', false);
+
+        $deviceQuery = Device::query();
+        $animalQuery = Animal::query();
+
+        if ($ownerId !== null) {
+            $deviceQuery->where('owner_id', $ownerId);
+            $animalQuery->where('owner_id', $ownerId);
+        }
 
         if ($ownerId === null) {
             $totalAnimals = Animal::count();
@@ -42,6 +53,15 @@ class DashboardController extends Controller
         $animalsWithDevice = Animal::when($ownerId, function ($q) use ($ownerId) {
             $q->where('owner_id', $ownerId);
         })->whereHas('device')->count();
+
+        $totalDevicesReal = (clone $deviceQuery)->where('data_source', 'real')->count();
+        $totalDevicesSimulated = (clone $deviceQuery)->where('data_source', 'simulated')->count();
+        $healthyCountReal = Animal::when($ownerId, function ($q) use ($ownerId) {
+            $q->where('owner_id', $ownerId);
+        })->whereHas('device', fn ($q) => $q->where('data_source', 'real'))->count();
+        $healthyCountSimulated = Animal::when($ownerId, function ($q) use ($ownerId) {
+            $q->where('owner_id', $ownerId);
+        })->whereHas('device', fn ($q) => $q->where('data_source', 'simulated'))->count();
 
         $subscription = null;
         if ($user->hasRole('Admin')) {
@@ -81,6 +101,11 @@ class DashboardController extends Controller
             'pending_tasks' => $pendingTasks,
             'healthy_count' => $animalsWithDevice,
             'total_devices' => $devicesCount,
+            'total_devices_real' => $totalDevicesReal,
+            'total_devices_simulated' => $totalDevicesSimulated,
+            'healthy_count_real' => $healthyCountReal,
+            'healthy_count_simulated' => $healthyCountSimulated,
+            'real_data_enabled' => $realDataEnabled,
             'subscription' => $subscription,
         ]);
     }
@@ -99,12 +124,16 @@ class DashboardController extends Controller
           ->orderBy('name')
           ->get()
           ->map(function ($owner) {
+              $gracePeriodDays = (int) (Setting::get('subscription_grace_period_days') ?? 7);
               $latestSub = $owner->subscription()->latest()->first();
               $subStatus = $latestSub?->status;
               $subEndsAt = $latestSub?->ends_at?->toDateString();
               $daysRemaining = null;
               if ($latestSub?->ends_at) {
                   $daysRemaining = max(0, now()->diffInDays($latestSub->ends_at, false));
+                  if ($subStatus === 'past_due') {
+                      $daysRemaining += $gracePeriodDays;
+                  }
               }
               return [
                   'id' => $owner->id,

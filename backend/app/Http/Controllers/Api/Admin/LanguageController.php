@@ -65,10 +65,6 @@ class LanguageController extends Controller
             ->get()
             ->pluck('value', 'key');
         
-        $uiGrouped = [];
-        foreach ($uiTranslations as $key => $value) {
-        }
-        
         $modelTranslations = [];
         
         $species = DB::table('species')->get();

@@ -85,7 +85,8 @@ class NotificationController extends Controller
 
     private function checkSubscriptionExpiry($admin): void
     {
-        $expiringSoon = UserSubscription::where('status', 'active')
+        $expiringSoon = UserSubscription::with('user:id,name')
+            ->where('status', 'active')
             ->where('ends_at', '<=', now()->addDays(7))
             ->where('ends_at', '>', now())
             ->get();

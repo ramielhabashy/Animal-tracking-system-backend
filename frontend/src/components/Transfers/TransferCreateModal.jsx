@@ -139,9 +139,9 @@ export default function TransferCreateModal({ onClose, onCreated, preselectedAni
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm" onClick={onClose}>
       <div className="bg-white rounded-2xl w-[520px] max-w-[95vw] max-h-[90vh] overflow-y-auto shadow-xl" onClick={e => e.stopPropagation()} dir={dir}>
-        <div className="px-6 py-4 border-b border-[#E3E3DE] flex items-center justify-between">
-          <h3 className="text-lg font-bold text-[#002819]">{t('transfers.createNew') || 'New Transfer'}</h3>
-          <button onClick={onClose} className="w-8 h-8 rounded-xl text-[#404943]/50 hover:text-[#404943] hover:bg-[#F4F4EF] flex items-center justify-center">
+        <div className="px-6 py-4 border-b border-surface-high flex items-center justify-between">
+          <h3 className="text-lg font-bold text-brand-primary">{t('transfers.createNew') || 'New Transfer'}</h3>
+          <button onClick={onClose} className="w-8 h-8 rounded-xl text-on-surface-variant/50 hover:text-on-surface-variant hover:bg-surface-light flex items-center justify-center">
             <MaterialSymbol icon="close" size={18} />
           </button>
         </div>
@@ -156,17 +156,17 @@ export default function TransferCreateModal({ onClose, onCreated, preselectedAni
 
           {/* Mode toggle */}
           <div>
-            <label className="block text-xs font-semibold text-[#404943]/70 mb-2">{t('transfers.selectionMode') || 'Selection Mode'}</label>
-            <div className="flex gap-2 bg-[#F4F4EF] p-1 rounded-xl w-fit">
+            <label className="block text-xs font-semibold text-on-surface-variant/70 mb-2">{t('transfers.selectionMode') || 'Selection Mode'}</label>
+            <div className="flex gap-2 bg-surface-light p-1 rounded-xl w-fit">
               <button
                 onClick={() => setMode('animals')}
-                className={`px-4 py-2 rounded-lg text-xs font-semibold transition-colors ${mode === 'animals' ? 'bg-white text-[#002819] shadow-sm' : 'text-[#404943] hover:text-[#002819]'}`}
+                className={`px-4 py-2 rounded-lg text-xs font-semibold transition-colors ${mode === 'animals' ? 'bg-white text-brand-primary shadow-sm' : 'text-on-surface-variant hover:text-brand-primary'}`}
               >
                 {t('transfers.selectAnimals') || 'Select Animals'}
               </button>
               <button
                 onClick={() => setMode('group')}
-                className={`px-4 py-2 rounded-lg text-xs font-semibold transition-colors ${mode === 'group' ? 'bg-white text-[#002819] shadow-sm' : 'text-[#404943] hover:text-[#002819]'}`}
+                className={`px-4 py-2 rounded-lg text-xs font-semibold transition-colors ${mode === 'group' ? 'bg-white text-brand-primary shadow-sm' : 'text-on-surface-variant hover:text-brand-primary'}`}
               >
                 {t('transfers.selectGroup') || 'Select Group'}
               </button>
@@ -176,41 +176,41 @@ export default function TransferCreateModal({ onClose, onCreated, preselectedAni
           {/* Animals mode */}
           {mode === 'animals' && (
             <div>
-              <label className="block text-xs font-semibold text-[#404943]/70 mb-1.5">
+              <label className="block text-xs font-semibold text-on-surface-variant/70 mb-1.5">
                 {t('transfers.animals') || 'Animals'} ({selectedAnimalIds.length} {t('transfers.selected') || 'selected'})
               </label>
               <div className="relative mb-2">
-                <MaterialSymbol icon="search" size={16} className="absolute top-1/2 -translate-y-1/2 text-[#404943]/50" style={{ [isRtl ? 'right' : 'left']: '10px' }} />
+                <MaterialSymbol icon="search" size={16} className="absolute top-1/2 -translate-y-1/2 text-on-surface-variant/50 start-3" />
                 <input
                   type="text"
                   value={animalSearch}
                   onChange={e => setAnimalSearch(e.target.value)}
                   placeholder={t('common.search') || 'Search animals...'}
-                  className={`w-full bg-[#FAF5F1] border border-[#E3E3DE] rounded-xl px-3 py-2 text-xs text-[#404943] placeholder:text-[#404943]/40 focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/30 focus:border-[#D4AF37] ${isRtl ? 'pr-8 pl-3' : 'pl-8 pr-3'}`}
+                  className={`w-full bg-surface-light border border-surface-high rounded-xl px-3 py-2 text-xs text-on-surface-variant placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent ${isRtl ? 'pr-8 pl-3' : 'pl-8 pr-3'}`}
                 />
               </div>
               {filteredAnimals.length > 0 && (
                 <button
                   onClick={selectAllFiltered}
-                  className="text-[11px] font-medium text-[#D4AF37] hover:underline mb-1.5 block"
+                  className="text-[11px] font-medium text-brand-accent hover:underline mb-1.5 block"
                 >
                   {filteredAnimals.every(a => selectedAnimalIds.includes(a.id))
                     ? (t('common.deselectAll') || 'Deselect all')
                     : ((t('common.selectAll') || 'Select all') + ` (${filteredAnimals.length})`)}
                 </button>
               )}
-              <div className="max-h-48 overflow-y-auto space-y-1 border border-[#E3E3DE] rounded-xl p-1">
+              <div className="max-h-48 overflow-y-auto space-y-1 border border-surface-high rounded-xl p-1">
                 {loadingAnimals ? (
                   <div className="flex items-center justify-center py-6">
-                    <MaterialSymbol icon="progress_activity" size={20} className="text-[#D4AF37] animate-spin" />
+                    <MaterialSymbol icon="progress_activity" size={20} className="text-brand-accent animate-spin" />
                   </div>
                 ) : filteredAnimals.length === 0 ? (
-                  <p className="text-xs text-[#404943]/40 text-center py-6">{t('common.noData') || 'No animals found'}</p>
+                  <p className="text-xs text-on-surface-variant/40 text-center py-6">{t('common.noData') || 'No animals found'}</p>
                 ) : (
                   filteredAnimals.map(animal => (
                     <label
                       key={animal.id}
-                      className={`flex items-center gap-3 px-3 py-2 rounded-xl cursor-pointer transition-colors ${selectedAnimalIds.includes(animal.id) ? 'bg-[#002819]/10' : 'hover:bg-[#F4F4EF]'}`}
+                      className={`flex items-center gap-3 px-3 py-2 rounded-xl cursor-pointer transition-colors ${selectedAnimalIds.includes(animal.id) ? 'bg-brand-primary/10' : 'hover:bg-surface-light'}`}
                     >
                       <input
                         type="checkbox"
@@ -218,8 +218,8 @@ export default function TransferCreateModal({ onClose, onCreated, preselectedAni
                         onChange={() => toggleAnimal(animal.id)}
                         className="w-4 h-4 rounded accent-[#002819]"
                       />
-                      <span className="text-xs font-semibold text-[#002819] flex-1">{animal.name || `#${animal.animal_id}`}</span>
-                      <span className="text-[11px] text-[#404943]/50">{animal.species || ''}</span>
+                      <span className="text-xs font-semibold text-brand-primary flex-1">{animal.name || `#${animal.animal_id}`}</span>
+                      <span className="text-[11px] text-on-surface-variant/50">{animal.species || ''}</span>
                     </label>
                   ))
                 )}
@@ -230,11 +230,11 @@ export default function TransferCreateModal({ onClose, onCreated, preselectedAni
           {/* Group mode */}
           {mode === 'group' && (
             <div>
-              <label className="block text-xs font-semibold text-[#404943]/70 mb-1.5">{t('transfers.selectGroup') || 'Select Group'}</label>
+              <label className="block text-xs font-semibold text-on-surface-variant/70 mb-1.5">{t('transfers.selectGroup') || 'Select Group'}</label>
               <select
                 value={selectedGroupId}
                 onChange={e => setSelectedGroupId(e.target.value)}
-                className="w-full bg-[#FAF5F1] border border-[#E3E3DE] rounded-xl px-4 py-2.5 text-sm text-[#404943] focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/30 focus:border-[#D4AF37]"
+                className="w-full bg-surface-light border border-surface-high rounded-xl px-4 py-2.5 text-sm text-on-surface-variant focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent"
               >
                 <option value="">{t('common.select') || 'Select...'}</option>
                 {loadingGroups ? (
@@ -250,11 +250,11 @@ export default function TransferCreateModal({ onClose, onCreated, preselectedAni
 
           {/* Target user */}
           <div>
-            <label className="block text-xs font-semibold text-[#404943]/70 mb-1.5">{t('transfers.transferTo') || 'Transfer To'}</label>
+            <label className="block text-xs font-semibold text-on-surface-variant/70 mb-1.5">{t('transfers.transferTo') || 'Transfer To'}</label>
             <select
               value={toUserId}
               onChange={e => setToUserId(e.target.value)}
-              className="w-full bg-[#FAF5F1] border border-[#E3E3DE] rounded-xl px-4 py-2.5 text-sm text-[#404943] focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/30 focus:border-[#D4AF37]"
+              className="w-full bg-surface-light border border-surface-high rounded-xl px-4 py-2.5 text-sm text-on-surface-variant focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent"
             >
               <option value="">{t('transfers.selectUser') || 'Select user...'}</option>
               {loadingUsers ? (
@@ -269,7 +269,7 @@ export default function TransferCreateModal({ onClose, onCreated, preselectedAni
 
           {/* Agreed price */}
           <div>
-            <label className="block text-xs font-semibold text-[#404943]/70 mb-1.5">{t('transfers.agreedPrice') || 'Agreed Price (optional)'}</label>
+            <label className="block text-xs font-semibold text-on-surface-variant/70 mb-1.5">{t('transfers.agreedPrice') || 'Agreed Price (optional)'}</label>
             <input
               type="number"
               step="0.01"
@@ -277,10 +277,10 @@ export default function TransferCreateModal({ onClose, onCreated, preselectedAni
               value={agreedPrice}
               onChange={e => setAgreedPrice(e.target.value)}
               placeholder="0.00"
-              className="w-full bg-[#FAF5F1] border border-[#E3E3DE] rounded-xl px-4 py-2.5 text-sm text-[#404943] placeholder:text-[#404943]/40 focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/30 focus:border-[#D4AF37]"
+              className="w-full bg-surface-light border border-surface-high rounded-xl px-4 py-2.5 text-sm text-on-surface-variant placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent"
             />
             {commissionAmount && (
-              <p className="text-xs text-[#404943]/50 mt-1">
+              <p className="text-xs text-on-surface-variant/50 mt-1">
                 {t('transfers.commissionPreview') || `Commission (${commissionPercent}%): SAR ${commissionAmount}`}
               </p>
             )}
@@ -288,21 +288,21 @@ export default function TransferCreateModal({ onClose, onCreated, preselectedAni
 
           {/* Notes */}
           <div>
-            <label className="block text-xs font-semibold text-[#404943]/70 mb-1.5">{t('transfers.notes') || 'Notes (optional)'}</label>
+            <label className="block text-xs font-semibold text-on-surface-variant/70 mb-1.5">{t('transfers.notes') || 'Notes (optional)'}</label>
             <textarea
               value={notes}
               onChange={e => setNotes(e.target.value)}
               rows={3}
               placeholder={t('transfers.notesPlaceholder') || 'Add any notes...'}
-              className="w-full bg-[#FAF5F1] border border-[#E3E3DE] rounded-xl px-4 py-2.5 text-sm text-[#404943] placeholder:text-[#404943]/40 focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/30 focus:border-[#D4AF37] resize-none"
+              className="w-full bg-surface-light border border-surface-high rounded-xl px-4 py-2.5 text-sm text-on-surface-variant placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent resize-none"
             />
           </div>
         </div>
 
-        <div className={`px-6 py-4 border-t border-[#E3E3DE] flex gap-3 ${isRtl ? 'flex-row-reverse' : 'justify-end'}`}>
+        <div className={`px-6 py-4 border-t border-surface-high flex gap-3 ${isRtl ? 'flex-row-reverse' : 'justify-end'}`}>
           <button
             onClick={onClose}
-            className="px-5 py-2.5 rounded-xl text-sm font-semibold text-[#404943] hover:bg-[#F4F4EF] transition-colors"
+            className="px-5 py-2.5 rounded-xl text-sm font-semibold text-on-surface-variant hover:bg-surface-light transition-colors"
           >
             {t('common.cancel') || 'Cancel'}
           </button>
@@ -316,8 +316,8 @@ export default function TransferCreateModal({ onClose, onCreated, preselectedAni
             }
             className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
               submitting || (mode === 'animals' && selectedAnimalIds.length === 0) || (mode === 'group' && !selectedGroupId) || !toUserId
-                ? 'bg-[#E3E3DE] text-[#404943]/30 cursor-not-allowed'
-                : 'bg-[#002819] text-white hover:bg-[#06402B]'
+                ? 'bg-surface-high text-on-surface-variant/30 cursor-not-allowed'
+                : 'bg-brand-primary text-white hover:bg-brand-secondary'
             }`}
           >
             {submitting ? (

@@ -11,13 +11,15 @@ class WorkflowTestService
     protected array $state;
     protected array $results;
     protected bool $hasFailure;
+    protected bool $skipCleanup;
 
-    public function __construct()
+    public function __construct(bool $skipCleanup = false)
     {
         $this->baseUrl = rtrim(env('APP_URL', 'http://localhost:8050'), '/');
         $this->state = [];
         $this->results = [];
         $this->hasFailure = false;
+        $this->skipCleanup = $skipCleanup;
     }
 
     public function run(): array
@@ -59,39 +61,46 @@ class WorkflowTestService
             'step_30_unmark_lost',
         ];
 
-        foreach ($steps as $method) {
-            if ($this->hasFailure) {
-                $this->results[] = [
-                    'step' => count($this->results) + 1,
-                    'name' => $this->stepName($method),
-                    'method' => '',
-                    'endpoint' => '',
-                    'request_body' => null,
-                    'response_status' => null,
-                    'response_body' => null,
-                    'status' => 'skipped',
-                    'assertions' => [],
-                    'duration_ms' => 0,
-                    'error' => 'Dependency failed',
-                ];
-                continue;
-            }
+        $this->state['created_user_ids'] = [];
+        $this->state['created_entity_ids'] = [];
 
-            $stepStart = microtime(true);
-            try {
-                $this->{$method}();
-                $duration = round((microtime(true) - $stepStart) * 1000);
-                $last = &$this->results[count($this->results) - 1];
-                $last['duration_ms'] = $duration;
-                $last['status'] = 'passed';
-            } catch (\Exception $e) {
-                $duration = round((microtime(true) - $stepStart) * 1000);
-                $this->hasFailure = true;
-                $last = &$this->results[count($this->results) - 1];
-                $last['duration_ms'] = $duration;
-                $last['status'] = 'failed';
-                $last['error'] = $e->getMessage();
+        try {
+            foreach ($steps as $method) {
+                if ($this->hasFailure) {
+                    $this->results[] = [
+                        'step' => count($this->results) + 1,
+                        'name' => $this->stepName($method),
+                        'method' => '',
+                        'endpoint' => '',
+                        'request_body' => null,
+                        'response_status' => null,
+                        'response_body' => null,
+                        'status' => 'skipped',
+                        'assertions' => [],
+                        'duration_ms' => 0,
+                        'error' => 'Dependency failed',
+                    ];
+                    continue;
+                }
+
+                $stepStart = microtime(true);
+                try {
+                    $this->{$method}();
+                    $duration = round((microtime(true) - $stepStart) * 1000);
+                    $last = &$this->results[count($this->results) - 1];
+                    $last['duration_ms'] = $duration;
+                    $last['status'] = 'passed';
+                } catch (\Exception $e) {
+                    $duration = round((microtime(true) - $stepStart) * 1000);
+                    $this->hasFailure = true;
+                    $last = &$this->results[count($this->results) - 1];
+                    $last['duration_ms'] = $duration;
+                    $last['status'] = 'failed';
+                    $last['error'] = $e->getMessage();
+                }
             }
+        } finally {
+            $this->cleanup();
         }
 
         $totalTime = round((microtime(true) - $startTime) * 1000);
@@ -110,6 +119,106 @@ class WorkflowTestService
                 'duration_ms' => $totalTime,
             ],
         ];
+    }
+
+    protected function cleanup(): void
+    {
+        if ($this->skipCleanup) {
+            return;
+        }
+
+        // Delete workflow-created data in reverse dependency order
+        try {
+            $animalId = $this->state['animal_id'] ?? null;
+            $deviceId = $this->state['device_id'] ?? null;
+            $groupId = $this->state['group_id'] ?? null;
+            $geofenceId = $this->state['geofence_id'] ?? null;
+            $conversationId = $this->state['conversation_id'] ?? null;
+            $taskId = $this->state['task_id'] ?? null;
+            $medicalRecordId = $this->state['medical_record_id'] ?? null;
+            $orderId = $this->state['order_id'] ?? null;
+            $ownerId = $this->state['owner_id'] ?? null;
+            $shepherdId = $this->state['shepherd_id'] ?? null;
+
+            // Geofence alerts
+            if ($geofenceId) {
+                \App\Models\GeofenceAlert::where('geofence_id', $geofenceId)->delete();
+                \App\Models\Geofence::where('id', $geofenceId)->delete();
+            }
+
+            // Conversation messages + conversation
+            if ($conversationId) {
+                \App\Models\Message::where('conversation_id', $conversationId)->delete();
+                \App\Models\Conversation::where('id', $conversationId)->delete();
+            }
+
+            // Task logs + task
+            if ($taskId) {
+                \App\Models\TaskLog::where('task_id', $taskId)->delete();
+                \App\Models\Task::where('id', $taskId)->delete();
+            }
+
+            // Medical record
+            if ($medicalRecordId) {
+                \App\Models\MedicalRecord::where('id', $medicalRecordId)->delete();
+            }
+
+            // Location history
+            if ($animalId) {
+                \App\Models\LocationHistory::where('animal_id', $animalId)->delete();
+                \App\Models\Animal::where('id', $animalId)->delete();
+            }
+
+            // Group shepherd assignments
+            if ($groupId) {
+                \Illuminate\Support\Facades\DB::table('group_shepherd')->where('group_id', $groupId)->delete();
+                \App\Models\AnimalGroup::where('id', $groupId)->delete();
+            }
+
+            // Device
+            if ($deviceId) {
+                \App\Models\Device::where('id', $deviceId)->update(['animal_id' => null]);
+                \App\Models\Device::where('id', $deviceId)->delete();
+            }
+
+            // Subscription order + subscription
+            if ($orderId) {
+                $order = \App\Models\SubscriptionOrder::find($orderId);
+                if ($order && $order->user_subscription_id) {
+                    \App\Models\UserSubscription::where('id', $order->user_subscription_id)->delete();
+                }
+                $order?->delete();
+            }
+
+            // Created users
+            $userIds = array_filter([$shepherdId, $ownerId]);
+            foreach ($userIds as $uid) {
+                if ($uid && $uid != 1) {
+                    \App\Models\User::where('id', $uid)->delete();
+                }
+            }
+
+            $this->recordStep([
+                'name' => 'Data Cleanup',
+                'method' => 'DELETE',
+                'endpoint' => '(internal)',
+                'request_body' => null,
+                'response_status' => 200,
+                'response_body' => ['cleaned' => true],
+                'assertions' => [],
+            ]);
+        } catch (\Exception $e) {
+            // Cleanup failures should not break the overall test result
+            $this->recordStep([
+                'name' => 'Data Cleanup (partial)',
+                'method' => 'DELETE',
+                'endpoint' => '(internal)',
+                'request_body' => null,
+                'response_status' => 500,
+                'response_body' => ['error' => $e->getMessage()],
+                'assertions' => [],
+            ]);
+        }
     }
 
     protected function recordStep(array $data): void
@@ -175,7 +284,7 @@ class WorkflowTestService
         $token = $options['token'] ?? ($this->state['token'] ?? null);
         $isPublic = $options['public'] ?? false;
 
-        $http = Http::timeout(30)->withHeaders([
+        $http = Http::timeout(60)->withHeaders([
             'Accept' => 'application/json',
         ]);
 

@@ -69,7 +69,7 @@ export default function SpeciesSettings({ dir: _dir }) {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div>
-          <h4 className="font-bold text-[#002819] mb-4">Add New Species</h4>
+          <h4 className="font-bold text-brand-primary mb-4">Add New Species</h4>
           <div className="flex gap-2 mb-4">
             <input
               type="text"
@@ -79,11 +79,11 @@ export default function SpeciesSettings({ dir: _dir }) {
                 if (e.key === 'Enter') handleAddSpecies();
               }}
               placeholder="Species name"
-              className="flex-1 bg-[#f4f4ef] border-none rounded-xl px-4 py-3 text-[#002819] font-semibold focus:ring-2 focus:ring-[#06402B]/20"
+              className="flex-1 bg-surface-light border-none rounded-xl px-4 py-3 text-brand-primary font-semibold focus:ring-2 focus:ring-brand-secondary/20"
             />
             <button
               onClick={handleAddSpecies}
-              className="px-4 py-2 bg-[#002819] text-white rounded-xl font-bold hover:bg-[#06402b] transition"
+              className="px-4 py-2 bg-brand-primary text-white rounded-xl font-bold hover:bg-brand-secondary transition"
             >
               Add
             </button>
@@ -91,9 +91,9 @@ export default function SpeciesSettings({ dir: _dir }) {
 
           <div className="space-y-2">
             {speciesList.map((species) => (
-              <div key={species.id} className="p-4 bg-[#f4f4ef] rounded-xl">
+              <div key={species.id} className="p-4 bg-surface-light rounded-xl">
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-[#002819]">{species.name}</span>
+                  <span className="font-bold text-brand-primary">{species.name}</span>
                   <button
                     onClick={() => handleDeleteSpecies(species.id)}
                     className="text-red-500 hover:text-red-700 transition-colors"
@@ -104,7 +104,7 @@ export default function SpeciesSettings({ dir: _dir }) {
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {species.breeds?.map((breed) => (
-                    <span key={breed.id} className="inline-flex items-center gap-1 px-3 py-1.5 bg-[#002819] text-white rounded-full text-xs font-medium">
+                    <span key={breed.id} className="inline-flex items-center gap-1 px-3 py-1.5 bg-brand-primary text-white rounded-full text-xs font-medium">
                       {breed.name}
                       <button
                         onClick={() => handleDeleteBreed(breed.id)}
@@ -119,7 +119,7 @@ export default function SpeciesSettings({ dir: _dir }) {
                   <input
                     type="text"
                     placeholder="Add breed..."
-                    className="flex-1 bg-white border-none rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#06402B]/20"
+                    className="flex-1 bg-white border-none rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-secondary/20"
                     onKeyDown={async (e) => {
                       if (e.key === 'Enter' && e.target.value.trim()) {
                         await handleAddBreed(species.id, e.target.value);

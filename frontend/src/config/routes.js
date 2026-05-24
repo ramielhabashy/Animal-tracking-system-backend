@@ -43,7 +43,9 @@ const MessagesPage = lazy(() => import('../pages/MessagesPage'));
 const TicketDetail = lazy(() => import('../pages/TicketDetail'));
 const TransfersPage = lazy(() => import('../pages/TransfersPage'));
 const TransferDetail = lazy(() => import('../pages/TransferDetail'));
-
+const PrivacyPage = lazy(() => import('../pages/static/PrivacyPage'));
+const TermsPage = lazy(() => import('../pages/static/TermsPage'));
+const ContactPage = lazy(() => import('../pages/static/ContactPage'));
 
 export const routeConfig = {
   public: [
@@ -95,6 +97,9 @@ export const routeConfig = {
     { path: '/tickets/:id', component: TicketDetail, roles: ['Admin', 'Owner', 'Manager', 'Shepherd', 'Doctor'] },
     { path: '/transfers', component: TransfersPage, roles: ['Admin', 'Owner', 'Manager'] },
     { path: '/transfers/:id', component: TransferDetail, roles: ['Admin', 'Owner', 'Manager'] },
+    { path: '/privacy', component: PrivacyPage },
+    { path: '/terms', component: TermsPage },
+    { path: '/contact', component: ContactPage },
 
   ],
   error: [

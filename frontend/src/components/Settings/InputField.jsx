@@ -3,7 +3,7 @@ import React from 'react';
 export function InputField({ label, value, onChange, placeholder, type = 'text', disabled, className = '', inputClassName = '', children }) {
   return (
     <div className={className}>
-      {label && <label className="block text-xs font-bold text-[#404943] uppercase tracking-wider mb-2">{label}</label>}
+      {label && <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">{label}</label>}
       {children || (
         <input
           type={type}
@@ -11,7 +11,7 @@ export function InputField({ label, value, onChange, placeholder, type = 'text',
           onChange={onChange}
           placeholder={placeholder}
           disabled={disabled}
-          className={`w-full bg-[#F4F4EF] border-none rounded-xl p-4 text-[#002819] focus:ring-2 focus:ring-[#06402B]/20 disabled:opacity-50 ${inputClassName}`}
+          className={`w-full bg-surface-light border-none rounded-xl p-4 text-brand-primary focus:ring-2 focus:ring-brand-secondary/20 disabled:opacity-50 ${inputClassName}`}
         />
       )}
     </div>
@@ -21,12 +21,12 @@ export function InputField({ label, value, onChange, placeholder, type = 'text',
 export function SelectField({ label, value, onChange, options, placeholder, disabled, className = '' }) {
   return (
     <div className={className}>
-      {label && <label className="block text-xs font-bold text-[#404943] uppercase tracking-wider mb-2">{label}</label>}
+      {label && <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">{label}</label>}
       <select
         value={value}
         onChange={onChange}
         disabled={disabled}
-        className="w-full bg-[#F4F4EF] border-none rounded-xl p-4 text-[#002819] focus:ring-2 focus:ring-[#06402B]/20 disabled:opacity-50"
+        className="w-full bg-surface-light border-none rounded-xl p-4 text-brand-primary focus:ring-2 focus:ring-brand-secondary/20 disabled:opacity-50"
       >
         {placeholder && <option value="">{placeholder}</option>}
         {options.map(opt => (
@@ -39,16 +39,16 @@ export function SelectField({ label, value, onChange, options, placeholder, disa
 
 export function CheckboxField({ label, checked, onChange, description }) {
   return (
-    <label className="flex items-start gap-3 p-4 rounded-xl bg-[#F4F4EF] cursor-pointer hover:bg-[#eeeee9] transition-colors">
+    <label className="flex items-start gap-3 p-4 rounded-xl bg-surface-light cursor-pointer hover:bg-surface-dim transition-colors">
       <input
         type="checkbox"
         checked={checked}
         onChange={onChange}
-        className="w-5 h-5 rounded-lg border-2 border-[#D4AF37] text-[#D4AF37] focus:ring-[#D4AF37] cursor-pointer mt-0.5"
+        className="w-5 h-5 rounded-lg border-2 border-brand-accent text-brand-accent focus:ring-brand-accent cursor-pointer mt-0.5"
       />
       <div>
-        <span className="font-bold text-[#002819]">{label}</span>
-        {description && <p className="text-sm text-[#717973] mt-0.5">{description}</p>}
+        <span className="font-bold text-brand-primary">{label}</span>
+        {description && <p className="text-sm text-on-surface-subtle mt-0.5">{description}</p>}
       </div>
     </label>
   );
@@ -59,9 +59,9 @@ export function ToggleSwitch({ checked, onChange, label }) {
     <label className="flex items-center gap-3 cursor-pointer">
       <div className="relative">
         <input type="checkbox" checked={checked} onChange={onChange} className="sr-only peer" />
-        <div className="w-9 h-5 bg-[#E3E3DE] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#002819]" />
+        <div className="w-9 h-5 bg-surface-high peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-brand-primary" />
       </div>
-      {label && <span className="text-sm font-semibold text-[#002819]">{label}</span>}
+      {label && <span className="text-sm font-semibold text-brand-primary">{label}</span>}
     </label>
   );
 }

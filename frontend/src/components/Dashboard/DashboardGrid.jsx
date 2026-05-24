@@ -29,6 +29,8 @@ import TasksWidget from './widgets/TasksWidget';
 import AuctionsWidget from './widgets/AuctionsWidget';
 import ActivationWidget from './widgets/ActivationWidget';
 import AnnouncementsWidget from './widgets/AnnouncementsWidget';
+import AiAssistantWidget from './widgets/AiAssistantWidget';
+import MessagesWidget from './widgets/MessagesWidget';
 
 const widgetComponents = {
   statsCards: StatsCardsWidget,
@@ -44,6 +46,8 @@ const widgetComponents = {
   auctionsWidget: AuctionsWidget,
   activationWidget: ActivationWidget,
   announcements: AnnouncementsWidget,
+  aiAssistant: AiAssistantWidget,
+  messages: MessagesWidget,
 };
 
 function getGridColsClass(gridDesktop) {
@@ -118,24 +122,24 @@ export default function DashboardGrid({ dashboardData }) {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between gap-4">
-          <h2 className="text-2xl font-black text-[#002819]">{t('dashboard.title')}</h2>
+          <h2 className="text-2xl font-black text-brand-primary">{t('dashboard.title')}</h2>
           <button
             onClick={handleReset}
-            className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold text-[#717973] hover:text-[#002819] hover:bg-[#F4F4EF] transition-all"
+            className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold text-on-surface-subtle hover:text-brand-primary hover:bg-surface-light transition-all"
           >
             <MaterialSymbol icon="refresh" size={16} />
             {t('dashboard.resetLayout')}
           </button>
         </div>
-        <div className="bg-[#F4F4EF] rounded-[2rem] p-16 text-center">
-          <MaterialSymbol icon="dashboard_customize" size={64} className="mx-auto text-[#c0c9c1] mb-4" />
-          <h3 className="text-xl font-bold text-[#404943] mb-2">Dashboard is empty</h3>
-          <p className="text-[#717973] mb-6 max-w-md mx-auto">
+        <div className="bg-surface-light rounded-[2rem] p-16 text-center">
+          <MaterialSymbol icon="dashboard_customize" size={64} className="mx-auto text-outline mb-4" />
+          <h3 className="text-xl font-bold text-on-surface-variant mb-2">Dashboard is empty</h3>
+          <p className="text-on-surface-subtle mb-6 max-w-md mx-auto">
             All widgets have been removed. Click the Customize button or Reset to restore default widgets.
           </p>
           <button
             onClick={handleReset}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-[#002819] text-white rounded-xl font-bold hover:bg-[#06402B] transition-all"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-brand-primary text-white rounded-xl font-bold hover:bg-brand-secondary transition-all"
           >
             <MaterialSymbol icon="refresh" size={18} />
             Reset to Defaults
@@ -150,12 +154,12 @@ export default function DashboardGrid({ dashboardData }) {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4">
-        <h2 className="text-2xl font-black text-[#002819]">{t('dashboard.title')}</h2>
+        <h2 className="text-2xl font-black text-brand-primary">{t('dashboard.title')}</h2>
         <div className="flex items-center gap-2">
           <div className="relative" ref={customizeRef}>
             <button
               onClick={() => setShowCustomize(v => !v)}
-              className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold text-[#717973] hover:text-[#002819] hover:bg-[#F4F4EF] transition-all"
+              className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold text-on-surface-subtle hover:text-brand-primary hover:bg-surface-light transition-all"
               title="Customize"
             >
               <MaterialSymbol icon="tune" size={16} />
@@ -164,22 +168,22 @@ export default function DashboardGrid({ dashboardData }) {
 
             {showCustomize && (
               <div className="absolute right-0 top-full mt-2 z-50 bg-white rounded-2xl shadow-xl border border-gray-100 p-4 min-w-[220px]">
-                <h4 className="text-sm font-bold text-[#002819] mb-3">Show Widgets</h4>
+                <h4 className="text-sm font-bold text-brand-primary mb-3">Show Widgets</h4>
                 <div className="space-y-2">
                   {availableWidgets.map(aw => {
                     const isActive = activeIds.includes(aw.id);
                     return (
                       <label
                         key={aw.id}
-                        className="flex items-center gap-3 px-2 py-1.5 rounded-lg hover:bg-[#F4F4EF] cursor-pointer transition-colors"
+                        className="flex items-center gap-3 px-2 py-1.5 rounded-lg hover:bg-surface-light cursor-pointer transition-colors"
                       >
                         <input
                           type="checkbox"
                           checked={isActive}
                           onChange={(e) => handleToggleWidget(aw.id, e.target.checked)}
-                          className="w-4 h-4 text-[#002819] border-gray-300 rounded focus:ring-[#002819]"
+                          className="w-4 h-4 text-brand-primary border-gray-300 rounded focus:ring-[#002819]"
                         />
-                        <span className="text-sm font-medium text-[#404943]">{aw.title}</span>
+                        <span className="text-sm font-medium text-on-surface-variant">{aw.title}</span>
                       </label>
                     );
                   })}
@@ -187,7 +191,7 @@ export default function DashboardGrid({ dashboardData }) {
                 <div className="mt-3 pt-3 border-t border-gray-100">
                   <button
                     onClick={handleReset}
-                    className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-[#717973] hover:text-[#002819] hover:bg-[#F4F4EF] transition-all"
+                    className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-on-surface-subtle hover:text-brand-primary hover:bg-surface-light transition-all"
                   >
                     <MaterialSymbol icon="refresh" size={14} />
                     Reset to Defaults
@@ -199,7 +203,7 @@ export default function DashboardGrid({ dashboardData }) {
 
           <button
             onClick={handleReset}
-            className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold text-[#717973] hover:text-[#002819] hover:bg-[#F4F4EF] transition-all"
+            className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold text-on-surface-subtle hover:text-brand-primary hover:bg-surface-light transition-all"
             title={t('dashboard.resetLayout')}
           >
             <MaterialSymbol icon="refresh" size={16} />

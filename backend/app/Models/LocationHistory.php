@@ -17,6 +17,7 @@ class LocationHistory extends Model
         'speed',
         'heading',
         'recorded_at',
+        'data_source',
     ];
 
     protected $casts = [
@@ -25,6 +26,7 @@ class LocationHistory extends Model
         'speed' => 'decimal:2',
         'heading' => 'decimal:2',
         'recorded_at' => 'datetime',
+        'data_source' => 'string',
     ];
 
     public function animal(): BelongsTo

@@ -118,8 +118,8 @@ export default function TaskTypeSettings({ dir, message, setMessage }) {
       {logTypeTab === 'task' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <div>
-            <h4 className="font-bold text-[#002819] mb-4">{editingTaskType ? 'Edit Task Type' : 'Add New Task Type'}</h4>
-            <div className="space-y-4 p-4 bg-[#F4F4EF] rounded-xl">
+            <h4 className="font-bold text-brand-primary mb-4">{editingTaskType ? 'Edit Task Type' : 'Add New Task Type'}</h4>
+            <div className="space-y-4 p-4 bg-surface-light rounded-xl">
               <InputField
                 label="Name"
                 value={taskTypeForm.name}
@@ -142,7 +142,7 @@ export default function TaskTypeSettings({ dir, message, setMessage }) {
                   options={taskIconOptions}
                 />
                 <div>
-                  <label className="block text-xs font-bold text-[#404943] uppercase tracking-wider mb-2">Color</label>
+                  <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">Color</label>
                   <input
                     type="color"
                     value={taskTypeForm.color}
@@ -167,7 +167,7 @@ export default function TaskTypeSettings({ dir, message, setMessage }) {
                 {editingTaskType && (
                   <button
                     onClick={() => { setEditingTaskType(null); setTaskTypeForm({ name: '', slug: '', icon: 'assignment', color: '#002819', is_active: true }); }}
-                    className="px-4 py-3 bg-[#717973] text-white rounded-xl font-bold hover:bg-[#5a6265] transition"
+                    className="px-4 py-3 bg-on-surface-subtle text-white rounded-xl font-bold hover:bg-[#5a6265] transition"
                   >
                     Cancel
                   </button>
@@ -177,20 +177,20 @@ export default function TaskTypeSettings({ dir, message, setMessage }) {
           </div>
 
           <div>
-            <h4 className="font-bold text-[#002819] mb-4">Existing Task Types</h4>
+            <h4 className="font-bold text-brand-primary mb-4">Existing Task Types</h4>
             <div className="space-y-2">
               {taskTypes.length === 0 ? (
-                <p className="text-[#717973] text-sm">No task types defined</p>
+                <p className="text-on-surface-subtle text-sm">No task types defined</p>
               ) : (
                 taskTypes.map((tt) => (
-                  <div key={tt.id} className={`p-4 rounded-xl flex items-center justify-between ${tt.is_active ? 'bg-[#F4F4EF]' : 'bg-[#F4F4EF]/50 opacity-60'}`}>
+                  <div key={tt.id} className={`p-4 rounded-xl flex items-center justify-between ${tt.is_active ? 'bg-surface-light' : 'bg-surface-light/50 opacity-60'}`}>
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: tt.color + '20' }}>
                         <MaterialSymbol icon={tt.icon || 'assignment'} size={20} style={{ color: tt.color }} />
                       </div>
                       <div>
-                        <p className="font-bold text-[#002819]">{tt.name}</p>
-                        <p className="text-xs text-[#717973]">{tt.slug}</p>
+                        <p className="font-bold text-brand-primary">{tt.name}</p>
+                        <p className="text-xs text-on-surface-subtle">{tt.slug}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -202,7 +202,7 @@ export default function TaskTypeSettings({ dir, message, setMessage }) {
                       </button>
                       <button
                         onClick={() => handleDeleteTaskType(tt.id)}
-                        className="p-2 text-[#BA1A1A] hover:bg-[#BA1A1A]/10 rounded-lg transition"
+                        className="p-2 text-danger hover:bg-danger/10 rounded-lg transition"
                       >
                         <MaterialSymbol icon="delete" size={18} />
                       </button>
@@ -218,8 +218,8 @@ export default function TaskTypeSettings({ dir, message, setMessage }) {
       {logTypeTab === 'log' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <div>
-            <h4 className="font-bold text-[#002819] mb-4">{editingLogType ? 'Edit Log Type' : 'Add New Log Type'}</h4>
-            <div className="space-y-4 p-4 bg-[#F4F4EF] rounded-xl">
+            <h4 className="font-bold text-brand-primary mb-4">{editingLogType ? 'Edit Log Type' : 'Add New Log Type'}</h4>
+            <div className="space-y-4 p-4 bg-surface-light rounded-xl">
               <InputField
                 label="Name"
                 value={logTypeForm.name}
@@ -242,7 +242,7 @@ export default function TaskTypeSettings({ dir, message, setMessage }) {
                   options={logIconOptions}
                 />
                 <div>
-                  <label className="block text-xs font-bold text-[#404943] uppercase tracking-wider mb-2">Color</label>
+                  <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">Color</label>
                   <input
                     type="color"
                     value={logTypeForm.color}
@@ -279,7 +279,7 @@ export default function TaskTypeSettings({ dir, message, setMessage }) {
                 {editingLogType && (
                   <button
                     onClick={() => { setEditingLogType(null); setLogTypeForm({ name: '', slug: '', icon: 'note', color: '#717973', allows_media: false, is_status: false, is_active: true }); }}
-                    className="px-4 py-3 bg-[#717973] text-white rounded-xl font-bold hover:bg-[#5a6265] transition"
+                    className="px-4 py-3 bg-on-surface-subtle text-white rounded-xl font-bold hover:bg-[#5a6265] transition"
                   >
                     Cancel
                   </button>
@@ -289,20 +289,20 @@ export default function TaskTypeSettings({ dir, message, setMessage }) {
           </div>
 
           <div>
-            <h4 className="font-bold text-[#002819] mb-4">Existing Log Types</h4>
+            <h4 className="font-bold text-brand-primary mb-4">Existing Log Types</h4>
             <div className="space-y-2">
               {taskLogTypes.length === 0 ? (
-                <p className="text-[#717973] text-sm">No log types defined</p>
+                <p className="text-on-surface-subtle text-sm">No log types defined</p>
               ) : (
                 taskLogTypes.map((lt) => (
-                  <div key={lt.id} className={`p-4 rounded-xl flex items-center justify-between ${lt.is_active ? 'bg-[#F4F4EF]' : 'bg-[#F4F4EF]/50 opacity-60'}`}>
+                  <div key={lt.id} className={`p-4 rounded-xl flex items-center justify-between ${lt.is_active ? 'bg-surface-light' : 'bg-surface-light/50 opacity-60'}`}>
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: lt.color + '20' }}>
                         <MaterialSymbol icon={lt.icon || 'note'} size={20} style={{ color: lt.color }} />
                       </div>
                       <div>
-                        <p className="font-bold text-[#002819]">{lt.name}</p>
-                        <p className="text-xs text-[#717973]">{lt.slug} {lt.is_status ? '(status)' : ''} {lt.allows_media ? '(media)' : ''}</p>
+                        <p className="font-bold text-brand-primary">{lt.name}</p>
+                        <p className="text-xs text-on-surface-subtle">{lt.slug} {lt.is_status ? '(status)' : ''} {lt.allows_media ? '(media)' : ''}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -314,7 +314,7 @@ export default function TaskTypeSettings({ dir, message, setMessage }) {
                       </button>
                       <button
                         onClick={() => handleDeleteLogType(lt.id)}
-                        className="p-2 text-[#BA1A1A] hover:bg-[#BA1A1A]/10 rounded-lg transition"
+                        className="p-2 text-danger hover:bg-danger/10 rounded-lg transition"
                       >
                         <MaterialSymbol icon="delete" size={18} />
                       </button>

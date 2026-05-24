@@ -5,7 +5,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import Layout from './components/Layout/Layout';
 import { PlatformProvider } from './context/PlatformContext';
 import { AuthProvider } from './context/AuthContext';
-import { useAuth } from './hooks/useAuth';
+import { useAuth } from './context/AuthContext';
 import NotFound from './pages/NotFound';
 
 function ProtectedLayout() {
@@ -14,7 +14,7 @@ function ProtectedLayout() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin w-8 h-8 border-4 border-[#002819] border-t-transparent rounded-full" />
+        <div className="animate-spin w-8 h-8 border-4 border-brand-primary border-t-transparent rounded-full" />
       </div>
     );
   }
@@ -32,7 +32,7 @@ function ProtectedMinimalLayout() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin w-8 h-8 border-4 border-[#002819] border-t-transparent rounded-full" />
+        <div className="animate-spin w-8 h-8 border-4 border-brand-primary border-t-transparent rounded-full" />
       </div>
     );
   }
@@ -47,7 +47,7 @@ function ProtectedMinimalLayout() {
 function SuspenseFallback() {
   return (
     <div className="min-h-screen flex items-center justify-center">
-      <div className="animate-spin w-8 h-8 border-4 border-[#002819] border-t-transparent rounded-full" />
+      <div className="animate-spin w-8 h-8 border-4 border-brand-primary border-t-transparent rounded-full" />
     </div>
   );
 }
@@ -99,6 +99,9 @@ const MessagesPage = lazy(() => import('./pages/MessagesPage'));
 const TicketDetail = lazy(() => import('./pages/TicketDetail'));
 const TransfersPage = lazy(() => import('./pages/TransfersPage'));
 const TransferDetail = lazy(() => import('./pages/TransferDetail'));
+const PrivacyPage = lazy(() => import('./pages/static/PrivacyPage'));
+const TermsPage = lazy(() => import('./pages/static/TermsPage'));
+const ContactPage = lazy(() => import('./pages/static/ContactPage'));
 
 const router = createBrowserRouter([
   {
@@ -188,6 +191,9 @@ const router = createBrowserRouter([
           { path: 'tickets/:id', element: <Suspense fallback={<SuspenseFallback />}><TicketDetail /></Suspense> },
           { path: 'transfers', element: <Suspense fallback={<SuspenseFallback />}><TransfersPage /></Suspense> },
           { path: 'transfers/:id', element: <Suspense fallback={<SuspenseFallback />}><TransferDetail /></Suspense> },
+          { path: 'privacy', element: <Suspense fallback={<SuspenseFallback />}><PrivacyPage /></Suspense> },
+          { path: 'terms', element: <Suspense fallback={<SuspenseFallback />}><TermsPage /></Suspense> },
+          { path: 'contact', element: <Suspense fallback={<SuspenseFallback />}><ContactPage /></Suspense> },
         ],
       },
     ],

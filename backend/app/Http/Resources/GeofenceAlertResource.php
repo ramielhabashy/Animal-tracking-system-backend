@@ -30,6 +30,7 @@ class GeofenceAlertResource extends JsonResource
             'created_at' => $this->created_at
                 ? (is_string($this->created_at) ? $this->created_at : $this->created_at?->toIso8601String())
                 : null,
+            'animal_name' => $this->whenLoaded('animal', fn() => $this->animal?->name),
             'animal' => $this->whenLoaded('animal', function () {
                 if (!$this->animal) {
                     return null;
@@ -37,6 +38,7 @@ class GeofenceAlertResource extends JsonResource
                 return [
                     'id' => $this->animal->id,
                     'animal_id' => $this->animal->animal_id,
+                    'name' => $this->animal->name,
                     'species' => $this->animal->species,
                     'breed' => $this->animal->breed,
                 ];

@@ -149,7 +149,7 @@ export default function MenuSettings({ dir }) {
     return (
       <SettingsCard icon="menu" title="Menu" description="Manage navigation menu items">
         <div className="flex items-center justify-center h-32">
-          <div className="animate-spin w-8 h-8 border-4 border-[#002819] border-t-transparent rounded-full" />
+          <div className="animate-spin w-8 h-8 border-4 border-brand-primary border-t-transparent rounded-full" />
         </div>
       </SettingsCard>
     );
@@ -170,7 +170,7 @@ export default function MenuSettings({ dir }) {
       <div className="flex justify-end mb-4">
         <button
           onClick={() => { resetForm(); setShowForm(true); }}
-          className="flex items-center gap-2 px-4 py-2 bg-[#002819] text-white rounded-xl font-bold text-sm hover:bg-[#06402B] transition"
+          className="flex items-center gap-2 px-4 py-2 bg-brand-primary text-white rounded-xl font-bold text-sm hover:bg-brand-secondary transition"
         >
           <MaterialSymbol icon="add" size={18} />
           Add Item
@@ -178,7 +178,7 @@ export default function MenuSettings({ dir }) {
       </div>
 
       {items.length === 0 ? (
-        <div className="text-center py-8 text-[#717973]">
+        <div className="text-center py-8 text-on-surface-subtle">
           <MaterialSymbol icon="menu" size={48} className="mx-auto mb-2" />
           <p>No menu items yet. Add your first menu item.</p>
         </div>
@@ -186,28 +186,28 @@ export default function MenuSettings({ dir }) {
         <div className="space-y-2">
           {items.sort((a, b) => a.sort_order - b.sort_order).map((item, idx) => (
             <div key={item.id}>
-              <div className="flex items-center gap-3 bg-[#F4F4EF] rounded-xl p-3 group">
+              <div className="flex items-center gap-3 bg-surface-light rounded-xl p-3 group">
                 <div className="flex flex-col gap-0.5">
-                  <button onClick={() => handleReorder(item.id, 'up')} disabled={idx === 0} className="text-[#717973] hover:text-[#002819] disabled:opacity-30">
+                  <button onClick={() => handleReorder(item.id, 'up')} disabled={idx === 0} className="text-on-surface-subtle hover:text-brand-primary disabled:opacity-30">
                     <MaterialSymbol icon="expand_less" size={16} />
                   </button>
-                  <button onClick={() => handleReorder(item.id, 'down')} disabled={idx === items.length - 1} className="text-[#717973] hover:text-[#002819] disabled:opacity-30">
+                  <button onClick={() => handleReorder(item.id, 'down')} disabled={idx === items.length - 1} className="text-on-surface-subtle hover:text-brand-primary disabled:opacity-30">
                     <MaterialSymbol icon="expand_more" size={16} />
                   </button>
                 </div>
-                <MaterialSymbol icon={item.icon || 'chevron_right'} size={20} className="text-[#D4AF37]" />
+                <MaterialSymbol icon={item.icon || 'chevron_right'} size={20} className="text-brand-accent" />
                 <div className="flex-1">
-                  <p className="font-bold text-[#002819] text-sm">{item.label}</p>
-                  <p className="text-xs text-[#717973]">{item.path} {item.roles?.length > 0 && `· ${item.roles.join(', ')}`}</p>
+                  <p className="font-bold text-brand-primary text-sm">{item.label}</p>
+                  <p className="text-xs text-on-surface-subtle">{item.path} {item.roles?.length > 0 && `· ${item.roles.join(', ')}`}</p>
                 </div>
                 {item.children?.length > 0 && (
-                  <span className="text-xs text-[#717973] bg-white px-2 py-0.5 rounded-full">{item.children.length} sub</span>
+                  <span className="text-xs text-on-surface-subtle bg-white px-2 py-0.5 rounded-full">{item.children.length} sub</span>
                 )}
                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition">
-                  <button onClick={() => openEdit(item)} className="p-1.5 hover:bg-white rounded-lg text-[#717973] hover:text-[#002819]">
+                  <button onClick={() => openEdit(item)} className="p-1.5 hover:bg-white rounded-lg text-on-surface-subtle hover:text-brand-primary">
                     <MaterialSymbol icon="edit" size={16} />
                   </button>
-                  <button onClick={() => handleDelete(item)} className="p-1.5 hover:bg-white rounded-lg text-[#717973] hover:text-red-600">
+                  <button onClick={() => handleDelete(item)} className="p-1.5 hover:bg-white rounded-lg text-on-surface-subtle hover:text-red-600">
                     <MaterialSymbol icon="delete" size={16} />
                   </button>
                 </div>
@@ -215,17 +215,17 @@ export default function MenuSettings({ dir }) {
               {item.children?.length > 0 && (
                 <div className={`${isRtl ? 'mr-8' : 'ml-8'} mt-1 space-y-1`}>
                   {item.children.sort((a, b) => a.sort_order - b.sort_order).map((child) => (
-                    <div key={child.id} className="flex items-center gap-3 bg-[#FAF1F5] rounded-xl p-2.5 group">
-                      <MaterialSymbol icon={child.icon || 'chevron_right'} size={16} className="text-[#717973]" />
+                    <div key={child.id} className="flex items-center gap-3 bg-brand-light rounded-xl p-2.5 group">
+                      <MaterialSymbol icon={child.icon || 'chevron_right'} size={16} className="text-on-surface-subtle" />
                       <div className="flex-1">
-                        <p className="font-medium text-[#002819] text-xs">{child.label}</p>
-                        <p className="text-xs text-[#717973]">{child.path}</p>
+                        <p className="font-medium text-brand-primary text-xs">{child.label}</p>
+                        <p className="text-xs text-on-surface-subtle">{child.path}</p>
                       </div>
                       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition">
-                        <button onClick={() => openEdit(child)} className="p-1 hover:bg-white rounded-lg text-[#717973] hover:text-[#002819]">
+                        <button onClick={() => openEdit(child)} className="p-1 hover:bg-white rounded-lg text-on-surface-subtle hover:text-brand-primary">
                           <MaterialSymbol icon="edit" size={14} />
                         </button>
-                        <button onClick={() => handleDelete(child)} className="p-1 hover:bg-white rounded-lg text-[#717973] hover:text-red-600">
+                        <button onClick={() => handleDelete(child)} className="p-1 hover:bg-white rounded-lg text-on-surface-subtle hover:text-red-600">
                           <MaterialSymbol icon="delete" size={14} />
                         </button>
                       </div>
@@ -242,7 +242,7 @@ export default function MenuSettings({ dir }) {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold text-[#002819]">{editingItem ? 'Edit Menu Item' : 'Add Menu Item'}</h3>
+              <h3 className="text-lg font-bold text-brand-primary">{editingItem ? 'Edit Menu Item' : 'Add Menu Item'}</h3>
               <button onClick={resetForm} className="p-2 hover:bg-gray-100 rounded-lg">
                 <MaterialSymbol icon="close" size={20} />
               </button>
@@ -250,7 +250,7 @@ export default function MenuSettings({ dir }) {
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-[#404943] mb-1">Label *</label>
+                <label className="block text-sm font-medium text-on-surface-variant mb-1">Label *</label>
                 <input
                   type="text"
                   value={form.label}
@@ -260,7 +260,7 @@ export default function MenuSettings({ dir }) {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-[#404943] mb-1">Label Key (i18n)</label>
+                <label className="block text-sm font-medium text-on-surface-variant mb-1">Label Key (i18n)</label>
                 <input
                   type="text"
                   value={form.label_key}
@@ -270,7 +270,7 @@ export default function MenuSettings({ dir }) {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-[#404943] mb-1">Path *</label>
+                <label className="block text-sm font-medium text-on-surface-variant mb-1">Path *</label>
                 <input
                   type="text"
                   value={form.path}
@@ -280,7 +280,7 @@ export default function MenuSettings({ dir }) {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-[#404943] mb-1">Icon</label>
+                <label className="block text-sm font-medium text-on-surface-variant mb-1">Icon</label>
                 <select
                   value={form.icon}
                   onChange={(e) => setForm({ ...form, icon: e.target.value })}
@@ -290,13 +290,13 @@ export default function MenuSettings({ dir }) {
                     <option key={ic} value={ic}>{ic}</option>
                   ))}
                 </select>
-                <div className="mt-2 flex items-center gap-2 text-sm text-[#717973]">
+                <div className="mt-2 flex items-center gap-2 text-sm text-on-surface-subtle">
                   <span>Preview:</span>
-                  <MaterialSymbol icon={form.icon} size={20} className="text-[#D4AF37]" />
+                  <MaterialSymbol icon={form.icon} size={20} className="text-brand-accent" />
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-[#404943] mb-1">Parent Item</label>
+                <label className="block text-sm font-medium text-on-surface-variant mb-1">Parent Item</label>
                 <select
                   value={form.parent_id || ''}
                   onChange={(e) => setForm({ ...form, parent_id: e.target.value ? parseInt(e.target.value) : null })}
@@ -309,7 +309,7 @@ export default function MenuSettings({ dir }) {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-[#404943] mb-1">Sort Order</label>
+                <label className="block text-sm font-medium text-on-surface-variant mb-1">Sort Order</label>
                 <input
                   type="number"
                   value={form.sort_order}
@@ -318,7 +318,7 @@ export default function MenuSettings({ dir }) {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-[#404943] mb-2">Visible to Roles</label>
+                <label className="block text-sm font-medium text-on-surface-variant mb-2">Visible to Roles</label>
                 <div className="flex flex-wrap gap-2">
                   {ROLE_OPTIONS.map((role) => (
                     <button
@@ -326,18 +326,18 @@ export default function MenuSettings({ dir }) {
                       onClick={() => toggleRole(role)}
                       className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
                         (form.roles || []).includes(role)
-                          ? 'bg-[#002819] text-white'
-                          : 'bg-gray-100 text-[#404943] hover:bg-gray-200'
+                          ? 'bg-brand-primary text-white'
+                          : 'bg-gray-100 text-on-surface-variant hover:bg-gray-200'
                       }`}
                     >
                       {role}
                     </button>
                   ))}
                 </div>
-                <p className="text-xs text-[#717973] mt-1">Leave empty to show to all roles</p>
+                <p className="text-xs text-on-surface-subtle mt-1">Leave empty to show to all roles</p>
               </div>
               <div className="flex items-center gap-3">
-                <label className="text-sm font-medium text-[#404943]">Active</label>
+                <label className="text-sm font-medium text-on-surface-variant">Active</label>
                 <button
                   onClick={() => setForm({ ...form, is_active: !form.is_active })}
                   className={`w-10 h-5 rounded-full transition relative ${
@@ -349,7 +349,7 @@ export default function MenuSettings({ dir }) {
               </div>
               <button
                 onClick={handleSave}
-                className="w-full py-3 bg-[#002819] text-white rounded-xl font-bold hover:bg-[#06402B] transition"
+                className="w-full py-3 bg-brand-primary text-white rounded-xl font-bold hover:bg-brand-secondary transition"
               >
                 {editingItem ? 'Update' : 'Create'}
               </button>

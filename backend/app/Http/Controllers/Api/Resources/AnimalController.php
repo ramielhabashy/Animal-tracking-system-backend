@@ -444,7 +444,21 @@ class AnimalController extends Controller
                 'mime_type' => $file->getClientMimeType(),
                 'file_size' => $file->getSize(),
                 'notes' => $note,
-            ]);
-        }
+        ]);
+    }
+}
+
+    public function gps(Request $request, $id): JsonResponse
+    {
+        $animal = Animal::with('device')->findOrFail($id);
+        $device = $animal->device;
+
+        return response()->json([
+            'data' => [
+                'latitude' => $device?->gps_lat ?? $animal->gps_lat,
+                'longitude' => $device?->gps_lng ?? $animal->gps_lng,
+                'updated_at' => $device?->updated_at ?? $animal->updated_at,
+            ],
+        ]);
     }
 }

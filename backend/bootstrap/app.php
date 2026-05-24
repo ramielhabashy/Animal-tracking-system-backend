@@ -7,8 +7,14 @@ use Illuminate\Http\Middleware\HandleCors;
 use App\Http\Middleware\CheckSubscriptionLimits;
 use App\Http\Middleware\CheckFeatureAccess;
 use App\Http\Middleware\CustomAuthenticate;
+use App\Providers\DeviceServiceProvider;
+use App\Providers\HorizonServiceProvider;
 
 return Application::configure(basePath: dirname(__DIR__))
+    ->withProviders([
+        DeviceServiceProvider::class,
+        HorizonServiceProvider::class,
+    ])
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
         api: __DIR__.'/../routes/api.php',
@@ -29,13 +35,32 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        $exceptions->report(function (\Throwable $e) {
+        if (app()->environment('testing')) {
+            return;
+        }
+
+        $exceptions->report(function (Throwable $e) {
             if (app()->environment('testing')) {
                 return;
             }
-            // Prevent recursion - just log to file
-            $logFile = __DIR__.'/../storage/logs/laravel.log';
-            $message = '[' . date('Y-m-d H:i:s') . '] ' . get_class($e) . ': ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine() . "\n";
-            file_put_contents($logFile, $message, FILE_APPEND);
+
+            // Flare (secondary error monitor, gated by FLARE_ENABLED)
+            if (env('FLARE_ENABLED', false) && env('FLARE_KEY')) {
+                try {
+                    $flare = \Spatie\FlareClient\Flare::make(env('FLARE_KEY'));
+                    if ($githubToken = env('FLARE_GITHUB_TOKEN')) {
+                        $flare->setGitHubAuth($githubToken);
+                    }
+                    $flare->reportError(
+                        get_class($e),
+                        $e->getMessage(),
+                        $e->getFile(),
+                        $e->getLine(),
+                        $e->getTraceAsString()
+                    );
+                } catch (\Throwable $flareError) {
+                    // Flare reporting failed silently
+                }
+            }
         });
     })->create();

@@ -7,8 +7,12 @@ use App\Models\User;
 
 class FeatureGate
 {
-    public static function hasFeature(User $user, string $feature): bool
+    public static function hasFeature(?User $user, string $feature): bool
     {
+        if (!$user) {
+            return false;
+        }
+
         $tier = self::getUserTier($user);
 
         if (! $tier) {
@@ -27,8 +31,12 @@ class FeatureGate
         };
     }
 
-    public static function canAccessFeature(User $user, string $feature): array
+    public static function canAccessFeature(?User $user, string $feature): array
     {
+        if (!$user) {
+            return ['allowed' => false, 'message' => 'Authentication required.'];
+        }
+
         $hasAccess = self::hasFeature($user, $feature);
 
         if ($hasAccess) {
@@ -62,6 +70,19 @@ class FeatureGate
 
         if ($activeSubscription) {
             return $tier;
+        }
+
+        // Check for past_due subscriptions (within grace period)
+        $pastDueSubscription = $user->subscription()
+            ->where('status', 'past_due')
+            ->latest()
+            ->first();
+
+        if ($pastDueSubscription) {
+            $gracePeriodDays = (int) (\App\Models\Setting::get('subscription_grace_period_days') ?? 7);
+            if ($pastDueSubscription->ends_at && now()->diffInDays($pastDueSubscription->ends_at, false) <= $gracePeriodDays) {
+                return $tier;
+            }
         }
 
         $latestSubscription = $user->subscription()->latest()->first();

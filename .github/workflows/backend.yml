@@ -21,7 +21,7 @@ jobs:
         image: mysql:8.0
         env:
           MYSQL_ROOT_PASSWORD: password
-          MYSQL_DATABASE: oasis_test
+          MYSQL_DATABASE: ra_animal_tracking_testing
         ports:
           - 3306:3306
         options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
@@ -57,19 +57,23 @@ jobs:
       env:
         DB_HOST: 127.0.0.1
         DB_PORT: 3306
-        DB_DATABASE: oasis_test
+        DB_DATABASE: ra_animal_tracking_testing
         DB_USERNAME: root
         DB_PASSWORD: password
         QUEUE_CONNECTION: redis
         REDIS_HOST: 127.0.0.1
       run: php artisan migrate --force
 
+    - name: Check PSR-12 style
+      working-directory: ./backend
+      run: ./vendor/bin/pint --test
+
     - name: Run tests with coverage
       working-directory: ./backend
       env:
         DB_HOST: 127.0.0.1
         DB_PORT: 3306
-        DB_DATABASE: oasis_test
+        DB_DATABASE: ra_animal_tracking_testing
         DB_USERNAME: root
         DB_PASSWORD: password
         QUEUE_CONNECTION: redis
