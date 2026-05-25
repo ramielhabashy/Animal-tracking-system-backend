@@ -310,6 +310,7 @@ class AdminSettingsController extends Controller
             'data' => [
                 'deepl_api_key' => $settings['translation_deepl_api_key'] ?? '',
                 'google_api_key' => $settings['translation_google_api_key'] ?? '',
+                'ai_enabled' => $settings['translation_ai_enabled'] ?? '0',
             ]
         ]);
     }
@@ -319,11 +320,16 @@ class AdminSettingsController extends Controller
         $validated = $request->validate([
             'deepl_api_key' => 'nullable|string',
             'google_api_key' => 'nullable|string',
+            'ai_enabled' => 'nullable|in:0,1,true,false',
         ]);
+
+        $aiEnabled = $validated['ai_enabled'] ?? '0';
+        $aiEnabled = in_array($aiEnabled, ['1', 'true'], true) ? '1' : '0';
 
         $settings = [
             'translation_deepl_api_key' => $validated['deepl_api_key'] ?? '',
             'translation_google_api_key' => $validated['google_api_key'] ?? '',
+            'translation_ai_enabled' => $aiEnabled,
         ];
 
         foreach ($settings as $key => $value) {
@@ -442,6 +448,55 @@ class AdminSettingsController extends Controller
         }
 
         return response()->json(['message' => 'Auction settings saved successfully']);
+    }
+
+    public function getSubscriptionSettings(): JsonResponse
+    {
+        $settings = DB::table('settings')->where('key', 'like', 'subscription_%')->pluck('value', 'key')->toArray();
+
+        $gracePeriodDays = (int) ($settings['subscription_grace_period_days'] ?? 7);
+        $renewalReminderDays = (int) ($settings['subscription_renewal_reminder_days'] ?? 7);
+        $expiryNotificationDays = (int) ($settings['subscription_expiry_notification_days'] ?? 7);
+        $autoCancelAfterGrace = filter_var($settings['subscription_auto_cancel_after_grace'] ?? true, FILTER_VALIDATE_BOOLEAN);
+        $defaultBillingPeriodDays = (int) ($settings['subscription_default_billing_period_days'] ?? 30);
+
+        return response()->json([
+            'data' => [
+                'grace_period_days' => $gracePeriodDays,
+                'renewal_reminder_days' => $renewalReminderDays,
+                'expiry_notification_days' => $expiryNotificationDays,
+                'auto_cancel_after_grace' => $autoCancelAfterGrace,
+                'default_billing_period_days' => $defaultBillingPeriodDays,
+            ]
+        ]);
+    }
+
+    public function saveSubscriptionSettings(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'grace_period_days' => 'integer|min:0|max:90',
+            'renewal_reminder_days' => 'integer|min:0|max:30',
+            'expiry_notification_days' => 'integer|min:0|max:30',
+            'auto_cancel_after_grace' => 'boolean',
+            'default_billing_period_days' => 'integer|min:1|max:365',
+        ]);
+
+        $settings = [
+            'subscription_grace_period_days' => $validated['grace_period_days'] ?? 7,
+            'subscription_renewal_reminder_days' => $validated['renewal_reminder_days'] ?? 7,
+            'subscription_expiry_notification_days' => $validated['expiry_notification_days'] ?? 7,
+            'subscription_auto_cancel_after_grace' => $validated['auto_cancel_after_grace'] ?? true,
+            'subscription_default_billing_period_days' => $validated['default_billing_period_days'] ?? 30,
+        ];
+
+        foreach ($settings as $key => $value) {
+            DB::table('settings')->updateOrInsert(
+                ['key' => $key],
+                ['value' => $value, 'updated_at' => now()]
+            );
+        }
+
+        return response()->json(['message' => 'Subscription settings saved successfully']);
     }
 
     public function getTransferCommissionSettings(): JsonResponse

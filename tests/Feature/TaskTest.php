@@ -20,11 +20,14 @@ class TaskTest extends TestCase
     public function test_user_can_create_task()
     {
         $user = $this->authenticateUser();
+        $assignee = $this->createUser();
+        $assignee->managed_by = $user->id;
+        $assignee->save();
 
         $response = $this->postJson('/api/tasks', [
             'title' => 'Feed the animals',
             'description' => 'Morning feeding routine',
-            'assigned_to' => $user->id,
+            'assigned_to' => $assignee->id,
             'due_date' => now()->addDay()->toISOString(),
         ]);
 

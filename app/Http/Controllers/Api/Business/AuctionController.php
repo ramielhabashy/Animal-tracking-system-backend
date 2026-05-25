@@ -211,8 +211,14 @@ class AuctionController extends Controller
 
     public function myAuctions(Request $request): \Illuminate\Http\Resources\Json\AnonymousResourceCollection
     {
+        $userId = $this->getUserId($request);
+        $userRole = $this->getUserRole($request);
+
         $query = Auction::with(['animal', 'owner', 'bids']);
-        $query = $this->filterByRole($request, $query);
+
+        if ($userRole !== 'Admin') {
+            $query->where('owner_id', $userId);
+        }
 
         $auctions = $query->orderBy('created_at', 'desc')->paginate(10);
 
@@ -280,7 +286,8 @@ class AuctionController extends Controller
         ]);
 
         try {
-            \Stripe\Stripe::setApiKey(config('services.stripe.secret'));
+            $stripeSettings = \App\Models\Setting::getStripeSettings();
+            \Stripe\Stripe::setApiKey($stripeSettings['secret_key']);
 
             $charge = \Stripe\Charge::create([
                 'amount' => (int)($auction->current_price * 100),
@@ -1287,6 +1294,41 @@ class AuctionController extends Controller
 
         return response()->json([
             'data' => AuctionResource::collection($auctions),
+        ]);
+    }
+
+    public function stats(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $query = Auction::query();
+
+        if ($user && $user->getPrimaryRoleName() !== 'Admin') {
+            $userId = $user->id;
+            $query->where(function ($q) use ($userId) {
+                $q->where('owner_id', $userId)
+                  ->orWhere('winner_id', $userId);
+            });
+        }
+
+        return response()->json([
+            'total' => (clone $query)->count(),
+            'active' => (clone $query)->where('status', 'active')->count(),
+            'draft' => (clone $query)->where('status', 'draft')->count(),
+            'ended' => (clone $query)->where('status', 'ended')->count(),
+            'sold' => (clone $query)->where('status', 'sold')->count(),
+            'cancelled' => (clone $query)->where('status', 'cancelled')->count(),
+        ]);
+    }
+
+    public function bids(Request $request, Auction $auction): JsonResponse
+    {
+        $bids = $auction->bids()
+            ->with('user:id,name')
+            ->orderBy('created_at', 'desc')
+            ->paginate(50);
+
+        return response()->json([
+            'data' => BidResource::collection($bids),
         ]);
     }
 }

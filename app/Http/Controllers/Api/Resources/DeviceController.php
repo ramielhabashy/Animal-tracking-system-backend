@@ -13,6 +13,8 @@ use App\Models\User;
 use App\Http\Requests\StoreDeviceRequest;
 use App\Http\Requests\UpdateDeviceRequest;
 use App\Contracts\DeviceDataProvider;
+use App\Services\DeviceProviders\MqttDeviceProvider;
+use App\Services\DeviceProviders\SaniDeviceProvider;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -55,7 +57,7 @@ class DeviceController extends Controller
         $data = $request->validate([
             'name' => 'required|string|max:255',
             'type' => 'nullable|string|max:255',
-            'status' => 'nullable|string|in:online,offline,low_signal',
+            'status' => 'nullable|string|in:online,offline,low_signal,active,maintenance',
             'battery_level' => 'nullable|integer|min:0|max:100',
             'firmware_version' => 'nullable|string|max:50',
             'update_interval' => 'nullable|integer|min:1|max:1440',
@@ -65,6 +67,7 @@ class DeviceController extends Controller
             'animal_id' => 'nullable|exists:animals,id',
             'data_source' => 'nullable|string|in:simulated,real',
             'driver' => 'nullable|string|max:50',
+            'serial_number' => 'nullable|string|unique:devices,serial_number',
         ]);
 
         // Only Admin can set data_source to 'real'
@@ -76,9 +79,9 @@ class DeviceController extends Controller
             $data['driver'] = null;
         }
 
-        $data['device_id'] = 'IOT-' . str_pad(Device::count() + 1, 3, '0', STR_PAD_LEFT) . '-' . strtoupper(substr(md5(time()), 0, 1));
+        $nextId = (Device::max('id') ?? 0) + 1;
+        $data['device_id'] = 'IOT-' . str_pad($nextId, 3, '0', STR_PAD_LEFT) . '-' . strtoupper(substr(md5(time()), 0, 1));
 
-        $userRole = $this->getUserRole($request);
         $userId = $this->getUserId($request);
 
         if ($userRole === 'Admin' && empty($data['owner_id'])) {
@@ -103,7 +106,15 @@ class DeviceController extends Controller
             $data['last_ping'] = now();
         }
 
-        $device = Device::create($data);
+        if ($data['data_source'] === 'real') {
+            $deviceProvider = match ($data['driver'] ?? '') {
+                'mqtt' => new MqttDeviceProvider(),
+                default => new SaniDeviceProvider(),
+            };
+            $device = $deviceProvider->provision($data);
+        } else {
+            $device = Device::create($data);
+        }
 
         if (!empty($data['animal_id'])) {
             $this->initLocationHistory($device, $data['gps_lat'], $data['gps_lng']);
@@ -130,14 +141,24 @@ class DeviceController extends Controller
             'owner_id' => 'nullable|exists:users,id',
             'animal_id' => 'required|exists:animals,id',
             'geofence_id' => 'nullable|exists:geofences,id',
+            'data_source' => 'nullable|string|in:simulated,real',
+            'driver' => 'nullable|string|max:50',
         ]);
 
-        $data['device_id'] = 'IOT-' . str_pad(Device::count() + 1, 3, '0', STR_PAD_LEFT) . '-' . strtoupper(substr(md5(time()), 0, 1));
+        $userRole = $this->getUserRole($request);
+        if ($userRole !== 'Admin' || empty($data['data_source'])) {
+            $data['data_source'] = 'simulated';
+        }
+        if ($data['data_source'] !== 'real') {
+            $data['driver'] = null;
+        }
+
+        $nextId = (Device::max('id') ?? 0) + 1;
+        $data['device_id'] = 'IOT-' . str_pad($nextId, 3, '0', STR_PAD_LEFT) . '-' . strtoupper(substr(md5(time()), 0, 1));
         $data['status'] = 'online';
         $data['battery_level'] = 100;
         $data['last_ping'] = now();
 
-        $userRole = $this->getUserRole($request);
         $userId = $this->getUserId($request);
 
         if ($userRole === 'Admin' && empty($data['owner_id'])) {
@@ -157,7 +178,15 @@ class DeviceController extends Controller
         $data['gps_lat'] = $coords[0];
         $data['gps_lng'] = $coords[1];
 
-        $device = Device::create($data);
+        if ($data['data_source'] === 'real') {
+            $deviceProvider = match ($data['driver'] ?? '') {
+                'mqtt' => new MqttDeviceProvider(),
+                default => new SaniDeviceProvider(),
+            };
+            $device = $deviceProvider->provision($data);
+        } else {
+            $device = Device::create($data);
+        }
 
         $this->initLocationHistory($device, $data['gps_lat'], $data['gps_lng']);
 
@@ -210,9 +239,10 @@ class DeviceController extends Controller
         $coords = $this->resolveInitialCoords(['owner_id' => $ownerId]);
         $created = [];
 
+        $baseId = (Device::max('id') ?? 0) + 1;
         for ($i = 0; $i < $validated['count']; $i++) {
             $deviceData = [
-                'device_id' => 'IOT-' . str_pad(Device::count() + $i + 1, 3, '0', STR_PAD_LEFT) . '-' . strtoupper(substr(md5(time() + $i), 0, 1)),
+                'device_id' => 'IOT-' . str_pad($baseId + $i, 3, '0', STR_PAD_LEFT) . '-' . strtoupper(substr(md5(time() + $i), 0, 1)),
                 'name' => 'Batch Device ' . ($i + 1),
                 'type' => 'collar',
                 'status' => 'online',
@@ -223,6 +253,7 @@ class DeviceController extends Controller
                 'gps_lat' => $coords[0] + (rand(-100, 100) / 10000),
                 'gps_lng' => $coords[1] + (rand(-100, 100) / 10000),
                 'owner_id' => $ownerId,
+                'data_source' => 'simulated',
             ];
 
             if ($i < count($unassignedAnimals)) {
@@ -348,7 +379,7 @@ class DeviceController extends Controller
         $data = $request->validate([
             'name' => 'sometimes|string|max:255',
             'type' => 'nullable|string|max:255',
-            'status' => 'nullable|string|in:online,offline,low_signal',
+            'status' => 'nullable|string|in:online,offline,low_signal,active,maintenance',
             'battery_level' => 'nullable|integer|min:0|max:100',
             'last_seen' => 'nullable|date',
             'update_interval' => 'nullable|integer|min:1|max:1440',

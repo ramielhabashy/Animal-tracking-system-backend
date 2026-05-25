@@ -4,16 +4,12 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Traits\SendsEmailNotifications;
-use App\Models\SubscriptionTier;
-use App\Models\UserSubscription;
 use App\Models\SubscriptionOrder;
-use App\Models\Device;
 use App\Models\User;
-use App\Models\Setting;
-use App\Models\Notification;
-use App\Services\FeatureGate;
+use App\Services\PaymentMethodService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Validation\Rule;
 use Stripe\Stripe;
 use Stripe\Checkout\Session as StripeSession;
 
@@ -22,11 +18,7 @@ class CheckoutController extends Controller
     use SendsEmailNotifications;
     private function getRequestUser(Request $request): ?User
     {
-        if ($request->user()) {
-            return $request->user();
-        }
-        $userId = $request->header('X-User-Id');
-        return $userId ? User::find($userId) : null;
+        return $request->user();
     }
 
     public function init(Request $request): JsonResponse
@@ -42,13 +34,13 @@ class CheckoutController extends Controller
             'shipping_address' => 'required|array',
             'shipping_address.full_name' => 'required|string|max:255',
 
-            'shipping_address.phone' => 'required|string|max:50',
+            'shipping_address.phone' => 'nullable|string|max:50',
             'shipping_address.street' => 'required|string|max:255',
             'shipping_address.city' => 'required|string|max:255',
             'shipping_address.state' => 'nullable|string|max:255',
             'shipping_address.zip' => 'required|string|max:20',
             'shipping_address.country' => 'required|string|max:255|in:' . implode(',', Setting::get('checkout_countries') ? json_decode(Setting::get('checkout_countries')) : ['Saudi Arabia']),
-            'payment_method' => 'required|in:stripe,bank_transfer',
+            'payment_method' => ['required', 'string', \Illuminate\Validation\Rule::in(config('payment.validation.checkout', ['stripe', 'bank_transfer']))],
         ]);
 
         $tier = SubscriptionTier::findOrFail($validated['tier_id']);
@@ -341,6 +333,11 @@ class CheckoutController extends Controller
     public function adminOrders(Request $request): JsonResponse
     {
         $orders = SubscriptionOrder::with(['user', 'tier', 'userSubscription'])
+            ->whereHas('user', function ($q) {
+                $q->whereHas('roles', function ($r) {
+                    $r->where('name', 'Owner');
+                });
+            })
             ->orderBy('created_at', 'desc')
             ->paginate($request->input('per_page', 20));
 

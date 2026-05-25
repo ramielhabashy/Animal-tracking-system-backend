@@ -8,6 +8,7 @@ class AiQuickAction extends Model
 {
     protected $fillable = [
         'role',
+        'language',
         'type',
         'icon',
         'label',

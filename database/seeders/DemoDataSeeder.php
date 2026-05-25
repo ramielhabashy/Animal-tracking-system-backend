@@ -859,15 +859,6 @@ class DemoDataSeeder extends Seeder
             'payment_reference' => 'BT-DEMO2-' . strtoupper(uniqid()),
             'notes' => 'First subscription - welcome kit',
         ]);
-        SubscriptionOrder::create([
-            'user_id' => $managerUser->id, 'tier_id' => $freeTier?->id ?? 2,
-            'amount' => 0, 'currency' => 'USD',
-            'billing_cycle' => 'monthly',
-            'shipping_address' => ['full_name' => 'Faisal Manager', 'street' => '789 Business Park', 'city' => 'Riyadh', 'state' => '', 'zip' => '98765', 'country' => 'Saudi Arabia'],
-            'shipping_status' => 'pending',
-            'payment_method' => 'bank_transfer', 'payment_status' => 'pending',
-        ]);
-
         // ──────────────────────────────────────────────
         // 20. BANNERS
         // ──────────────────────────────────────────────
@@ -905,6 +896,11 @@ class DemoDataSeeder extends Seeder
         Setting::updateOrCreate(['key' => 'transfer_commission_type'], ['value' => 'percentage']);
         Setting::updateOrCreate(['key' => 'transfer_commission_percentage'], ['value' => '5']);
         Setting::updateOrCreate(['key' => 'demo_mode'], ['value' => '1']);
+
+        // Stripe test keys
+        Setting::updateOrCreate(['key' => 'stripe_public_key'], ['value' => 'pk_test_hIp8e47E6yeWQgtek92BwEV7']);
+        Setting::updateOrCreate(['key' => 'stripe_secret_key'], ['value' => 'sk_test_xHz5nMUdKek1Ci20tfcGTgH5']);
+        Setting::updateOrCreate(['key' => 'stripe_enabled'], ['value' => '1']);
 
         // ──────────────────────────────────────────────
         // SUMMARY

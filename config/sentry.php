@@ -1,9 +1,7 @@
 <?php
 
 return [
-    'dsn' => env('SENTRY_LARAVEL_DSN', env('SENTRY_DSN')),
-
-    'enabled' => env('SENTRY_ENABLED', false),
+    'dsn' => env('SENTRY_ENABLED', false) ? env('SENTRY_LARAVEL_DSN', env('SENTRY_DSN')) : null,
 
     'environment' => env('APP_ENV'),
 

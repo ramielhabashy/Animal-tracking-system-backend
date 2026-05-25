@@ -87,6 +87,14 @@ class LocationHistoryTest extends TestCase
             'coordinates' => [[24.9, 54.9], [25.2, 54.9], [25.2, 55.2], [24.9, 55.2]],
         ]);
 
+        // First submission outside the geofence to set baseline
+        $this->postJson('/api/location-history', [
+            'device_id' => $this->device->id,
+            'latitude' => 26.0,
+            'longitude' => 56.0,
+        ]);
+
+        // Second submission inside the geofence triggers entry alert
         $response = $this->postJson('/api/location-history', [
             'device_id' => $this->device->id,
             'latitude' => 25.05,

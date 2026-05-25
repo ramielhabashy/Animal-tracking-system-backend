@@ -72,6 +72,19 @@ class FeatureGate
             return $tier;
         }
 
+        // Check for past_due subscriptions (within grace period)
+        $pastDueSubscription = $user->subscription()
+            ->where('status', 'past_due')
+            ->latest()
+            ->first();
+
+        if ($pastDueSubscription) {
+            $gracePeriodDays = (int) (\App\Models\Setting::get('subscription_grace_period_days') ?? 7);
+            if ($pastDueSubscription->ends_at && now()->diffInDays($pastDueSubscription->ends_at, false) <= $gracePeriodDays) {
+                return $tier;
+            }
+        }
+
         $latestSubscription = $user->subscription()->latest()->first();
 
         if ($latestSubscription && $latestSubscription->isOnTrial()) {

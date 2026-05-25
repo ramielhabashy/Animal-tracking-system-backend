@@ -13,6 +13,8 @@ use App\Models\Auction;
 use App\Models\MedicalRecord;
 use App\Models\VaccinationSchedule;
 use App\Models\User;
+use App\Models\Conversation;
+use App\Models\Message;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Http;
@@ -28,12 +30,14 @@ class AIController extends Controller
             'conversation' => 'nullable|array',
             'page' => 'nullable|string',
             'pageName' => 'nullable|string',
+            'language' => 'nullable|string|size:2',
         ]);
 
         $message = $request->input('message');
         $conversation = $request->input('conversation', []);
         $page = $request->input('page');
         $pageName = $request->input('pageName');
+        $language = $request->input('language');
 
         $settings = $this->getAiSettings();
         $provider = $settings['provider'] ?? 'disabled';
@@ -47,8 +51,9 @@ class AIController extends Controller
         }
 
         $user = $request->user();
-        $context = $this->getUserContext($user);
-        $systemPrompt = $this->buildSystemPrompt($user, $context, $page, $pageName);
+        $language = $language ?? $user?->language ?? 'en';
+        $context = $this->getUserContext($user, $language);
+        $systemPrompt = $this->buildSystemPrompt($user, $context, $page, $pageName, $language);
 
         try {
             $reply = match ($provider) {
@@ -74,9 +79,13 @@ class AIController extends Controller
     {
         $user = $request->user();
         $primaryRole = $user?->getPrimaryRoleName();
+        $language = $request->query('lang', $user?->language ?? 'en');
 
         $actions = AiQuickAction::active()
             ->forRole($primaryRole)
+            ->where(function ($q) use ($language) {
+                $q->whereNull('language')->orWhere('language', $language);
+            })
             ->ordered()
             ->get(['id', 'type', 'icon', 'label', 'prompt']);
 
@@ -210,18 +219,26 @@ class AIController extends Controller
             ->pluck('value', 'key')
             ->toArray();
 
-        $provider = $settings['ai_provider'] ?? ($settings['gemini_enabled'] ?? false ? 'gemini' : 'disabled');
-        $apiKey = $settings['ai_api_key'] ?? $settings['gemini_api_key'] ?? null;
-
-        if ($provider !== 'disabled' && empty($apiKey)) {
-            $apiKey = config('services.groq.api_key');
-        }
-
         $defaultModels = [
             'groq' => 'llama-3.3-70b-versatile',
             'gemini' => 'gemini-2.0-flash',
             'openai' => 'gpt-4o',
         ];
+
+        $dbProvider = $settings['ai_provider'] ?? ($settings['gemini_enabled'] ?? false ? 'gemini' : null);
+        $dbApiKey = $settings['ai_api_key'] ?? $settings['gemini_api_key'] ?? null;
+        $groqKey = config('services.groq.api_key');
+
+        if ($dbProvider && $dbApiKey) {
+            $provider = $dbProvider;
+            $apiKey = $dbApiKey;
+        } elseif ($groqKey) {
+            $provider = 'groq';
+            $apiKey = $groqKey;
+        } else {
+            $provider = 'disabled';
+            $apiKey = null;
+        }
 
         $model = $settings['ai_model'] ?? $settings['gemini_model'] ?? ($defaultModels[$provider] ?? 'llama-3.3-70b-versatile');
 
@@ -313,7 +330,7 @@ class AIController extends Controller
         return $response->json()['choices'][0]['message']['content'] ?? 'No response generated.';
     }
 
-    protected function getUserContext($user): array
+    protected function getUserContext($user, string $language = 'en'): array
     {
         if (!$user) {
             return ['user' => ['name' => 'Guest', 'role' => 'Guest']];
@@ -326,6 +343,7 @@ class AIController extends Controller
                 'name' => $user->name,
                 'role' => $role,
                 'role_type' => $roleType,
+                'language' => $language,
             ],
         ];
 
@@ -356,6 +374,29 @@ class AIController extends Controller
                 'active' => Auction::where('status', 'active')->count(),
                 'pending_approval' => Auction::where('status', 'draft')->count(),
             ];
+            $context['support'] = [
+                'open_tickets' => Conversation::where('type', 'ticket')
+                    ->whereIn('status', ['open', 'in_progress'])->count(),
+                'resolved_today' => Conversation::where('type', 'ticket')
+                    ->where('status', 'resolved')->whereDate('updated_at', today())->count(),
+                'urgent_tickets' => Conversation::where('type', 'ticket')
+                    ->where('priority', 'urgent')->whereNotIn('status', ['resolved', 'closed'])->count(),
+                'unassigned_tickets' => Conversation::where('type', 'ticket')
+                    ->whereNull('assigned_to_id')->whereNotIn('status', ['resolved', 'closed'])->count(),
+                'total_tickets' => Conversation::where('type', 'ticket')->count(),
+                'tickets_by_status' => Conversation::where('type', 'ticket')
+                    ->selectRaw("status, COUNT(*) as count")->groupBy('status')
+                    ->pluck('count', 'status')->toArray(),
+                'recent_messages_count' => Message::where('created_at', '>=', now()->subDay())->count(),
+                'staff_load' => DB::table('conversations')
+                    ->join('users', 'conversations.assigned_to_id', '=', 'users.id')
+                    ->where('conversations.type', 'ticket')
+                    ->whereNotIn('conversations.status', ['resolved', 'closed'])
+                    ->whereNotNull('conversations.assigned_to_id')
+                    ->select('users.name', DB::raw('COUNT(*) as active_tickets'))
+                    ->groupBy('users.id', 'users.name')
+                    ->get(),
+            ];
             $context['insights'] = $this->getAdminInsights();
         } else {
             $userId = $user->id;
@@ -379,6 +420,18 @@ class AIController extends Controller
                 'overdue' => Task::where('owner_id', $userId)->where('status', 'pending')
                     ->where('due_date', '<', now())->count(),
                 'assigned_to_me' => Task::where('assigned_to', $userId)->where('status', 'pending')->count(),
+            ];
+            $context['support'] = [
+                'my_tickets' => Conversation::where('type', 'ticket')
+                    ->whereHas('participants', fn($q) => $q->where('user_id', $userId))->count(),
+                'open_tickets' => Conversation::where('type', 'ticket')
+                    ->whereHas('participants', fn($q) => $q->where('user_id', $userId))
+                    ->whereIn('status', ['open', 'in_progress'])->count(),
+                'resolved_tickets' => Conversation::where('type', 'ticket')
+                    ->whereHas('participants', fn($q) => $q->where('user_id', $userId))
+                    ->where('status', 'resolved')->count(),
+                'unread_messages' => Conversation::forUser($user)
+                    ->get()->sum(fn($c) => $c->unreadCountFor($userId)),
             ];
             $context['insights'] = $this->getOwnerInsights($userId);
         }
@@ -429,7 +482,7 @@ class AIController extends Controller
         ];
     }
 
-    protected function buildSystemPrompt($user, array $context, ?string $page = null, ?string $pageName = null): string
+    protected function buildSystemPrompt($user, array $context, ?string $page = null, ?string $pageName = null, string $language = 'en'): string
     {
         $json = json_encode($context, JSON_PRETTY_PRINT);
 
@@ -446,17 +499,20 @@ AVAILABLE ROUTES (use these for Markdown links in your responses):
 - Animals List: [/animals](/animals)
 - Animal Details: [/animals/{id}](/animals/5)
 - Devices List: [/devices](/devices)
+- Device Details: [/devices/{id}](/devices/3)
 - Live Map: [/map](/map)
 - Auctions: [/auctions](/auctions)
+- Auction Details: [/auctions/{id}](/auctions/2)
 - Tasks: [/tasks](/tasks)
+- Task Details: [/tasks/{id}](/tasks/7)
 - Medical Records: [/medical-records](/medical-records)
-- Vaccination Schedule: [/vaccination-schedule](/vaccination-schedule)
-- Alerts: [/alerts](/alerts)
+- Vaccination Schedules: [/vaccination-schedules](/vaccination-schedules)
+- Geofence Alerts: [/geofence-alerts](/geofence-alerts)
 - Geofences: [/geofences](/geofences)
 - Reports: [/reports](/reports)
 - Transfers: [/transfers](/transfers)
-- Messages: [/messages](/messages)
-- Profile: [/profile](/profile)
+- Conversations: [/conversations](/conversations)
+- Conversation Detail: [/conversations/{id}](/conversations/15)
 ";
 
         return <<<EOT
@@ -468,12 +524,13 @@ CURRENT USER CONTEXT (JSON):
 
 {$routeTable}
 CAPABILITIES:
-- Answer questions about animals, devices, alerts, tasks, auctions, users, and other data
+- Answer questions about animals, devices, alerts, tasks, auctions, users, support tickets, customer service metrics, and other data
 - Provide livestock management advice (health, nutrition, breeding)
 - Generate reports and summaries
 - Detect recurring issues (low battery devices, overdue vaccinations, repeat medical visits)
 - Help find specific items and navigate the platform
-- Support both English and Arabic
+- Support multiple languages including English, Arabic, Urdu, and Basque
+- Respond in the user's language from the context
 
 RULES:
 - Be concise, helpful, and professional
@@ -483,10 +540,12 @@ RULES:
   * Tasks: [Task Title](/tasks/{id})
   * Devices: [Device Name](/devices/{id})
   * Auctions: [Auction Title](/auctions/{id})
-  * Pages: [Dashboard](/dashboard), [Map](/map), [Tasks](/tasks), etc.
+  * Messages: [Conversation](/messages/{id})
+  * Pages: [Dashboard](/dashboard), [Map](/map), [Tasks](/tasks), [Profile](/profile), etc.
 - Format lists and tables using Markdown for readability
 - If you detect issues (e.g., low battery, overdue vaccinations), highlight them prominently
-- For Arabic responses, use proper Arabic livestock terminology
+- For non-English responses, use proper terminology for that language
+- CRITICAL: Respond in the user's language ({$language}). The user's messages may be in a different language than their preferred language — always respond in their preferred language ({$language}).
 - If data is insufficient, say so honestly
 
 User message follows. Respond based on the context above.

@@ -16,7 +16,9 @@ use App\Http\Controllers\Api\CheckoutController;
 use App\Http\Controllers\Api\WorkflowTestController;
 use App\Http\Controllers\Api\Communication\ConversationController;
 use App\Http\Controllers\Api\Communication\MessageController;
+use App\Http\Controllers\Api\Admin\AiTranslationController;
 use App\Http\Controllers\Api\MenuController;
+use App\Http\Controllers\Api\PageController;
 use App\Http\Controllers\Api\OwnershipTransferController;
 use App\Http\Controllers\Api\Admin\MenuItemController;
 use App\Http\Controllers\Api\Health\HealthCheckController;
@@ -112,6 +114,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/animals/stats', [AnimalController::class, 'stats'])->middleware(['limits:animals', 'throttle:60,1']);
     Route::apiResource('animals', AnimalController::class)->middleware(['limits:animals', 'throttle:60,1']);
     Route::get('/animals/{id}/location-history', [LocationHistoryController::class, 'index'])->middleware('throttle:60,1');
+    Route::get('/animals/{id}/gps', [AnimalController::class, 'gps'])->middleware('throttle:60,1');
     // Ownership Transfers
     Route::get('/transfers', [OwnershipTransferController::class, 'index']);
     Route::post('/transfers', [OwnershipTransferController::class, 'store']);
@@ -161,6 +164,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Geofence Alerts
     Route::get('/geofence-alerts', [GeofenceController::class, 'alerts'])->middleware('throttle:60,1');
     Route::get('/alerts/temperature', [GeofenceController::class, 'temperatureAlerts'])->middleware('throttle:60,1');
+    Route::get('/temperature-alerts', [GeofenceController::class, 'temperatureAlerts'])->middleware('throttle:60,1');
     Route::patch('/geofence-alerts/{alert}/acknowledge', [GeofenceController::class, 'acknowledgeAlert'])->middleware('throttle:60,1');
     Route::delete('/geofence-alerts/{alert}', [GeofenceController::class, 'deleteAlert'])->middleware('throttle:60,1');
     Route::post('/geofence-alerts/deactivate-all', [GeofenceController::class, 'deactivateAlerts'])->middleware('throttle:60,1');
@@ -182,6 +186,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Map and Location
     Route::get('/map', [MapController::class, 'index'])->middleware('throttle:60,1');
+    Route::get('/map/filters', [MapController::class, 'filters'])->middleware('throttle:60,1');
     Route::post('/location-history', [LocationHistoryController::class, 'store'])->middleware('throttle:60,1');
 
     // Auctions
@@ -195,6 +200,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/auctions/{auction}', [AuctionController::class, 'show']);
         Route::put('/auctions/{auction}', [AuctionController::class, 'update']);
         Route::delete('/auctions/{auction}', [AuctionController::class, 'destroy']);
+        Route::get('/auctions/stats', [AuctionController::class, 'stats'])->middleware('throttle:60,1');
+        Route::get('/auctions/{auction}/bids', [AuctionController::class, 'bids'])->middleware('throttle:60,1');
         Route::post('/auctions/{auction}/bid', [AuctionController::class, 'placeBid']);
         Route::post('/auctions/{auction}/cancel', [AuctionController::class, 'cancel']);
         Route::post('/auctions/{auction}/end', [AuctionController::class, 'endAuction']);
@@ -224,7 +231,21 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/vaccination-schedules/{vaccinationSchedule}/administer', [VaccinationScheduleController::class, 'administer'])->middleware('throttle:60,1');
         Route::post('/vaccination-schedules/{vaccinationSchedule}/cancel', [VaccinationScheduleController::class, 'cancel'])->middleware('throttle:60,1');
         Route::delete('/vaccination-schedules/{vaccinationSchedule}', [VaccinationScheduleController::class, 'destroy'])->middleware('throttle:60,1');
+        // Flutter compatibility aliases
+        Route::get('/vaccinations', [VaccinationScheduleController::class, 'index'])->middleware('throttle:60,1');
+        Route::get('/vaccinations/stats', [VaccinationScheduleController::class, 'stats'])->middleware('throttle:60,1');
+        Route::post('/vaccinations', [VaccinationScheduleController::class, 'store'])->middleware('throttle:60,1');
+        Route::get('/vaccinations/{id}', [VaccinationScheduleController::class, 'show'])->middleware('throttle:60,1');
+        Route::put('/vaccinations/{id}', [VaccinationScheduleController::class, 'update'])->middleware('throttle:60,1');
+        Route::post('/vaccinations/{id}/administer', [VaccinationScheduleController::class, 'administer'])->middleware('throttle:60,1');
+        Route::post('/vaccinations/{id}/cancel', [VaccinationScheduleController::class, 'cancel'])->middleware('throttle:60,1');
+        Route::delete('/vaccinations/{id}', [VaccinationScheduleController::class, 'destroy'])->middleware('throttle:60,1');
     });
+
+    // Payment methods (dynamic list for frontend)
+    Route::get('/payment-methods', function () {
+        return response()->json(['data' => \App\Services\PaymentMethodService::getAvailableMethods()]);
+    })->middleware('throttle:60,1');
 
     // Subscription
     Route::get('/subscription/current', [SubscriptionController::class, 'userSubscription'])->middleware('throttle:60,1');
@@ -235,7 +256,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/subscription/cancel', [SubscriptionController::class, 'cancel'])->middleware('throttle:60,1');
     Route::post('/subscription/renew', [SubscriptionController::class, 'renew'])->middleware('throttle:60,1');
     Route::post('/subscription/reactivate', [SubscriptionController::class, 'reactivate'])->middleware('throttle:60,1');
-    Route::post('/subscription/process-payment', [SubscriptionController::class, 'processPayment'])->middleware('throttle:60,1');
+    // DEPRECATED: raw card data path removed for PCI compliance.
+    // All payments use Stripe Checkout sessions via CheckoutController or renew().
+    // Route::post('/subscription/process-payment', [SubscriptionController::class, 'processPayment'])->middleware('throttle:60,1');
     Route::post('/subscription/bank-transfer', [SubscriptionController::class, 'bankTransfer'])->middleware('throttle:60,1');
 
     // Checkout
@@ -303,6 +326,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/admin/translations/{id}', [LanguageController::class, 'updateTranslation'])->middleware('throttle:60,1');
     Route::delete('/admin/translations/{id}', [LanguageController::class, 'deleteTranslation'])->middleware('throttle:60,1');
     Route::post('/admin/translations/import', [LanguageController::class, 'importTranslations'])->middleware('throttle:60,1');
+    Route::post('/admin/translations/ai-fill', [AiTranslationController::class, 'fillUi'])->middleware('throttle:30,1');
+    Route::post('/admin/translations/ai-fill-models', [AiTranslationController::class, 'fillModels'])->middleware('throttle:30,1');
     Route::get('/search', [SearchController::class, 'search'])->middleware('throttle:60,1');
 
     // Task Types (public list for all auth users)
@@ -319,6 +344,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/notifications', [NotificationController::class, 'index'])->middleware('throttle:60,1');
     Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount'])->middleware('throttle:60,1');
     Route::patch('/notifications/{notification}/read', [NotificationController::class, 'markAsRead'])->middleware('throttle:60,1');
+    Route::post('/notifications/{notification}/read', [NotificationController::class, 'markAsRead'])->middleware('throttle:60,1');
     Route::post('/notifications/read-all', [NotificationController::class, 'markAllAsRead'])->middleware('throttle:60,1');
 
     // Conversations & Messages
@@ -327,6 +353,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/conversations', [ConversationController::class, 'store'])->middleware('throttle:60,1');
     Route::get('/conversations/{conversation}', [ConversationController::class, 'show'])->middleware('throttle:60,1');
     Route::put('/conversations/{conversation}', [ConversationController::class, 'update'])->middleware('throttle:60,1');
+    Route::post('/conversations/{conversation}', [ConversationController::class, 'update'])->middleware('throttle:60,1');
     Route::delete('/conversations/{conversation}', [ConversationController::class, 'destroy'])->middleware('throttle:60,1');
     Route::post('/conversations/{conversation}/read', [ConversationController::class, 'markRead'])->middleware('throttle:60,1');
 
@@ -360,6 +387,10 @@ Route::middleware(['auth:sanctum', 'role:Admin'])->group(function () {
     Route::get('/subscription/admin/pending-payments', [SubscriptionController::class, 'adminListPendingPayments'])->middleware('throttle:60,1');
     Route::post('/subscription/admin/approve-payment/{subscription}', [SubscriptionController::class, 'adminApprovePayment'])->middleware('throttle:60,1');
     Route::post('/subscription/admin/reject-payment/{subscription}', [SubscriptionController::class, 'adminRejectPayment'])->middleware('throttle:60,1');
+    // Flutter compatibility aliases
+    Route::get('/payments/pending', [SubscriptionController::class, 'adminListPendingPayments'])->middleware('throttle:60,1');
+    Route::post('/payments/{subscription}/approve', [SubscriptionController::class, 'adminApprovePayment'])->middleware('throttle:60,1');
+    Route::post('/payments/{subscription}/reject', [SubscriptionController::class, 'adminRejectPayment'])->middleware('throttle:60,1');
     Route::post('/subscription/admin/tiers', [SubscriptionController::class, 'createTier'])->middleware('throttle:60,1');
     Route::put('/subscription/admin/tiers/{tier}', [SubscriptionController::class, 'updateTier'])->middleware('throttle:60,1');
     Route::delete('/subscription/admin/tiers/{tier}', [SubscriptionController::class, 'deleteTier'])->middleware('throttle:60,1');
@@ -367,6 +398,11 @@ Route::middleware(['auth:sanctum', 'role:Admin'])->group(function () {
     Route::post('/subscription/admin/reactivate/{user}', [SubscriptionController::class, 'adminReactivateSubscription'])->middleware('throttle:60,1');
     Route::post('/subscription/admin/cancel/{user}', [SubscriptionController::class, 'adminCancelSubscription'])->middleware('throttle:60,1');
     Route::put('/subscription/admin/billing-cycle/{subscription}', [SubscriptionController::class, 'adminChangeBillingCycle'])->middleware('throttle:60,1');
+    // Flutter compatibility aliases (different parameter ordering)
+    Route::post('/subscription/admin/{userId}/pause', [SubscriptionController::class, 'adminPauseSubscription'])->middleware('throttle:60,1');
+    Route::post('/subscription/admin/{userId}/reactivate', [SubscriptionController::class, 'adminReactivateSubscription'])->middleware('throttle:60,1');
+    Route::post('/subscription/admin/{userId}/cancel', [SubscriptionController::class, 'adminCancelSubscription'])->middleware('throttle:60,1');
+    Route::post('/subscription/admin/{userId}/billing-cycle', [SubscriptionController::class, 'adminChangeBillingCycle'])->middleware('throttle:60,1');
     Route::put('/subscription/admin/update/{subscription}', [SubscriptionController::class, 'adminUpdateSubscription'])->middleware('throttle:60,1');
 
     // Task Type Admin
@@ -481,6 +517,10 @@ Route::middleware(['auth:sanctum', 'role:Admin'])->group(function () {
     // Auction Settings
     Route::get('/admin/settings/auction', [AdminSettingsController::class, 'getAuctionSettings']);
     Route::post('/admin/settings/auction', [AdminSettingsController::class, 'saveAuctionSettings']);
+
+    // Subscription Settings
+    Route::get('/admin/settings/subscription', [AdminSettingsController::class, 'getSubscriptionSettings']);
+    Route::post('/admin/settings/subscription', [AdminSettingsController::class, 'saveSubscriptionSettings']);
 });
 
 // Simulator (admin only, gated by device_simulator_enabled setting in controller)
@@ -503,3 +543,14 @@ Route::get('/settings/public', [PublicSettingsController::class, 'index']);
 
 // Public banners (no auth)
 Route::get('/banners/active', [\App\Http\Controllers\Api\BannerController::class, 'active']);
+
+// Public pages (no auth)
+Route::get('/pages/{slug}', [PageController::class, 'show']);
+
+// Admin page management
+Route::middleware(['auth:sanctum', 'role:Admin'])->prefix('admin')->group(function () {
+    Route::get('/pages', [PageController::class, 'adminIndex']);
+    Route::post('/pages', [PageController::class, 'store']);
+    Route::put('/pages/{page}', [PageController::class, 'update']);
+    Route::delete('/pages/{page}', [PageController::class, 'destroy']);
+});

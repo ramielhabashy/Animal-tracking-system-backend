@@ -124,12 +124,16 @@ class DashboardController extends Controller
           ->orderBy('name')
           ->get()
           ->map(function ($owner) {
+              $gracePeriodDays = (int) (Setting::get('subscription_grace_period_days') ?? 7);
               $latestSub = $owner->subscription()->latest()->first();
               $subStatus = $latestSub?->status;
               $subEndsAt = $latestSub?->ends_at?->toDateString();
               $daysRemaining = null;
               if ($latestSub?->ends_at) {
                   $daysRemaining = max(0, now()->diffInDays($latestSub->ends_at, false));
+                  if ($subStatus === 'past_due') {
+                      $daysRemaining += $gracePeriodDays;
+                  }
               }
               return [
                   'id' => $owner->id,
