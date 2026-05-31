@@ -38,8 +38,9 @@
     34 => 'Sentry\\Laravel\\Tracing\\ServiceProvider',
     35 => 'Spatie\\Permission\\PermissionServiceProvider',
     36 => 'Spatie\\Translatable\\TranslatableServiceProvider',
-    37 => 'App\\Providers\\DeviceServiceProvider',
-    38 => 'App\\Providers\\HorizonServiceProvider',
+    37 => 'App\\Providers\\AppServiceProvider',
+    38 => 'App\\Providers\\DeviceServiceProvider',
+    39 => 'App\\Providers\\HorizonServiceProvider',
   ),
   'eager' => 
   array (
@@ -65,8 +66,9 @@
     19 => 'Sentry\\Laravel\\Tracing\\ServiceProvider',
     20 => 'Spatie\\Permission\\PermissionServiceProvider',
     21 => 'Spatie\\Translatable\\TranslatableServiceProvider',
-    22 => 'App\\Providers\\DeviceServiceProvider',
-    23 => 'App\\Providers\\HorizonServiceProvider',
+    22 => 'App\\Providers\\AppServiceProvider',
+    23 => 'App\\Providers\\DeviceServiceProvider',
+    24 => 'App\\Providers\\HorizonServiceProvider',
   ),
   'deferred' => 
   array (

@@ -7,11 +7,13 @@ use Illuminate\Http\Middleware\HandleCors;
 use App\Http\Middleware\CheckSubscriptionLimits;
 use App\Http\Middleware\CheckFeatureAccess;
 use App\Http\Middleware\CustomAuthenticate;
+use App\Providers\AppServiceProvider;
 use App\Providers\DeviceServiceProvider;
 use App\Providers\HorizonServiceProvider;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withProviders([
+        AppServiceProvider::class,
         DeviceServiceProvider::class,
         HorizonServiceProvider::class,
     ])

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\EmailLog;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Mail;
@@ -137,21 +138,149 @@ class AdminSettingsController extends Controller
 
     public function testSmtpConnection(Request $request): JsonResponse
     {
-        try {
+        $validated = $request->validate([
+            'test_email' => 'nullable|email',
+        ]);
+
+        $testEmail = $validated['test_email'] ?? null;
+
+        if ($testEmail) {
+            $recipientEmail = $testEmail;
+            $recipientName = $testEmail;
+        } else {
             $userId = $request->header('X-User-Id');
             $user = \App\Models\User::find($userId);
-            
-            Mail::raw('This is a test email from The Oasis platform. If you receive this, your SMTP settings are configured correctly!', function ($message) use ($user) {
-                $message->to($user->email, $user->name)
-                        ->subject('The Oasis - SMTP Test Email');
+            if (!$user) {
+                return response()->json(['message' => 'User not found'], 400);
+            }
+            $recipientEmail = $user->email;
+            $recipientName = $user->name;
+        }
+
+        $subject = 'The Oasis - SMTP Test Email';
+
+        // Collect diagnostic info
+        $activeMailer = config('mail.default', 'unknown');
+        $mailConfig = config("mail.mailers.{$activeMailer}", []);
+        $diagnostics = [
+            'active_mailer' => $activeMailer,
+            'mailer_transport' => $mailConfig['transport'] ?? 'unknown',
+            'configured_host' => config('mail.mailers.smtp.host') ?? '(not set)',
+            'configured_port' => config('mail.mailers.smtp.port') ?? '(not set)',
+            'configured_encryption' => config('mail.mailers.smtp.encryption') ?? '(not set)',
+            'configured_username' => !empty(config('mail.mailers.smtp.username')) ? '****' : '(not set)',
+            'configured_from_email' => config('mail.from.address') ?? '(not set)',
+            'env_MAIL_MAILER' => env('MAIL_MAILER', '(not set)'),
+        ];
+
+        // Raw SMTP connection test
+        $smtpHost = config('mail.mailers.smtp.host');
+        $smtpPort = config('mail.mailers.smtp.port');
+        $smtpEncryption = config('mail.mailers.smtp.encryption');
+        $smtpTestResult = null;
+
+        if ($smtpHost && $activeMailer === 'smtp') {
+            try {
+                // Prefix with ssl:// if encryption is ssl (port 465)
+                $target = ($smtpEncryption === 'ssl') ? "ssl://{$smtpHost}" : $smtpHost;
+                $socket = @fsockopen($target, (int) $smtpPort, $errno, $errstr, 10);
+                if ($socket) {
+                    $response = fgets($socket, 512);
+                    fclose($socket);
+                    $smtpTestResult = [
+                        'reachable' => true,
+                        'banner' => trim($response),
+                    ];
+                } else {
+                    $smtpTestResult = [
+                        'reachable' => false,
+                        'error' => "Connection failed: {$errstr} ({$errno})",
+                    ];
+                }
+            } catch (\Throwable $e) {
+                $smtpTestResult = [
+                    'reachable' => false,
+                    'error' => 'Exception: ' . $e->getMessage(),
+                ];
+            }
+        }
+
+        $responsePayload = [
+            'message' => '',
+            'log_id' => null,
+            'diagnostics' => $diagnostics,
+            'smtp_test' => $smtpTestResult,
+        ];
+
+        // Log the attempt
+        $log = EmailLog::create([
+            'recipient' => $recipientEmail,
+            'subject' => $subject,
+            'status' => 'sending',
+            'mailer' => $activeMailer,
+            'response' => json_encode($diagnostics),
+        ]);
+        $responsePayload['log_id'] = $log->id;
+
+        // If fsockopen already confirmed the SMTP server is unreachable, don't attempt Mail::raw()
+        if ($smtpTestResult !== null && !$smtpTestResult['reachable']) {
+            $log->update([
+                'status' => 'failed',
+                'error_message' => 'SMTP server unreachable: ' . ($smtpTestResult['error'] ?? 'Connection refused'),
+            ]);
+            $responsePayload['message'] = 'SMTP server is not reachable. ' . ($smtpTestResult['error'] ?? 'Check host and port configuration.');
+            return response()->json($responsePayload, 400);
+        }
+
+        if ($activeMailer !== 'smtp') {
+            $log->update([
+                'status' => 'failed',
+                'error_message' => "Active mailer is '{$activeMailer}' instead of 'smtp'. Email went to log file, not sent via SMTP.",
+            ]);
+            $responsePayload['message'] = "FAILED: Active mailer is '{$activeMailer}' not 'smtp'. Check AppServiceProvider override or MAIL_MAILER in .env";
+
+            return response()->json($responsePayload, 400);
+        }
+
+        try {
+            Mail::raw('This is a test email from The Oasis platform. If you receive this, your SMTP settings are configured correctly!', function ($message) use ($recipientEmail, $recipientName, $subject) {
+                $message->to($recipientEmail, $recipientName)
+                        ->subject($subject);
             });
 
-            return response()->json(['message' => 'Test email sent successfully!']);
+            $log->update(['status' => 'sent', 'response' => 'Email handed off to SMTP server successfully']);
+
+            $responsePayload['message'] = 'Test email sent successfully to ' . $recipientEmail;
+
+            return response()->json($responsePayload);
         } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Failed to send test email: ' . $e->getMessage()
-            ], 400);
+            $errorMessage = $e->getMessage();
+            $log->update([
+                'status' => 'failed',
+                'error_message' => $errorMessage,
+                'response' => 'SMTP connection failed',
+            ]);
+
+            $responsePayload['message'] = 'Failed to send test email: ' . $errorMessage;
+
+            return response()->json($responsePayload, 400);
         }
+    }
+
+    public function getEmailLogs(Request $request): JsonResponse
+    {
+        $perPage = min((int) $request->get('per_page', 20), 100);
+        $logs = EmailLog::orderBy('created_at', 'desc')->paginate($perPage);
+
+        return response()->json([
+            'data' => $logs->items(),
+            'meta' => [
+                'current_page' => $logs->currentPage(),
+                'last_page' => $logs->lastPage(),
+                'per_page' => $logs->perPage(),
+                'total' => $logs->total(),
+            ],
+        ]);
     }
 
     public function getStripeSettings(): JsonResponse

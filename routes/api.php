@@ -430,6 +430,7 @@ Route::middleware(['auth:sanctum', 'role:Admin'])->group(function () {
     Route::get('/admin/settings/smtp', [AdminSettingsController::class, 'getSmtpSettings'])->middleware('throttle:60,1');
     Route::post('/admin/settings/smtp', [AdminSettingsController::class, 'saveSmtpSettings'])->middleware('throttle:60,1');
     Route::post('/admin/settings/smtp/test', [AdminSettingsController::class, 'testSmtpConnection'])->middleware('throttle:60,1');
+    Route::get('/admin/settings/smtp/logs', [AdminSettingsController::class, 'getEmailLogs'])->middleware('throttle:60,1');
     Route::get('/admin/settings/stripe', [AdminSettingsController::class, 'getStripeSettings'])->middleware('throttle:60,1');
     Route::post('/admin/settings/stripe', [AdminSettingsController::class, 'saveStripeSettings'])->middleware('throttle:60,1');
     Route::get('/admin/settings/ai', [AdminSettingsController::class, 'getAiSettings'])->middleware('throttle:60,1');
