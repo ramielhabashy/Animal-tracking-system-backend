@@ -86,8 +86,8 @@ class InvitationController extends Controller
             'expires_at' => $expiresAt,
         ]);
 
-        $frontendBase = env('FRONTEND_URL', config('app.url'));
-        $acceptUrl = rtrim($frontendBase, '/') . '/invitations/' . $token;
+        $frontendBase = rtrim(env('FRONTEND_URL', config('app.url')), '/');
+        $acceptUrl = $frontendBase . '/react.oasis/invitations/' . $token;
 
         try {
             Mail::to($invitation->email)->send(new UserInvitationMail($invitation, $acceptUrl));
@@ -194,7 +194,7 @@ class InvitationController extends Controller
                 "You have been invited as a {$invitation->role}.",
                 'You can now log in and start using the platform.',
             ],
-            rtrim(env('FRONTEND_URL', config('app.url')), '/') . '/dashboard',
+            rtrim(env('FRONTEND_URL', config('app.url')), '/') . '/react.oasis/dashboard',
             'Go to Dashboard',
         );
 
@@ -275,7 +275,7 @@ class InvitationController extends Controller
             } else {
                 $inv->status = 'pending';
             }
-            $inv->invitation_link = rtrim(env('FRONTEND_URL', config('app.url')), '/') . '/invitations/' . $inv->token;
+            $inv->invitation_link = rtrim(env('FRONTEND_URL', config('app.url')), '/') . '/react.oasis/invitations/' . $inv->token;
             return $inv;
         });
 
@@ -306,8 +306,8 @@ class InvitationController extends Controller
             $invitation->update(['expires_at' => now()->addDays(7)]);
         }
 
-        $frontendBase = env('FRONTEND_URL', config('app.url'));
-        $acceptUrl = rtrim($frontendBase, '/') . '/invitations/' . $invitation->token;
+        $frontendBase = rtrim(env('FRONTEND_URL', config('app.url')), '/');
+        $acceptUrl = $frontendBase . '/react.oasis/invitations/' . $invitation->token;
 
         try {
             Mail::to($invitation->email)->send(new UserInvitationMail($invitation, $acceptUrl));

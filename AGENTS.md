@@ -92,6 +92,35 @@ Located in `frontend/src/components/Dashboard/`:
 - API-loaded translations override static keys
 - RTL supported via `dir` prop and CSS rules in `index.css`
 
+## Notification System
+
+### Architecture
+- **Push notifications**: NOT integrated (no Firebase). The "Push Notifications" toggle in Settings was cosmetic only; now wired to `DataProvider.pushEnabled` which controls periodic polling.
+- **Local notifications** via `flutter_local_notifications` (v18.0.1): 4 Android notification channels with distinct vibration patterns.
+- **Periodic polling**: `NotificationService.startPolling()` runs a Timer every 30s in the foreground. Checks `GET /notifications?per_page=5` for new items. Tracks `_lastNotificationId` to avoid duplicates.
+- **In-app feedback**: When app is in foreground, `_inAppNotify()` triggers `HapticFeedback.heavyImpact/mediumImpact` + `SystemSound.play()` based on notification type.
+- **No background execution**: No `workmanager` or `firebase_messaging`. Notifications only fire while app is active. Background support would require FCM.
+
+### Notification Channels (Android)
+| Channel ID | Importance | Vibration Pattern | Types |
+|---|---|---|---|
+| `oasis_alerts` | High | 0, 300, 200, 300, 500, 300 | geofence_alert |
+| `oasis_messages` | High | 0, 200, 100, 200 | new_message, new_ticket |
+| `oasis_temperature` | Max | 0, 500, 200, 500, 200, 500 | temperature_* |
+| `oasis_general` | Default | System default | All other types |
+
+### Key files
+- `mobile/lib/notification_service.dart` — singleton service: init, show*, startPolling, stopPolling, _inAppNotify
+- `mobile/lib/main.dart:20` — initializes NotificationService after Sentry
+- `mobile/lib/data_provider.dart` — `pushEnabled` getter/setter controls polling lifecycle
+- `mobile/lib/dashboard_page.dart:36` — starts polling after initial data load
+- `mobile/lib/settings_page.dart:78` — push toggle now uses `data.pushEnabled`
+
+### Build requirements
+- `flutter_local_notifications` requires `isCoreLibraryDesugaringEnabled = true` + `coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")` in `android/app/build.gradle.kts`
+- `POST_NOTIFICATIONS`, `VIBRATE`, `INTERNET`, `RECEIVE_BOOT_COMPLETED` permissions in AndroidManifest
+- Kotlin JVM compiler override in root `android/build.gradle.kts`: `compilerOptions { languageVersion.set(KOTLIN_1_9) }` for all subprojects (compatibility with Kotlin 2.2.20)
+
 ## Important Gotchas
 
 1. **Two package.json / vite.config files**: active ones are `frontend/package.json` and `frontend/vite.config.js`. The ones in `frontend/src/` are stale/incorrect.
@@ -354,7 +383,7 @@ Located in `frontend/src/components/Dashboard/`:
 
 **Privacy, Terms, Contact pages** (fully implemented + admin-managed):
 - **Backend**: `Page` model, migration (`pages` table: slug, title, content, is_published), `PageController` with public `show(slug)` + admin CRUD
-- **Frontend**: `StaticPage.jsx` (shared component fetches `GET /api/pages/{slug}`), `PrivacyPage`, `TermsPage`, `ContactPage` (with contact form, submits to `/api/contact`)
+- **Frontend**: `StaticPage.jsx` (shared component fetches `GET /api/pages/{slug}`), `PrivacyPage`, `TermsPage`
 - **Admin settings**: "Pages" tab in Settings, `PageSettings.jsx` component for editing content/published status
 - **Routes**: `/privacy`, `/terms`, `/contact` registered in `App.jsx` and `routes.js`
 - **Footer**: `<a href="#">` → `<Link to="/privacy">` etc.
@@ -379,3 +408,129 @@ Located in `frontend/src/components/Dashboard/`:
 - `dart analyze lib/messages_page.dart` — 0 errors
 - `php -l` — no syntax errors
 - `GET /api/pages/privacy` — returns seeded privacy page content
+
+### 2026-05-25 — Notification infrastructure (flutter_local_notifications, periodic polling, sounds/vibration)
+
+**Root cause**: The app had zero push notification infrastructure. The "Push Notifications" toggle was cosmetic only. No local notifications, no sound, no vibration, no polling.
+
+**Implementation:**
+- Added `flutter_local_notifications: ^18.0.0` to `pubspec.yaml`
+- Created `mobile/lib/notification_service.dart` — singleton service with 4 Android notification channels:
+  - **oasis_alerts** (High): long-short-long vibration pattern (geofence alerts)
+  - **oasis_messages** (High): short-short vibration pattern (messages/tickets)
+  - **oasis_temperature** (Max): urgent pattern + full-screen intent
+  - **oasis_general** (Default): system defaults
+- **Periodic polling**: `Timer.periodic(30s)` checks `GET /notifications?per_page=5` for new items, tracks `_lastNotificationId` to avoid duplicates
+- **In-app feedback**: `_inAppNotify()` triggers `HapticFeedback.heavyImpact()` for alerts/temperature, `HapticFeedback.mediumImpact()` for messages, plus `SystemSound.play()` per type
+- **Settings toggle wired**: `DataProvider.pushEnabled` setter starts/stops polling; `SettingsPage` now reads from `data.pushEnabled`
+- **Dashboard init**: starts polling after initial `Future.wait` completes
+- **AndroidManifest**: added `POST_NOTIFICATIONS`, `VIBRATE`, `INTERNET`, `RECEIVE_BOOT_COMPLETED` permissions
+- **Desugaring**: `isCoreLibraryDesugaringEnabled = true` + `coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")` in `app/build.gradle.kts`
+- **Kotlin compat**: root `build.gradle.kts` sets `compilerOptions { languageVersion.set(KOTLIN_1_9) }` for all subprojects
+
+**Verification:**
+- `dart analyze` — 0 new issues (only pre-existing warnings/infos)
+- `flutter build apk --release` — success (78.7MB)
+
+**Key gotchas**: `flutter_local_notifications` requires `isCoreLibraryDesugaringEnabled` in the app module. `Int64List.fromList()` not `Int64List()` for vibration patterns. `AndroidNotificationChannel` in v18 no longer has a `priority` constructor param. Kotlin 2.2.20 requires `compilerOptions` DSL instead of `kotlinOptions` for language version configuration in subprojects.
+
+### 2026-05-31 — Flutter test fixes, notifications title bug, map location fix, task calendar linking, k6 load test, impeccable install
+
+**Flutter test fixes** (`mobile/test/auth_provider_test.dart`, `mobile/test/login_page_test.dart`):
+- Fixed auth_provider_test: invalid credentials don't set `auth.error` (swallowed by `ApiService.login()` catch → returns `{'error': ...}` data map, never hits `AuthProvider` catch block)
+- Fixed login_page_test: button text is `I18nService.tr('auth.login')` → renders as `'auth.login'` key without i18n init; all `tap()` calls need `ensureVisible()` first (login page taller than 600px test surface); moved error banner clear test to direct `auth.login()` call
+- Added `setTestError()` and `setTestIsLoading()` helpers to `AuthProvider` for test use
+- Removed stale `test/error_loading_states_test.dart`
+- 342 pass, 31 fail (same 6 widget + 25 backend-dependent), 0 regressions
+
+**Notifications page title fix** (`mobile/lib/notifications_page.dart`):
+- Root cause: code read `notification['message']` but the API returns `notification['title']` and `notification['body']` (Laravel `Notification` model has `title`, `body`, `data` columns — no `message` column)
+- Changed to `notification['title'] ?? notification['body'] ?? notification['data']?['message']`
+- `notification_service.dart` already correctly reads `latest['title']` / `latest['body']` — no fix needed there
+
+**MapMiniWidget wrong location** (`mobile/lib/dashboard_widgets.dart`):
+- Root cause: `GET /api/animals` returns coordinates nested under `device.gps_lat` but widget read `a['gps_lat']` (top-level). All animals failed lookup → fell back to hardcoded `LatLng(24.31848, 54.46191)` (UAE center)
+- Added `_animalCoord()` helper checking `a['latitude']` → `a['gps_lat']` → `a['device']['gps_lat']` (same for longitude)
+- Applied at all 3 access points: `_computeCenter()`, `_computeBounds()`, marker rendering in `build()`
+
+**Task calendar days now tappable** (`mobile/lib/dashboard_widgets.dart`):
+- Wrapped each day cell `Container` in `GestureDetector`; days with tasks navigate to `TasksPage` on tap
+
+**k6 API load test** (`load-tests/api-load-test.js`, new):
+- Simulates 6 user roles (7 accounts) hitting 12 endpoints (dashboard, animals, devices, tasks, auctions, map, geofences, notifications, alerts, medical records, unread count)
+- Token cache ⇒ only 1 login per user per run (avoids 30/min rate limit)
+- Stages: ramp 10→25→50 VUs, hold 3 min, ramp down
+- Results with 5 VUs / 30s: 65/65 checks pass, 0% errors, p95 response times 1.8s–4.2s (slow — likely N+1 queries, no caching)
+- `k6` installed at `%TEMP%\k6-install\k6.exe` (v0.56.0)
+
+**Impeccable design skills installed** (`.opencode/skills/impeccable/`):
+- Root cause: `npx impeccable skills install` uses `unzip` which doesn't exist on Windows → download failed silently
+- Workaround: manually downloaded universal bundle from `impeccable.style/api/download/bundle/universal`, extracted with `Expand-Archive`, copied `.opencode` variant to project
+- 30+ skill files: craft, shape, audit, critique, polish, animate, bolder, colorize, delight, layout, overdrive, quieter, typeset, adapt, clarify, distill, harden, onboard, optimize, init, document, extract, live, etc.
+- Requires opencode restart to appear in skills list
+
+**Verification**:
+- `dart analyze` — 0 errors (only info-level pre-existing warnings)
+- `flutter test` — 342 passed, 31 pre-existing failures
+- PHP API — login endpoint responds 200 with seeded data
+
+### 2026-05-31 — Dashboard polish: RTL parity, color tokens, contrast, skeleton loading
+
+**RTL parity (5 widgets fixed):**
+- `StatsCardsWidget.jsx`: changed `dir` source from `dashboardData.dir` to `useI18n().dir` (was always falsy)
+- `DashboardWidget.jsx`: added `flex-row-reverse` on drag handle for RTL
+- `DashboardGrid.jsx`: customized dropdown position `right-0` → `isRtl ? 'left-0' : 'right-0'`
+- `AnnouncementsWidget.jsx`: added `isRtl` + `flex-row-reverse` on items
+- `MessagesWidget.jsx`: added `isRtl` + `flex-row-reverse` on conversation items
+- `AiAssistantWidget.jsx`: added `isRtl` + `flex-row-reverse` on header/prompts/form
+
+**Color token alignment (5 files):**
+- `AlertsPanelWidget.jsx`: `#10b981` → `success` (both bg and text)
+- `ChartsWidget.jsx`: `#10b981` entries → `#059669`
+- `TasksWidget.jsx`: `#F59E0B` → `amber-500/10`, `#3B82F6` → `blue-500/10`
+- `StatsCardsWidget.jsx`: `bg-[#10b981]` → `bg-success`; `text-[#10B981]` → `text-success`
+- `MessagesWidget.jsx`: `bg-red-500` → `bg-danger`
+- `DashboardGrid.jsx`: `border-gray-100` → `border-outline/30`
+- `AiAssistantWidget.jsx`: `focus:ring-[#002819]/20` → `focus:ring-brand-primary/20`
+
+**Typography:**
+- `DashboardWidget.jsx`: `font-black` → `font-bold` (900→700, matches DESIGN.md Title spec)
+
+**Contrast fix:**
+- `tailwind.config.js`: `on-surface.subtle` changed from `#717973` to `#6E7670` — passes WCAG AA 4.5:1 (4.48:1 → 4.78:1)
+
+**Loading state:**
+- `Dashboard.jsx`: replaced single spinner with 3-section skeleton (5 stat cards + 6 quick action cards + 2-column map/list layout) using `animate-pulse` + `bg-surface-dim`
+
+**Temperature display:**
+- `StatsCardsWidget.jsx`: `a.baseline_temperature` → `a.device?.temperature ?? a.baseline_temperature` (live device temp takes priority)
+
+**Empty state button:**
+- `DashboardGrid.jsx`: `rounded-xl` → `rounded-2xl` (matches 16px card radius system)
+
+**Key gotchas**: RTL requires `isRtl` check per-component — no global RTL utility. `surface-dim` in skeleton must match actual loading surface color. `on-surface-subtle` was dangerously close to the AA threshold; any lighter would fail.
+
+## Design Context
+
+See `PRODUCT.md` (strategic) and `DESIGN.md` (visual tokens) at project root for the full system.
+
+**Register**: product (app UI / dashboard / tools — design serves functionality)
+
+**Creative North Star**: "The Desert Compass" — every screen orients the user to their data
+
+**Brand**: Grounded · Trusted · Premium. Deep green (`#002819`) + Signal Gold (`#D4AF37`) on Rose Paper (`#FAF1F5`) surface.
+
+**Typography**: Manrope (headings/buttons/nav) + Inter (body/labels). Arabic RTL uses Tajawal; Urdu uses Noto Nastaliq Urdu.
+
+**Key rules**:
+- Gold accent on ≤10% of any screen
+- Rose Paper surface — not cream, sand, or beige
+- All shadows use `rgba(6, 64, 43, …)` (Forest Shade), never pure black
+- Components: 16–24px radius, gradient fills, 200ms ease-out transitions
+- Manrope for scanning, Inter for reading — never swap
+
+**Files to reference**:
+- `frontend/tailwind.config.js` — color tokens, shadows, fonts
+- `frontend/src/index.css` — CSS variables, component layer utilities (`btn-primary`, `card`, `input-field`)
+- `.impeccable/design.json` — component HTML/CSS snippets for live panel
+- `.impeccable/live/config.json` — pre-configured for Vite SPA live mode

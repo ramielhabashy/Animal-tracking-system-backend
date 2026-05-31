@@ -38,7 +38,12 @@ class GeofenceController extends Controller
             return $query->where(function ($q) use ($userId) {
                 $q->whereHas('geofence', function ($q2) use ($userId) {
                     $q2->where('owner_id', $userId);
-                })->orWhereNull('geofence_id');
+                })->orWhere(function ($q3) use ($userId) {
+                    $q3->whereNull('geofence_id')
+                       ->whereHas('animal', function ($q4) use ($userId) {
+                           $q4->where('owner_id', $userId);
+                       });
+                });
             });
         }
         
@@ -48,7 +53,12 @@ class GeofenceController extends Controller
                 return $query->where(function ($q) use ($user) {
                     $q->whereHas('geofence', function ($q2) use ($user) {
                         $q2->where('owner_id', $user->managed_by);
-                    })->orWhereNull('geofence_id');
+                    })->orWhere(function ($q3) use ($user) {
+                        $q3->whereNull('geofence_id')
+                           ->whereHas('animal', function ($q4) use ($user) {
+                               $q4->where('owner_id', $user->managed_by);
+                           });
+                    });
                 });
             }
             return $query;
@@ -60,7 +70,12 @@ class GeofenceController extends Controller
                 return $query->where(function ($q) use ($user) {
                     $q->whereHas('geofence', function ($q2) use ($user) {
                         $q2->where('owner_id', $user->managed_by);
-                    })->orWhereNull('geofence_id');
+                    })->orWhere(function ($q3) use ($user) {
+                        $q3->whereNull('geofence_id')
+                           ->whereHas('animal', function ($q4) use ($user) {
+                               $q4->where('owner_id', $user->managed_by);
+                           });
+                    });
                 });
             }
             return $query->whereRaw('1 = 0');

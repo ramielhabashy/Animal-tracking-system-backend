@@ -544,32 +544,6 @@ Route::get('/settings/public', [PublicSettingsController::class, 'index']);
 // Public banners (no auth)
 Route::get('/banners/active', [\App\Http\Controllers\Api\BannerController::class, 'active']);
 
-// Contact form (no auth)
-Route::post('/contact', function (\Illuminate\Http\Request $request) {
-    $validated = $request->validate([
-        'name' => 'required|string|max:255',
-        'email' => 'required|email|max:255',
-        'message' => 'required|string|max:10000',
-    ]);
-
-    try {
-        $adminEmail = \App\Models\Setting::getValue('general_admin_email', '');
-        if ($adminEmail) {
-            \Illuminate\Support\Facades\Mail::raw(
-                "Name: {$validated['name']}\nEmail: {$validated['email']}\n\nMessage:\n{$validated['message']}",
-                function ($message) use ($validated, $adminEmail) {
-                    $message->to($adminEmail)
-                            ->subject('Contact Form: ' . $validated['subject'] ?? 'New Message');
-                }
-            );
-        }
-    } catch (\Exception $e) {
-        // Email failure is non-critical
-    }
-
-    return response()->json(['message' => 'Message sent successfully']);
-})->middleware('throttle:10,1');
-
 // Public pages (no auth)
 Route::get('/pages/{slug}', [PageController::class, 'show']);
 

@@ -40,18 +40,6 @@ The platform is provided "as is" without warranties of any kind. We are not liab
 We may update these terms from time to time. Continued use of the platform after changes constitutes acceptance of the new terms.',
                 'is_published' => true,
             ],
-            [
-                'slug' => 'contact',
-                'title' => 'Contact Us',
-                'content' => 'We\'d love to hear from you. Whether you have a question about our services, need technical support, or want to provide feedback, our team is here to help.
-
-You can reach us by sending a message through the contact form on this page, or by creating a support ticket from the Messages section.
-
-Our support team typically responds within 24 hours during business days.
-
-For urgent matters, please contact your account administrator directly.',
-                'is_published' => true,
-            ],
         ];
 
         foreach ($pages as $data) {

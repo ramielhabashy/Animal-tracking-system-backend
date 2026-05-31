@@ -211,8 +211,14 @@ class AuctionController extends Controller
 
     public function myAuctions(Request $request): \Illuminate\Http\Resources\Json\AnonymousResourceCollection
     {
+        $userId = $this->getUserId($request);
+        $userRole = $this->getUserRole($request);
+
         $query = Auction::with(['animal', 'owner', 'bids']);
-        $query = $this->filterByRole($request, $query);
+
+        if ($userRole !== 'Admin') {
+            $query->where('owner_id', $userId);
+        }
 
         $auctions = $query->orderBy('created_at', 'desc')->paginate(10);
 

@@ -49,6 +49,9 @@ class DatabaseSeeder extends Seeder
 
             // Always last: clears old content data and creates fresh demo data
             \Database\Seeders\DemoDataSeeder::class,
+
+            // Additional farms on top of demo data
+            \Database\Seeders\FarmSeeder::class,
         ]);
     }
 }
