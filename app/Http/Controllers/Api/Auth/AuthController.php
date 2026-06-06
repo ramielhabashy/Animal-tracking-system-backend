@@ -8,7 +8,10 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
 use Laravel\Sanctum\PersonalAccessToken;
 
 /**
@@ -52,26 +55,100 @@ class AuthController extends Controller
             return response()->json(['message' => 'Account is inactive', 'error' => 'account_inactive'], 403);
         }
 
-        // Generate Sanctum API token for authenticated requests
+        // Generate a temp token for the OTP verification step
+        $tempToken = Str::random(60);
+        $otp = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+
+        // Store OTP in cache (10 min expiry)
+        Cache::put('otp_' . $tempToken, [
+            'user_id' => $user->id,
+            'otp' => $otp,
+        ], now()->addMinutes(10));
+
+        // Send OTP email
+        try {
+            Mail::to($user->email)->queue(
+                new \App\Mail\NotificationMail(
+                    subject: 'Your OTP Code - ' . config('app.name'),
+                    greeting: 'Hello ' . $user->name . ',',
+                    lines: [
+                        'Your OTP code is: ' . $otp,
+                        'This code expires in 10 minutes.',
+                        'If you did not request this code, please ignore this email.',
+                    ],
+                    actionUrl: null,
+                    actionText: null,
+                    footerText: 'Oasis Trace - Livestock Tracking Platform'
+                )
+            );
+        } catch (\Throwable $e) {
+            \Log::error('OTP email failed: ' . $e->getMessage());
+        }
+
+        // Return requires_otp flag (DO NOT create the Sanctum token yet)
+        return response()->json([
+            'requires_otp' => true,
+            'temp_token' => $tempToken,
+            'message' => 'OTP sent to your email.',
+        ]);
+    }
+
+    /**
+     * Verify OTP
+     * Validates the OTP code sent via email and returns the auth token
+     *
+     * @param Request $request Contains temp_token and otp
+     * @return JsonResponse User data with API token, or error message
+     */
+    public function verifyOtp(Request $request): JsonResponse
+    {
+        $request->validate([
+            'temp_token' => 'required|string',
+            'otp' => 'required|string|size:6',
+        ]);
+
+        $cached = Cache::get('otp_' . $request->temp_token);
+
+        if (!$cached) {
+            return response()->json([
+                'message' => 'Invalid or expired OTP.',
+                'error' => 'invalid_otp',
+            ], 400);
+        }
+
+        if ($cached['otp'] !== $request->otp) {
+            return response()->json([
+                'message' => 'Invalid OTP code.',
+                'error' => 'invalid_otp',
+            ], 400);
+        }
+
+        // OTP verified - get user and create auth token
+        $user = User::find($cached['user_id']);
+        if (!$user) {
+            return response()->json(['message' => 'User not found.'], 404);
+        }
+
+        // Clean up OTP from cache
+        Cache::forget('otp_' . $request->temp_token);
+
+        // Now create the Sanctum token
         $token = $user->createToken('auth-token')->plainTextToken;
-        
-        // Load subscription tier relationship for frontend display
         $user->load('subscriptionTier');
 
-        // Return user data with token - token must be sent in Authorization header
         return response()->json([
             'user' => [
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
-                'role' => $user->getPrimaryRoleName(),       // Primary role for backward compatibility
-                'roles' => $user->getRoleNames()->toArray(), // All roles (supports multiple roles)
+                'role' => $user->getPrimaryRoleName(),
+                'roles' => $user->getRoleNames()->toArray(),
                 'phone' => $user->phone,
-                'language' => $user->language,                // User's preferred language (en/ar/ur/eu)
+                'language' => $user->language,
                 'subscription_tier_id' => $user->subscription_tier_id,
                 'subscription_tier' => $user->subscriptionTier,
             ],
-            'token' => $token,  // Bearer token for subsequent API calls
+            'token' => $token,
         ]);
     }
 
@@ -302,16 +379,37 @@ class AuthController extends Controller
                 'email' => 'required|email',
             ]);
 
-            // Send reset link using Laravel's password broker
-            $status = Password::sendResetLink(
-                $request->only('email')
-            );
-
-            if ($status === Password::RESET_LINK_SENT) {
-                return response()->json(['message' => 'Password reset link sent to your email.']);
+            $user = User::where('email', $request->email)->first();
+            if (!$user) {
+                return response()->json(['message' => 'If this email exists, an OTP has been sent.'], 200);
             }
 
-            return response()->json(['message' => 'Unable to send reset link.'], 400);
+            // Generate OTP
+            $otp = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+            
+            // Store in cache with key reset_otp_{email}
+            Cache::put('reset_otp_' . $request->email, [
+                'otp' => $otp,
+                'email' => $request->email,
+            ], now()->addMinutes(10));
+
+            // Send OTP email
+            Mail::to($user->email)->queue(
+                new \App\Mail\NotificationMail(
+                    subject: 'Password Reset OTP - ' . config('app.name'),
+                    greeting: 'Hello ' . $user->name . ',',
+                    lines: [
+                        'Your password reset OTP code is: ' . $otp,
+                        'This code expires in 10 minutes.',
+                        'If you did not request this, please ignore this email.',
+                    ],
+                    actionUrl: null,
+                    actionText: null,
+                    footerText: 'Oasis Trace - Livestock Tracking Platform'
+                )
+            );
+
+            return response()->json(['message' => 'OTP sent to your email.']);
         } catch (\Exception $e) {
             \Log::error('Forgot password error: ' . $e->getMessage());
             return response()->json(['message' => 'Server error. Please try again.'], 500);
@@ -328,24 +426,32 @@ class AuthController extends Controller
     public function resetPassword(Request $request): JsonResponse
     {
         $request->validate([
-            'token' => 'required|string',
             'email' => 'required|email',
+            'otp' => 'required|string|size:6',
             'password' => 'required|min:8|confirmed',
         ]);
 
-        $status = Password::reset(
-            $request->only('email', 'password', 'password_confirmation', 'token'),
-            function (User $user, string $password) {
-                $user->forceFill([
-                    'password' => bcrypt($password),
-                ])->save();
-            }
-        );
+        $cached = Cache::get('reset_otp_' . $request->email);
 
-        if ($status === Password::PASSWORD_RESET) {
-            return response()->json(['message' => 'Password has been reset successfully.']);
+        if (!$cached || $cached['otp'] !== $request->otp) {
+            return response()->json([
+                'message' => 'Invalid or expired OTP.',
+                'error' => 'invalid_otp',
+            ], 400);
         }
 
-        return response()->json(['message' => 'Invalid or expired reset token.'], 400);
+        $user = User::where('email', $request->email)->first();
+        if (!$user) {
+            return response()->json(['message' => 'User not found.'], 404);
+        }
+
+        $user->forceFill([
+            'password' => bcrypt($request->password),
+        ])->save();
+
+        // Clean up OTP from cache
+        Cache::forget('reset_otp_' . $request->email);
+
+        return response()->json(['message' => 'Password has been reset successfully.']);
     }
 }

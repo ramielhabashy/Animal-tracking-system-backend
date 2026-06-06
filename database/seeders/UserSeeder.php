@@ -26,6 +26,15 @@ class UserSeeder extends Seeder
                 'subscription_tier_id' => $starterTier?->id,
             ],
             [
+                'name' => 'Ezzeldeen Tantawy',
+                'email' => 'e.tantawy@proton.me',
+                'password' => Hash::make('password'),
+                'role' => 'Admin',
+                'is_active' => true,
+                'phone' => null,
+                'subscription_tier_id' => $starterTier?->id,
+            ],
+            [
                 'name' => 'Khalid Al-Rashid',
                 'email' => 'khalid@oasis.com',
                 'password' => Hash::make('password'),
