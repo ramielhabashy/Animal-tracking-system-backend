@@ -76,8 +76,9 @@ class MessageController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'body' => 'required|string',
+            'body' => 'nullable|string',
             'parent_id' => 'nullable|exists:messages,id',
+            'file' => 'nullable|file|max:10240',
         ]);
 
         if ($validator->fails()) {
@@ -91,7 +92,7 @@ class MessageController extends Controller
         $message = Message::create([
             'conversation_id' => $conversation->id,
             'sender_id' => $user->id,
-            'body' => $data['body'],
+            'body' => $data['body'] ?? '',
             'parent_id' => $data['parent_id'] ?? null,
         ]);
 

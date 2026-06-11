@@ -165,6 +165,13 @@ class AnimalController extends Controller
                 $data['owner_id'] = $authUser->managed_by;
             }
         }
+
+        if ($authUser && $authUser->hasRole('Shepherd')) {
+            // Shepherd creating animal: set owner to the owner they are managed by
+            if ($authUser->managed_by && empty($data['owner_id'])) {
+                $data['owner_id'] = $authUser->managed_by;
+            }
+        }
         
         // Handle photo upload (file upload)
         if ($request->hasFile('identification_photo')) {

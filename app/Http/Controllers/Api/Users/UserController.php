@@ -164,6 +164,13 @@ class UserController extends Controller
             });
         }
 
+        // Apply role filter (server-side so pagination counts are correct)
+        if ($role = $request->input('role')) {
+            $query->whereHas('roles', function ($q) use ($role) {
+                $q->where('name', $role);
+            });
+        }
+
         // Paginate and format response
         $perPage = $request->input('per_page', 15);
         $users = $query->orderBy('created_at', 'desc')->paginate($perPage);

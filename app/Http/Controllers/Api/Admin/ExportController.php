@@ -154,31 +154,96 @@ class ExportController extends Controller
         }
 
         $dbName = config('database.connections.mysql.database');
-        $dbUser = config('database.connections.mysql.username');
-        $dbPass = config('database.connections.mysql.password');
-        $dbHost = config('database.connections.mysql.host');
-
         $fileName = 'oasis_database_' . date('Y-m-d') . '.sql';
         $tempFile = storage_path('app/' . $fileName);
 
-        $command = sprintf(
-            'mysqldump --user=%s --password=%s --host=%s %s > %s',
-            escapeshellarg($dbUser),
-            escapeshellarg($dbPass),
-            escapeshellarg($dbHost),
-            escapeshellarg($dbName),
-            escapeshellarg($tempFile)
-        );
+        $sql = $this->buildDatabaseDump($dbName);
 
-        exec($command, $output, $returnVar);
+        file_put_contents($tempFile, $sql);
 
-        if ($returnVar !== 0 || !file_exists($tempFile)) {
+        if (!file_exists($tempFile) || filesize($tempFile) === 0) {
             return response()->json(['message' => 'Failed to export MySQL database'], 500);
         }
 
         return response()->download($tempFile, $fileName, [
             'Content-Type' => 'application/sql',
         ])->deleteFileAfterSend(true);
+    }
+
+    private function buildDatabaseDump(string $dbName): string
+    {
+        $pdo = DB::connection()->getPdo();
+
+        $output = "-- Oasis Trace Database Export\n";
+        $output .= "-- Database: {$dbName}\n";
+        $output .= "-- Generated: " . date('Y-m-d H:i:s') . "\n";
+        $output .= "-- Server version: " . DB::selectOne('SELECT VERSION() AS v')->v . "\n\n";
+        $output .= "SET FOREIGN_KEY_CHECKS = 0;\n";
+        $output .= "SET SQL_MODE = 'NO_AUTO_VALUE_ON_ZERO';\n";
+        $output .= "SET NAMES utf8mb4;\n\n";
+
+        $tables = DB::select('SHOW TABLES');
+        $tableKey = "Tables_in_{$dbName}";
+
+        foreach ($tables as $table) {
+            $tableName = $table->$tableKey;
+
+            $output .= "-- --------------------------------------------------------\n";
+            $output .= "-- Table: {$tableName}\n";
+            $output .= "-- --------------------------------------------------------\n\n";
+
+            // Drop table if exists
+            $output .= "DROP TABLE IF EXISTS `{$tableName}`;\n";
+
+            // CREATE TABLE statement
+            $createStmt = DB::selectOne("SHOW CREATE TABLE `{$tableName}`");
+            // The key varies by MySQL version: 'Create Table' (mysql), 'create table' (mariadb)
+            $createKey = property_exists($createStmt, 'Create Table') ? 'Create Table' : 'create table';
+            $output .= $createStmt->$createKey . ";\n\n";
+
+            // Get column names for INSERT
+            $columns = DB::select("SHOW COLUMNS FROM `{$tableName}`");
+            $colNames = [];
+            foreach ($columns as $col) {
+                $colNames[] = "`{$col->Field}`";
+            }
+            $colList = '(' . implode(', ', $colNames) . ')';
+
+            // Get data
+            $rows = DB::table($tableName)->get();
+            if ($rows->isNotEmpty()) {
+                $values = [];
+                foreach ($rows as $row) {
+                    $rowValues = [];
+                    foreach ($colNames as $colExpr) {
+                        $colName = trim($colExpr, '`');
+                        $val = $row->$colName ?? null;
+
+                        if ($val === null) {
+                            $rowValues[] = 'NULL';
+                        } else {
+                            // Use PDO quote for proper escaping (handles quotes, binary, etc.)
+                            $rowValues[] = $pdo->quote((string)$val);
+                        }
+                    }
+                    $values[] = '(' . implode(', ', $rowValues) . ')';
+                }
+
+                // Chunk INSERTs for large datasets (500 rows per INSERT)
+                $chunks = array_chunk($values, 500);
+                foreach ($chunks as $chunk) {
+                    $output .= "INSERT INTO `{$tableName}` {$colList} VALUES\n";
+                    $output .= implode(",\n", $chunk) . ";\n\n";
+                }
+            }
+
+            $output .= "\n";
+        }
+
+        $output .= "SET FOREIGN_KEY_CHECKS = 1;\n";
+        $output .= "-- Export completed: " . date('Y-m-d H:i:s') . "\n";
+
+        return $output;
     }
 
     private function generateCsv(array $rows): string
