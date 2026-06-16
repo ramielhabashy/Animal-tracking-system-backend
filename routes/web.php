@@ -100,6 +100,15 @@ Route::post('/logout', function (Request $request) {
     return redirect('/login');
 })->middleware('web');
 
+// Serve storage files through Laravel (bypasses Apache symlink issues)
+Route::get('/storage/{path}', function (string $path) {
+    $fullPath = storage_path('app/public/' . $path);
+    if (!file_exists($fullPath)) {
+        abort(404);
+    }
+    return response()->file($fullPath);
+})->where('path', '.*');
+
 Route::get('/{any}', function () {
     $indexFile = public_path('index.html');
     if (file_exists($indexFile)) {

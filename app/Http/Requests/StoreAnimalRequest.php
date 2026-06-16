@@ -22,7 +22,7 @@ class StoreAnimalRequest extends FormRequest
             'gender' => 'required|in:Male,Female,male,female',
             'color_markings' => 'nullable|string',
             'current_weight' => 'nullable|numeric|min:0',
-            'identification_photo' => 'nullable|file|image|max:2048',
+            'identification_photo' => 'nullable',
             'baseline_temperature' => 'nullable|numeric|min:0|max:50',
             'normal_heart_rate' => 'nullable|integer|min:0|max:300',
             'owner_id' => 'nullable|exists:users,id',

@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Str;
+
 use Laravel\Sanctum\PersonalAccessToken;
 
 /**
@@ -31,108 +31,25 @@ class AuthController extends Controller
      */
     public function login(Request $request): JsonResponse
     {
-        // Validate required fields
         $request->validate([
             'email' => 'required|email',
             'password' => 'required',
         ]);
 
-        // Find user by email
         $user = User::where('email', $request->email)->first();
 
-        // Return error if user not found
         if (!$user) {
             return response()->json(['message' => 'Invalid credentials', 'error' => 'invalid_credentials'], 401);
         }
 
-        // Verify password using Hash::check for security
         if (!Hash::check($request->password, $user->password)) {
             return response()->json(['message' => 'Invalid credentials', 'error' => 'invalid_credentials'], 401);
         }
 
-        // Check if account is active (admins can deactivate users)
         if (!$user->is_active) {
             return response()->json(['message' => 'Account is inactive', 'error' => 'account_inactive'], 403);
         }
 
-        // Generate a temp token for the OTP verification step
-        $tempToken = Str::random(60);
-        $otp = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-
-        // Store OTP in cache (10 min expiry)
-        Cache::put('otp_' . $tempToken, [
-            'user_id' => $user->id,
-            'otp' => $otp,
-        ], now()->addMinutes(10));
-
-        // Send OTP email
-        try {
-            Mail::to($user->email)->queue(
-                new \App\Mail\NotificationMail(
-                    subject: 'Your OTP Code - ' . config('app.name'),
-                    greeting: 'Hello ' . $user->name . ',',
-                    lines: [
-                        'Your OTP code is: ' . $otp,
-                        'This code expires in 10 minutes.',
-                        'If you did not request this code, please ignore this email.',
-                    ],
-                    actionUrl: null,
-                    actionText: null,
-                    footerText: 'Oasis Trace - Livestock Tracking Platform'
-                )
-            );
-        } catch (\Throwable $e) {
-            \Log::error('OTP email failed: ' . $e->getMessage());
-        }
-
-        // Return requires_otp flag (DO NOT create the Sanctum token yet)
-        return response()->json([
-            'requires_otp' => true,
-            'temp_token' => $tempToken,
-            'message' => 'OTP sent to your email.',
-        ]);
-    }
-
-    /**
-     * Verify OTP
-     * Validates the OTP code sent via email and returns the auth token
-     *
-     * @param Request $request Contains temp_token and otp
-     * @return JsonResponse User data with API token, or error message
-     */
-    public function verifyOtp(Request $request): JsonResponse
-    {
-        $request->validate([
-            'temp_token' => 'required|string',
-            'otp' => 'required|string|size:6',
-        ]);
-
-        $cached = Cache::get('otp_' . $request->temp_token);
-
-        if (!$cached) {
-            return response()->json([
-                'message' => 'Invalid or expired OTP.',
-                'error' => 'invalid_otp',
-            ], 400);
-        }
-
-        if ($cached['otp'] !== $request->otp) {
-            return response()->json([
-                'message' => 'Invalid OTP code.',
-                'error' => 'invalid_otp',
-            ], 400);
-        }
-
-        // OTP verified - get user and create auth token
-        $user = User::find($cached['user_id']);
-        if (!$user) {
-            return response()->json(['message' => 'User not found.'], 404);
-        }
-
-        // Clean up OTP from cache
-        Cache::forget('otp_' . $request->temp_token);
-
-        // Now create the Sanctum token
         $token = $user->createToken('auth-token')->plainTextToken;
         $user->load('subscriptionTier');
 
